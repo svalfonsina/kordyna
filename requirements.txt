@@ -8,4 +8,5 @@ pillow
 opencv-python-headless
 pdf2image
 passlib[bcrypt]
+bcrypt==4.0.1
 python-dotenv
