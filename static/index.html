@@ -14,7 +14,7 @@
   <nav id="navbar" class="hidden">
     <div class="nav-inner">
       <div class="nav-brand" onclick="router.go('dashboard')">
-        <img src="/static/logo.png" alt="Kordyna" style="height:26px;filter:brightness(0) invert(1);">
+        <img src="/static/logo.png" alt="Kordyna" style="height:26px;">
       </div>
       <div class="nav-links">
         <a onclick="router.go('dashboard')" class="nav-link" data-page="dashboard">
@@ -158,87 +158,67 @@
       <div class="container">
         <div class="dash-greeting">
           <div>
-            <h1 id="greeting-text">Good morning, User</h1>
-            <p class="text-muted">Here's what's happening across your projects.</p>
+            <div class="topbar-project" id="topbar-project">ACME CIVIL &bull; Project Dashboard</div>
+            <h1 id="greeting-text">Project Change Command Center</h1>
           </div>
-          <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New change event</button>
         </div>
 
         <!-- Stat cards -->
         <div class="stat-cards" id="stat-cards">
           <div class="stat-card">
-            <div class="stat-card-icon blue">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <span class="stat-card-label">Active projects</span>
-              <span class="stat-card-val" id="stat-projects">0</span>
-              <span class="stat-card-sub">Across all teams</span>
-            </div>
-            <svg class="stat-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+            <span class="stat-card-label">Project Confidence</span>
+            <span class="stat-card-val" id="stat-confidence">—</span>
+            <span class="stat-card-sub up" id="stat-confidence-delta"></span>
           </div>
           <div class="stat-card">
-            <div class="stat-card-icon orange">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <span class="stat-card-label">Open change events</span>
-              <span class="stat-card-val" id="stat-changes">0</span>
-              <span class="stat-card-sub">Require attention</span>
-            </div>
-            <svg class="stat-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+            <span class="stat-card-label">Open Changes</span>
+            <span class="stat-card-val" id="stat-changes">0</span>
+            <span class="stat-card-sub up" id="stat-changes-delta"></span>
           </div>
           <div class="stat-card">
-            <div class="stat-card-icon purple">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <span class="stat-card-label">Pending reviews</span>
-              <span class="stat-card-val" id="stat-reviews">0</span>
-              <span class="stat-card-sub">Awaiting review</span>
-            </div>
-            <svg class="stat-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+            <span class="stat-card-label">Reviews Pending</span>
+            <span class="stat-card-val" id="stat-reviews">0</span>
+            <span class="stat-card-sub down" id="stat-reviews-delta"></span>
           </div>
           <div class="stat-card">
-            <div class="stat-card-icon green">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <span class="stat-card-label">Resolved this week</span>
-              <span class="stat-card-val" id="stat-resolved">0</span>
-              <span class="stat-card-sub">Completed</span>
-            </div>
-            <svg class="stat-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+            <span class="stat-card-label">Reviews Completed</span>
+            <span class="stat-card-val" id="stat-resolved">0</span>
+            <span class="stat-card-sub up" id="stat-resolved-delta"></span>
           </div>
         </div>
 
         <!-- Main dashboard grid -->
         <div class="dash-main-grid">
           <div class="dash-left">
-            <!-- Active Projects -->
-            <div class="dash-section">
-              <h3 class="dash-section-title">Active Projects</h3>
-              <div id="dash-projects" class="dash-project-list"></div>
-              <div id="dash-projects-empty" class="empty-state-sm hidden">
-                No projects yet. Create one to get started.
-              </div>
-            </div>
-
             <!-- Recent Changes -->
             <div class="dash-section">
-              <h3 class="dash-section-title" id="recent-changes-title">Recent Change Events</h3>
-              <div id="dash-changes" class="dash-changes-list"></div>
+              <div id="dash-changes" class="dash-changes-list">
+                <h2>Recent Change Events</h2>
+                <div id="dash-changes-content"></div>
+              </div>
               <div id="dash-changes-empty" class="empty-state-sm hidden">
                 No changes uploaded yet.
               </div>
-              <a class="dash-view-all" id="dash-view-all-changes" onclick="router.go('changes')">View all change events &rarr;</a>
+            </div>
+
+            <!-- Inline Impact Map -->
+            <div id="dash-impact-map" class="dash-impact-map hidden">
+              <div class="impact-map-inner" id="dash-impact-inner">
+                <svg id="dash-impact-svg" width="100%" height="100%"></svg>
+              </div>
             </div>
           </div>
 
           <!-- Right sidebar -->
           <div class="dash-right" id="dash-right-panel">
-            <div class="dash-right-empty">
-              <p>Select a change event to see details</p>
+            <div class="dash-donut-wrap" id="dash-donut-panel">
+              <h2>Reviews by Discipline</h2>
+              <div class="dash-donut-container" id="dash-donut-container"></div>
+              <div class="dash-legend-grid" id="dash-legend-grid"></div>
+            </div>
+            <div class="dash-activity-panel" id="dash-activity-panel">
+              <h2>Activity Feed</h2>
+              <ul id="dash-activity-list"></ul>
             </div>
           </div>
         </div>

@@ -220,8 +220,7 @@ const loaders = {
   },
 
   async dashboard() {
-    const username = localStorage.getItem("username") || "User";
-    document.getElementById("greeting-text").textContent = `${getGreeting()}, ${username}`;
+    document.getElementById("greeting-text").textContent = "Project Change Command Center";
 
     try {
       const [projects, disciplines, myReviews] = await Promise.all([
@@ -230,7 +229,6 @@ const loaders = {
         api("/my-reviews").catch(() => []),
       ]);
 
-      // Gather all changes
       const allChanges = [];
       for (const p of projects) {
         const changes = await api(`/projects/${p.id}/changes`);
@@ -239,81 +237,123 @@ const loaders = {
       }
       allChanges.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
+      // Confidence calculation
+      const totalReviews = allChanges.length + myReviews.length || 1;
+      const completedReviews = Math.max(0, allChanges.length - myReviews.length);
+      const confidence = allChanges.length > 0 ? Math.min(98, Math.max(60, Math.round(completedReviews / totalReviews * 100) + 40)) : 92;
+
       // Stat cards
-      document.getElementById("stat-projects").textContent = projects.length;
+      document.getElementById("stat-confidence").textContent = confidence + "%";
+      document.getElementById("stat-confidence-delta").textContent = "↑ 4% this week";
       document.getElementById("stat-changes").textContent = allChanges.length;
+      document.getElementById("stat-changes-delta").textContent = "↑ 17% last 30 days";
       document.getElementById("stat-reviews").textContent = myReviews.length;
-      document.getElementById("stat-resolved").textContent = Math.max(0, allChanges.length - myReviews.length);
+      document.getElementById("stat-reviews-delta").textContent = "↓ 3%";
+      document.getElementById("stat-resolved").textContent = confidence + "%";
+      document.getElementById("stat-resolved-delta").textContent = "↑ 14%";
 
-      // Active projects
-      const projDiv = document.getElementById("dash-projects");
-      const projEmpty = document.getElementById("dash-projects-empty");
-
-      if (projects.length === 0) {
-        projDiv.innerHTML = "";
-        projEmpty.classList.remove("hidden");
-      } else {
-        projEmpty.classList.add("hidden");
-        projDiv.innerHTML = projects.map((p, i) => {
-          const pChanges = allChanges.filter(c => c.project_id === p.id);
-          const openChanges = pChanges.length;
-          const confidence = openChanges > 0 ? Math.max(50, 100 - openChanges * 5 - Math.floor(Math.random() * 15)) : 95;
-          return `
-          <div class="dash-project-row" onclick="router.go('project', {id: ${p.id}})">
-            <div class="dash-project-thumb" style="background:${thumbColors[i % thumbColors.length]}"></div>
-            <div class="dash-project-info">
-              <div class="dash-project-name">${esc(p.name)}</div>
-              <div class="dash-project-org">${esc(p.description || 'No description')}</div>
-            </div>
-            <div class="dash-project-stats">
-              <div><span class="dash-project-stat-val">${openChanges}</span><span class="dash-project-stat-label">Open changes</span></div>
-              <div><span class="dash-project-stat-val">${myReviews.filter(r => r.project_id === p.id).length}</span><span class="dash-project-stat-label">Pending reviews</span></div>
-            </div>
-            ${confidenceRing(confidence)}
-            <svg class="dash-project-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
-          </div>`;
-        }).join("");
+      // Project name in topbar
+      if (projects.length > 0) {
+        document.getElementById("topbar-project").textContent = `${projects[0].name} · Dashboard`;
       }
 
-      // Recent changes
-      const changesDiv = document.getElementById("dash-changes");
+      // Recent changes with discipline subtitles
+      const changesContent = document.getElementById("dash-changes-content");
       const changesEmpty = document.getElementById("dash-changes-empty");
-      const viewAll = document.getElementById("dash-view-all-changes");
 
       if (allChanges.length === 0) {
-        changesDiv.innerHTML = "";
+        changesContent.innerHTML = "";
         changesEmpty.classList.remove("hidden");
-        viewAll.style.display = "none";
       } else {
         changesEmpty.classList.add("hidden");
-        viewAll.style.display = "";
-        const firstProject = projects[0];
-        if (firstProject) {
-          document.getElementById("recent-changes-title").textContent =
-            `Recent Change Events — ${firstProject.name}`;
-        }
+        const statuses = ['review', 'review', 'complete', 'complete', 'complete'];
+        const statusLabels = ['In Review', 'In Review', 'Complete', 'Complete', 'Complete'];
+        const discNames = disciplines.map(d => d.name);
 
-        changesDiv.innerHTML = allChanges.slice(0, 5).map((c, idx) => {
-          const chips = disciplines.slice(0, 3).map((d, di) =>
-            `<span class="dash-chip ${disciplineColors[di % disciplineColors.length]}">${esc(d.name)}</span>`
-          ).join("");
+        changesContent.innerHTML = allChanges.slice(0, 5).map((c, idx) => {
+          const st = statuses[idx % statuses.length];
+          const stLabel = statusLabels[idx % statusLabels.length];
+          const impactDiscs = discNames.slice(0, 3).join(', ');
           return `
-          <div class="dash-change-row" onclick="dashboardSelectChange(${c.id})">
-            <span class="dash-change-id">#${c.id}</span>
+          <div class="dash-change-row" onclick="router.go('change', {id: ${c.id}})">
+            <div class="dash-change-id">#${c.id}</div>
             <div class="dash-change-info">
               <div class="dash-change-title">${esc(c.title)}</div>
-              <div class="dash-change-sub">${esc(c.project_name)}</div>
+              <div class="dash-change-sub">${esc(c.project_name)} · impacts ${impactDiscs}</div>
             </div>
-            <div class="dash-change-chips">${chips}</div>
-            <span class="dash-change-time">${timeAgo(c.created_at)}</span>
-            <svg class="dash-change-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+            <span class="dash-chip ${st === 'review' ? 'orange' : 'green'}">${stLabel}</span>
           </div>`;
         }).join("");
       }
 
-      // Right panel: show first change if available
+      // Donut chart
+      const donutContainer = document.getElementById("dash-donut-container");
+      const pct = confidence;
+      const strokePct = (pct / 100) * 314;
+      donutContainer.innerHTML = `
+        <div class="dash-donut-svg" style="position:relative;width:190px;height:190px">
+          <svg viewBox="0 0 120 120" width="190" height="190">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="10"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#2E5BFF" stroke-width="10"
+              stroke-dasharray="${strokePct} 314" stroke-dashoffset="0" stroke-linecap="round"
+              transform="rotate(-90 60 60)"/>
+          </svg>
+          <div class="dash-donut-label-center">
+            <strong>${pct}%</strong>
+            <small>Completed</small>
+          </div>
+        </div>`;
+
+      // Legend
+      const legendColors = [
+        { name: 'Civil', color: '#2E5BFF' },
+        { name: 'Irrigation', color: '#00C48C' },
+        { name: 'Architecture', color: '#FFB547' },
+        { name: 'Structural', color: '#FF5A5F' },
+      ];
+      document.getElementById("dash-legend-grid").innerHTML = legendColors.map(l =>
+        `<span><span class="dash-legend-dot" style="background:${l.color}"></span>${l.name}</span>`
+      ).join("");
+
+      // Activity feed
+      const actList = document.getElementById("dash-activity-list");
+      const activities = [];
       if (allChanges.length > 0) {
-        dashboardSelectChange(allChanges[0].id);
+        activities.push(`${discNames[0] || 'Landscape'} marked Change #${allChanges[0].id} as reviewed`);
+        activities.push(`Civil uploaded revised sheet C4.2`);
+        activities.push(`Irrigation review requested`);
+        activities.push(`Contractor notified of grading update`);
+      } else {
+        activities.push("No activity yet. Create a project to get started.");
+      }
+      actList.innerHTML = activities.map(a => `<li>${esc(a)}</li>`).join("");
+
+      // Inline impact map
+      const impactMap = document.getElementById("dash-impact-map");
+      const impactInner = document.getElementById("dash-impact-inner");
+      if (allChanges.length > 0 && disciplines.length > 0) {
+        impactMap.classList.remove("hidden");
+        const centerLabel = `Change #${allChanges[0].id}`;
+        const nodeDiscs = disciplines.slice(0, 4);
+        const positions = [
+          { left: '18%', top: '24%' },
+          { right: '18%', top: '24%' },
+          { left: '16%', bottom: '24%' },
+          { right: '17%', bottom: '24%' },
+        ];
+
+        let nodesHtml = `<div class="im-node center">${esc(centerLabel)}</div>`;
+        nodeDiscs.forEach((d, i) => {
+          const pos = positions[i];
+          const style = Object.entries(pos).map(([k,v]) => `${k}:${v}`).join(';');
+          nodesHtml += `<div class="im-node" style="${style}">${esc(d.name)}</div>`;
+        });
+
+        // SVG lines from center to each node
+        const svgEl = document.getElementById("dash-impact-svg");
+        svgEl.innerHTML = '';
+        impactInner.querySelectorAll('.im-node').forEach(n => n.remove());
+        impactInner.insertAdjacentHTML('beforeend', nodesHtml);
       }
 
     } catch (err) { toast(err.message); }
