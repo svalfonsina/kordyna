@@ -40,7 +40,13 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
-def root():
+def landing():
+    with open("static/landing.html") as f:
+        return f.read()
+
+
+@app.get("/app", response_class=HTMLResponse)
+def app_page():
     with open("static/index.html") as f:
         return f.read()
 
