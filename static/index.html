@@ -6,19 +6,9 @@
   <title>Kordyna</title>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
-
-  <!-- K LOGO SVG (reusable) -->
-  <svg style="display:none">
-    <symbol id="k-logo" viewBox="0 0 60 60">
-      <path d="M8 8 L8 52 L20 52 L20 38 L22 36" fill="#0c1a3a"/>
-      <path d="M20 30 L38 8 L52 8 L30 34 L52 52 L38 52 L20 30Z" fill="#0c1a3a"/>
-      <path d="M14 20 L14 52 L26 52 L26 38" fill="#2563eb"/>
-      <path d="M26 32 L42 14 L52 14 L34 36 L52 52 L42 52 L26 32Z" fill="#2563eb"/>
-    </symbol>
-  </svg>
 
   <!-- SIDEBAR NAV -->
   <nav id="navbar" class="hidden">
@@ -29,17 +19,33 @@
       <div class="nav-links">
         <div class="nav-section-label">Main</div>
         <a onclick="router.go('dashboard')" class="nav-link" data-page="dashboard">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           Projects
         </a>
-        <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          My Reviews
+        <a onclick="router.go('changes')" class="nav-link" data-page="changes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          Changes
         </a>
-        <div class="nav-section-label">Settings</div>
+        <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Reviews
+        </a>
+        <a onclick="router.go('impact')" class="nav-link" data-page="impact">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Impact Map
+        </a>
+        <div class="nav-section-label">Manage</div>
+        <a onclick="router.go('reports')" class="nav-link" data-page="reports">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Reports
+        </a>
         <a onclick="router.go('disciplines')" class="nav-link" data-page="disciplines">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Disciplines
+        </a>
+        <a onclick="router.go('settings')" class="nav-link" data-page="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Settings
         </a>
       </div>
       <div class="nav-right">
@@ -226,6 +232,83 @@
           </div>
           <h3>All caught up</h3>
           <p>No pending reviews for your discipline right now.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHANGES (ALL) -->
+    <div id="page-changes" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>Changes</h2>
+            <p class="text-muted">All change events across projects</p>
+          </div>
+        </div>
+        <div id="all-changes-list" class="changes-list"></div>
+        <div id="all-changes-empty" class="empty-state hidden">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          </div>
+          <h3>No changes yet</h3>
+          <p>Upload drawings in a project to start detecting changes.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPACT MAP -->
+    <div id="page-impact" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>Impact Map</h2>
+            <p class="text-muted">Visualize how changes ripple across disciplines</p>
+          </div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </div>
+          <h3>Coming Soon</h3>
+          <p>Impact mapping will show how design changes cascade across disciplines and stakeholders.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="page-reports" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>Reports</h2>
+            <p class="text-muted">Analytics and coordination metrics</p>
+          </div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <h3>Coming Soon</h3>
+          <p>Reports will include project confidence scores, review velocity, and discipline alignment metrics.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>Settings</h2>
+            <p class="text-muted">Account and workspace configuration</p>
+          </div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+          <h3>Coming Soon</h3>
+          <p>Manage your account, notification preferences, and workspace settings.</p>
         </div>
       </div>
     </div>

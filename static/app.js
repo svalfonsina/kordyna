@@ -121,6 +121,7 @@ const router = {
     else if (page === "project") loaders.project(params.id);
     else if (page === "change") loaders.change(params.id);
     else if (page === "reviews") loaders.myReviews();
+    else if (page === "changes") loaders.allChanges();
     else if (page === "disciplines") loaders.disciplines();
     else if (page === "auth") loaders.authInit();
   }
@@ -269,6 +270,40 @@ const loaders = {
             <span>Project #${r.project_id}</span>
           </div>
           <span class="status-badge status-pending">pending</span>
+        </div>
+      `).join("");
+    } catch (err) { toast(err.message); }
+  },
+
+  async allChanges() {
+    try {
+      const projects = await api("/projects");
+      const allChanges = [];
+      for (const p of projects) {
+        const changes = await api(`/projects/${p.id}/changes`);
+        changes.forEach(c => { c.project_name = p.name; c.project_id = p.id; });
+        allChanges.push(...changes);
+      }
+      allChanges.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const listDiv = document.getElementById("all-changes-list");
+      const emptyDiv = document.getElementById("all-changes-empty");
+
+      if (allChanges.length === 0) {
+        listDiv.classList.add("hidden");
+        emptyDiv.classList.remove("hidden");
+        return;
+      }
+      emptyDiv.classList.add("hidden");
+      listDiv.classList.remove("hidden");
+
+      listDiv.innerHTML = allChanges.map(c => `
+        <div class="change-row" onclick="router.go('change', {id: ${c.id}, projectId: ${c.project_id}})">
+          <div class="change-row-left">
+            <h4>${esc(c.title)}</h4>
+            <span>${esc(c.project_name)} &middot; ${formatDate(c.created_at)}</span>
+          </div>
+          <span class="change-badge">${c.region_count} region${c.region_count !== 1 ? "s" : ""}</span>
         </div>
       `).join("");
     } catch (err) { toast(err.message); }
