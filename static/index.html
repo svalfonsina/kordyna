@@ -10,20 +10,34 @@
 </head>
 <body>
 
-  <!-- NAV -->
+  <!-- SIDEBAR NAV -->
   <nav id="navbar" class="hidden">
     <div class="nav-inner">
       <div class="nav-brand" onclick="router.go('dashboard')">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#2563eb"/><path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="6" fill="url(#g1)"/>
+          <path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs><linearGradient id="g1" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs>
+        </svg>
         <span>Kordyna</span>
       </div>
       <div class="nav-links">
-        <a onclick="router.go('dashboard')" class="nav-link" data-page="dashboard">Projects</a>
-        <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">My Reviews</a>
+        <a onclick="router.go('dashboard')" class="nav-link" data-page="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+          Projects
+        </a>
+        <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          My Reviews
+        </a>
+        <a onclick="router.go('disciplines')" class="nav-link" data-page="disciplines">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Disciplines
+        </a>
       </div>
       <div class="nav-right">
         <span id="nav-user" class="nav-user"></span>
-        <button onclick="auth.logout()" class="btn btn-ghost btn-sm">Logout</button>
+        <button onclick="auth.logout()" class="btn btn-ghost btn-sm btn-full">Logout</button>
       </div>
     </div>
   </nav>
@@ -33,7 +47,11 @@
     <div class="auth-container">
       <div class="auth-card">
         <div class="auth-logo">
-          <svg width="40" height="40" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#2563eb"/><path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg width="44" height="44" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="6" fill="url(#g2)"/>
+            <path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs><linearGradient id="g2" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs>
+          </svg>
           <h1>Kordyna</h1>
           <p class="auth-subtitle">Change coordination for design &amp; construction</p>
         </div>
@@ -44,22 +62,22 @@
         <form id="form-login" onsubmit="return auth.login(event)">
           <div class="form-group">
             <label>Username</label>
-            <input type="text" id="login-user" required autocomplete="username">
+            <input type="text" id="login-user" required autocomplete="username" placeholder="Enter username">
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="login-pass" required autocomplete="current-password">
+            <input type="password" id="login-pass" required autocomplete="current-password" placeholder="Enter password">
           </div>
           <button type="submit" class="btn btn-primary btn-full">Sign In</button>
         </form>
         <form id="form-register" class="hidden" onsubmit="return auth.register(event)">
           <div class="form-group">
             <label>Username</label>
-            <input type="text" id="reg-user" required autocomplete="username">
+            <input type="text" id="reg-user" required autocomplete="username" placeholder="Choose a username">
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="reg-pass" required autocomplete="new-password">
+            <input type="password" id="reg-pass" required autocomplete="new-password" placeholder="Choose a password">
           </div>
           <div class="form-group">
             <label>Discipline</label>
@@ -74,104 +92,126 @@
     </div>
   </div>
 
-  <!-- DASHBOARD -->
-  <div id="page-dashboard" class="page hidden">
-    <div class="container">
-      <div class="page-header">
-        <div>
-          <h2>Projects</h2>
-          <p class="text-muted">Manage your design and construction projects</p>
-        </div>
-        <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
-      </div>
-      <div id="projects-grid" class="card-grid"></div>
-      <div id="projects-empty" class="empty-state hidden">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-        <h3>No projects yet</h3>
-        <p>Create your first project to start tracking changes.</p>
-        <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
-      </div>
-    </div>
-  </div>
+  <!-- APP BODY (everything after auth gets sidebar offset) -->
+  <div class="app-body">
 
-  <!-- PROJECT DETAIL -->
-  <div id="page-project" class="page hidden">
-    <div class="container">
-      <button class="btn-back" onclick="router.go('dashboard')">&larr; Back to Projects</button>
-      <div class="page-header">
-        <div>
-          <h2 id="project-name"></h2>
-          <p id="project-desc" class="text-muted"></p>
-        </div>
-        <div class="btn-group">
-          <button class="btn btn-outline" onclick="ui.showModal('modal-add-member')">+ Discipline</button>
-          <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">Upload Change</button>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Disciplines</h3>
-        <div id="project-members" class="chip-list"></div>
-      </div>
-
-      <div class="section">
-        <h3>Changes</h3>
-        <div id="changes-list" class="changes-list"></div>
-        <div id="changes-empty" class="empty-state-sm hidden">
-          <p>No changes uploaded yet. Upload two versions of a drawing to detect differences.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CHANGE DETAIL -->
-  <div id="page-change" class="page hidden">
-    <div class="container">
-      <button class="btn-back" id="change-back">&larr; Back to Project</button>
-      <div class="page-header">
-        <div>
-          <h2 id="change-title"></h2>
-          <p id="change-meta" class="text-muted"></p>
-        </div>
-      </div>
-
-      <div class="change-layout">
-        <div class="diff-panel">
-          <h3>Diff Overlay</h3>
-          <div class="diff-image-wrap">
-            <img id="diff-image" alt="Diff overlay">
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>Projects</h2>
+            <p class="text-muted">Manage your design and construction projects</p>
           </div>
-          <div class="legend">
-            <span class="legend-item"><span class="dot dot-minor"></span> Minor</span>
-            <span class="legend-item"><span class="dot dot-moderate"></span> Moderate</span>
-            <span class="legend-item"><span class="dot dot-major"></span> Major</span>
+          <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
+        </div>
+        <div id="projects-grid" class="card-grid"></div>
+        <div id="projects-empty" class="empty-state hidden">
+          <div class="empty-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          </div>
+          <h3>No projects yet</h3>
+          <p>Create your first project to start tracking design changes across disciplines.</p>
+          <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT DETAIL -->
+    <div id="page-project" class="page hidden">
+      <div class="container">
+        <button class="btn-back" onclick="router.go('dashboard')">&larr; Back to Projects</button>
+        <div class="page-header">
+          <div>
+            <h2 id="project-name"></h2>
+            <p id="project-desc" class="text-muted"></p>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="ui.showModal('modal-add-member')">+ Discipline</button>
+            <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">Upload Change</button>
           </div>
         </div>
-        <div class="reviews-panel">
-          <h3>Discipline Reviews</h3>
-          <div id="reviews-list" class="reviews-list"></div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- MY REVIEWS -->
-  <div id="page-reviews" class="page hidden">
-    <div class="container">
-      <div class="page-header">
-        <div>
-          <h2>My Reviews</h2>
-          <p class="text-muted">Pending reviews assigned to your discipline</p>
+        <div class="section">
+          <h3>Disciplines</h3>
+          <div id="project-members" class="chip-list"></div>
+        </div>
+
+        <div class="section">
+          <h3>Changes</h3>
+          <div id="changes-list" class="changes-list"></div>
+          <div id="changes-empty" class="empty-state-sm hidden">
+            No changes uploaded yet. Upload two versions of a drawing to detect differences.
+          </div>
         </div>
       </div>
-      <div id="my-reviews-list" class="reviews-queue"></div>
-      <div id="my-reviews-empty" class="empty-state hidden">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <h3>All caught up</h3>
-        <p>No pending reviews for your discipline.</p>
+    </div>
+
+    <!-- CHANGE DETAIL -->
+    <div id="page-change" class="page hidden">
+      <div class="container">
+        <button class="btn-back" id="change-back">&larr; Back to Project</button>
+        <div class="page-header">
+          <div>
+            <h2 id="change-title"></h2>
+            <p id="change-meta" class="text-muted"></p>
+          </div>
+        </div>
+
+        <div class="change-layout">
+          <div class="diff-panel">
+            <h3>Diff Overlay</h3>
+            <div class="diff-image-wrap">
+              <img id="diff-image" alt="Diff overlay">
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="dot dot-minor"></span> Minor</span>
+              <span class="legend-item"><span class="dot dot-moderate"></span> Moderate</span>
+              <span class="legend-item"><span class="dot dot-major"></span> Major</span>
+            </div>
+          </div>
+          <div class="reviews-panel">
+            <h3>Discipline Reviews</h3>
+            <div id="reviews-list" class="reviews-list"></div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+
+    <!-- MY REVIEWS -->
+    <div id="page-reviews" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>My Reviews</h2>
+            <p class="text-muted">Pending reviews assigned to your discipline</p>
+          </div>
+        </div>
+        <div id="my-reviews-list" class="reviews-queue"></div>
+        <div id="my-reviews-empty" class="empty-state hidden">
+          <div class="empty-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3>All caught up</h3>
+          <p>No pending reviews for your discipline right now.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISCIPLINES -->
+    <div id="page-disciplines" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>Disciplines</h2>
+            <p class="text-muted">Teams involved in change coordination</p>
+          </div>
+        </div>
+        <div id="disciplines-list" class="card-grid"></div>
+      </div>
+    </div>
+
+  </div><!-- /app-body -->
 
   <!-- MODAL: NEW PROJECT -->
   <div id="modal-new-project" class="modal hidden">
@@ -181,15 +221,15 @@
       <form onsubmit="return actions.createProject(event)">
         <div class="form-group">
           <label>Project Name</label>
-          <input type="text" id="new-project-name" required>
+          <input type="text" id="new-project-name" required placeholder="e.g. Main Street Redesign">
         </div>
         <div class="form-group">
           <label>Description</label>
-          <textarea id="new-project-desc" rows="3"></textarea>
+          <textarea id="new-project-desc" rows="3" placeholder="Brief description of the project..."></textarea>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-new-project')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create</button>
+          <button type="submit" class="btn btn-primary">Create Project</button>
         </div>
       </form>
     </div>
@@ -228,14 +268,14 @@
             <label>Old Drawing</label>
             <div class="file-drop" id="drop-old">
               <input type="file" id="file-old" accept=".pdf,.png,.jpg,.jpeg,.tiff" required>
-              <p>Drop or click to upload</p>
+              <p>Drop or browse</p>
             </div>
           </div>
           <div class="form-group">
             <label>New Drawing</label>
             <div class="file-drop" id="drop-new">
               <input type="file" id="file-new" accept=".pdf,.png,.jpg,.jpeg,.tiff" required>
-              <p>Drop or click to upload</p>
+              <p>Drop or browse</p>
             </div>
           </div>
         </div>

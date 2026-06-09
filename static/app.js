@@ -101,10 +101,13 @@ const router = {
     this.current = page;
 
     document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
-    document.querySelectorAll(".nav-link").forEach(l => l.classList.toggle("active", l.dataset.page === page));
+    document.querySelectorAll(".nav-link").forEach(l =>
+      l.classList.toggle("active", l.dataset.page === page)
+    );
 
     const isAuth = page === "auth";
     document.getElementById("navbar").classList.toggle("hidden", isAuth);
+    document.querySelector(".app-body").style.display = isAuth ? "none" : "";
 
     if (!isAuth && !localStorage.getItem("token")) { this.go("auth"); return; }
 
@@ -116,6 +119,7 @@ const router = {
     else if (page === "project") loaders.project(params.id);
     else if (page === "change") loaders.change(params.id);
     else if (page === "reviews") loaders.myReviews();
+    else if (page === "disciplines") loaders.disciplines();
     else if (page === "auth") loaders.authInit();
   }
 };
@@ -174,19 +178,11 @@ const loaders = {
       document.getElementById("project-name").textContent = project.name;
       document.getElementById("project-desc").textContent = project.description || "";
 
-      // Load members
-      try {
-        const membersResp = await api(`/projects/${id}`);
-        // We don't have a members endpoint that returns the list, so we'll track via changes
-      } catch {}
-
-      // Populate discipline selects
       const memberSel = document.getElementById("member-discipline");
       memberSel.innerHTML = disciplines.map(d =>
         `<option value="${d.id}">${d.name}</option>`
       ).join("");
 
-      // Show members from changes' reviews as proxy, or just show disciplines
       const membersDiv = document.getElementById("project-members");
       if (disciplines.length > 0) {
         membersDiv.innerHTML = disciplines.map(d =>
@@ -194,7 +190,6 @@ const loaders = {
         ).join("");
       }
 
-      // Changes
       const listDiv = document.getElementById("changes-list");
       const emptyDiv = document.getElementById("changes-empty");
 
@@ -215,7 +210,6 @@ const loaders = {
         `).join("");
       }
 
-      // Store current project id for modals
       router.params.id = id;
     } catch (err) { toast(err.message); }
   },
@@ -273,6 +267,24 @@ const loaders = {
             <span>Project #${r.project_id}</span>
           </div>
           <span class="status-badge status-pending">pending</span>
+        </div>
+      `).join("");
+    } catch (err) { toast(err.message); }
+  },
+
+  async disciplines() {
+    try {
+      const discs = await api("/disciplines");
+      const grid = document.getElementById("disciplines-list");
+      const colors = ["#38bdf8", "#818cf8", "#34d399", "#fbbf24"];
+      grid.innerHTML = discs.map((d, i) => `
+        <div class="card" style="cursor:default">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+            <div style="width:36px;height:36px;border-radius:8px;background:${colors[i % 4]}20;display:flex;align-items:center;justify-content:center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${colors[i % 4]}" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div class="card-title">${esc(d.name)}</div>
+          </div>
         </div>
       `).join("");
     } catch (err) { toast(err.message); }
@@ -344,7 +356,10 @@ const actions = {
       document.getElementById("change-upload-title").value = "";
       document.getElementById("file-old").value = "";
       document.getElementById("file-new").value = "";
-      document.querySelectorAll(".file-drop").forEach(d => { d.classList.remove("has-file"); d.querySelector("p").textContent = "Drop or click to upload"; });
+      document.querySelectorAll(".file-drop").forEach(d => {
+        d.classList.remove("has-file");
+        d.querySelector("p").textContent = "Drop or browse";
+      });
 
       toast(`Change uploaded — ${data.region_count} regions detected`);
       router.go("change", { id: data.id, projectId: router.params.id });
