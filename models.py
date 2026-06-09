@@ -103,3 +103,16 @@ class Review(Base):
 
     change_event = relationship("ChangeEvent", back_populates="reviews")
     discipline = relationship("Discipline", back_populates="reviews")
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    project = relationship("Project")

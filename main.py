@@ -16,6 +16,7 @@ from models import (
     Base,
     ChangeEvent,
     Discipline,
+    Message,
     Project,
     ProjectMember,
     Review,
@@ -342,6 +343,128 @@ def my_reviews(user: User = Depends(get_current_user), db: Session = Depends(get
 @app.get("/disciplines", response_model=list[DisciplineOut])
 def list_disciplines(db: Session = Depends(get_db)):
     return db.query(Discipline).all()
+
+
+# ── Messages ────────────────────────────────────────────────────────
+
+class MessageCreate(BaseModel):
+    content: str
+    project_id: int | None = None
+
+
+@app.post("/messages", status_code=201)
+def send_message(body: MessageCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    msg = Message(content=body.content, user_id=user.id, project_id=body.project_id)
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return {
+        "id": msg.id,
+        "content": msg.content,
+        "user_id": msg.user_id,
+        "username": user.username,
+        "project_id": msg.project_id,
+        "created_at": msg.created_at,
+    }
+
+
+@app.get("/messages")
+def get_messages(
+    project_id: int | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Message)
+    if project_id is not None:
+        q = q.filter(Message.project_id == project_id)
+    else:
+        q = q.filter(Message.project_id.is_(None))
+    messages = q.order_by(Message.created_at.asc()).limit(200).all()
+    return [
+        {
+            "id": m.id,
+            "content": m.content,
+            "user_id": m.user_id,
+            "username": m.user.username,
+            "project_id": m.project_id,
+            "created_at": m.created_at,
+        }
+        for m in messages
+    ]
+
+
+# ── Impact Map Data ─────────────────────────────────────────────────
+
+@app.get("/projects/{project_id}/impact-map")
+def get_impact_map(project_id: int, change_id: int | None = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    disciplines = db.query(Discipline).all()
+    changes = db.query(ChangeEvent).filter(ChangeEvent.project_id == project_id).order_by(ChangeEvent.created_at.desc()).all()
+
+    target_change = None
+    if change_id:
+        target_change = db.query(ChangeEvent).filter(ChangeEvent.id == change_id).first()
+    elif changes:
+        target_change = changes[0]
+
+    nodes = []
+    reviews_data = []
+
+    if target_change:
+        reviews = db.query(Review).filter(Review.change_event_id == target_change.id).all()
+        reviewed_disc_ids = {r.discipline_id for r in reviews}
+        reviews_data = [
+            {
+                "discipline_id": r.discipline_id,
+                "discipline": r.discipline.name,
+                "status": r.status,
+                "notes": r.notes,
+            }
+            for r in reviews
+        ]
+
+        for d in disciplines:
+            if d.id in reviewed_disc_ids:
+                review = next(r for r in reviews if r.discipline_id == d.id)
+                impact = "direct"
+                nodes.append({"id": d.id, "name": d.name, "impact": impact, "review_status": review.status})
+            else:
+                nodes.append({"id": d.id, "name": d.name, "impact": "none", "review_status": None})
+    else:
+        for d in disciplines:
+            nodes.append({"id": d.id, "name": d.name, "impact": "none", "review_status": None})
+
+    direct_count = sum(1 for n in nodes if n["impact"] == "direct")
+    indirect_count = sum(1 for n in nodes if n["impact"] == "indirect")
+    none_count = sum(1 for n in nodes if n["impact"] == "none")
+    reviewed_count = sum(1 for r in reviews_data if r["status"] == "reviewed")
+
+    return {
+        "project": {"id": project.id, "name": project.name},
+        "change_event": {
+            "id": target_change.id,
+            "title": target_change.title,
+            "created_at": target_change.created_at,
+            "region_count": target_change.region_count,
+            "diff_image": f"/changes/{target_change.id}/diff-image",
+        } if target_change else None,
+        "nodes": nodes,
+        "reviews": reviews_data,
+        "summary": {
+            "direct": direct_count,
+            "indirect": indirect_count,
+            "none": none_count,
+            "reviewed": reviewed_count,
+            "total_reviews": len(reviews_data),
+        },
+        "changes": [
+            {"id": c.id, "title": c.title, "created_at": c.created_at}
+            for c in changes
+        ],
+    }
 
 
 # ── Entrypoint ───────────────────────────────────────────────────────

@@ -127,6 +127,8 @@ const router = {
     else if (page === "reviews") loaders.myReviews();
     else if (page === "changes") loaders.allChanges();
     else if (page === "disciplines") loaders.disciplines();
+    else if (page === "impact") loaders.impactMap();
+    else if (page === "chat") loaders.chat();
     else if (page === "auth") loaders.authInit();
   }
 };
@@ -192,6 +194,16 @@ const thumbColors = [
 ];
 
 const disciplineColors = ['blue', 'green', 'orange', 'red'];
+
+const impactNodeColors = {
+  direct:  { fill: '#1E3A8A', stroke: '#2E5BFF', glow: 'rgba(46,91,255,.35)' },
+  indirect:{ fill: '#78350F', stroke: '#FFB547', glow: 'rgba(255,181,71,.25)' },
+  none:    { fill: '#1E293B', stroke: '#334155', glow: 'none' },
+};
+
+let _impactData = null;
+let _chatPollTimer = null;
+let _chatProjectId = null;
 
 // ── Page loaders ────────────────────────────────────────────────────
 
@@ -483,8 +495,295 @@ const loaders = {
         </div>
       `).join("");
     } catch (err) { toast(err.message); }
+  },
+
+  async impactMap() {
+    const projSel = document.getElementById("impact-project-select");
+    const changeSel = document.getElementById("impact-change-select");
+    const emptyEl = document.getElementById("impact-empty");
+    const svg = document.getElementById("impact-svg");
+
+    try {
+      const projects = await api("/projects");
+      if (projects.length === 0) {
+        projSel.innerHTML = '<option>No projects</option>';
+        changeSel.innerHTML = '';
+        svg.innerHTML = '';
+        emptyEl.classList.remove("hidden");
+        return;
+      }
+
+      const currentVal = projSel.value;
+      if (!currentVal || !projects.find(p => p.id == currentVal)) {
+        projSel.innerHTML = projects.map(p =>
+          `<option value="${p.id}">${esc(p.name)}</option>`
+        ).join("");
+      }
+
+      const projectId = projSel.value;
+      const data = await api(`/projects/${projectId}/impact-map`);
+      _impactData = data;
+
+      changeSel.innerHTML = data.changes.length === 0
+        ? '<option>No changes</option>'
+        : data.changes.map(c =>
+            `<option value="${c.id}">${esc(c.title)}</option>`
+          ).join("");
+
+      loaders.impactMapRender();
+    } catch (err) { toast(err.message); }
+  },
+
+  impactMapRender() {
+    const svg = document.getElementById("impact-svg");
+    const emptyEl = document.getElementById("impact-empty");
+    const panel = document.getElementById("impact-panel");
+    const data = _impactData;
+
+    if (!data || !data.nodes || data.nodes.length === 0) {
+      svg.innerHTML = '';
+      emptyEl.classList.remove("hidden");
+      panel.innerHTML = '<div class="impact-panel-empty"><p>No data to display</p></div>';
+      return;
+    }
+
+    emptyEl.classList.add("hidden");
+    const rect = svg.parentElement.getBoundingClientRect();
+    const W = rect.width || 800;
+    const H = rect.height || 600;
+    const cx = W / 2;
+    const cy = H / 2;
+    const R = Math.min(W, H) * 0.34;
+    const nodes = data.nodes;
+
+    let lines = '';
+    let circles = '';
+
+    // Center node (the change event)
+    const changeTitle = data.change_event ? data.change_event.title : 'Change';
+    circles += `
+      <circle cx="${cx}" cy="${cy}" r="36" fill="#0F172A" stroke="#2E5BFF" stroke-width="2.5" filter="url(#glow-center)"/>
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
+        fill="#fff" font-size="11" font-weight="700" font-family="Inter,sans-serif">CHANGE</text>`;
+
+    nodes.forEach((node, i) => {
+      const angle = (2 * Math.PI * i / nodes.length) - Math.PI / 2;
+      const nx = cx + R * Math.cos(angle);
+      const ny = cy + R * Math.sin(angle);
+      node._x = nx;
+      node._y = ny;
+
+      const colors = impactNodeColors[node.impact] || impactNodeColors.none;
+      const nodeR = node.impact === 'direct' ? 30 : node.impact === 'indirect' ? 26 : 22;
+
+      // Connection line
+      if (node.impact !== 'none') {
+        const lineColor = node.impact === 'direct' ? 'rgba(46,91,255,.4)' : 'rgba(255,181,71,.25)';
+        const dasharray = node.impact === 'direct' ? '' : 'stroke-dasharray="6 4"';
+        lines += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${lineColor}" stroke-width="1.5" ${dasharray}/>`;
+      }
+
+      // Node circle
+      const filterId = node.impact !== 'none' ? `filter="url(#glow-${node.impact})"` : '';
+      circles += `
+        <circle cx="${nx}" cy="${ny}" r="${nodeR}" fill="${colors.fill}" stroke="${colors.stroke}" stroke-width="2" ${filterId}
+          style="cursor:pointer" onclick="impactSelectNode(${i})"/>
+        <text x="${nx}" y="${ny - 6}" text-anchor="middle" fill="#E2E8F0" font-size="10" font-weight="600"
+          font-family="Inter,sans-serif" style="pointer-events:none">${esc(node.name.length > 12 ? node.name.slice(0,10) + '..' : node.name)}</text>
+        <text x="${nx}" y="${ny + 8}" text-anchor="middle" fill="${colors.stroke}" font-size="9" font-weight="700"
+          font-family="Inter,sans-serif" style="pointer-events:none">${node.review_status ? node.review_status.toUpperCase() : ''}</text>`;
+
+      // Review status ring
+      if (node.review_status === 'reviewed') {
+        circles += `<circle cx="${nx}" cy="${ny}" r="${nodeR + 4}" fill="none" stroke="#34D399" stroke-width="1.5" stroke-dasharray="4 3" opacity=".6"/>`;
+      } else if (node.review_status === 'flagged') {
+        circles += `<circle cx="${nx}" cy="${ny}" r="${nodeR + 4}" fill="none" stroke="#F87171" stroke-width="1.5" stroke-dasharray="4 3" opacity=".6"/>`;
+      }
+    });
+
+    svg.innerHTML = `
+      <defs>
+        <filter id="glow-center" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+          <feFlood flood-color="#2E5BFF" flood-opacity="0.3"/>
+          <feComposite in2="blur" operator="in"/>
+          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-direct" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+          <feFlood flood-color="#2E5BFF" flood-opacity="0.25"/>
+          <feComposite in2="blur" operator="in"/>
+          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-indirect" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+          <feFlood flood-color="#FFB547" flood-opacity="0.2"/>
+          <feComposite in2="blur" operator="in"/>
+          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      ${lines}
+      ${circles}`;
+
+    // Show summary in panel
+    const s = data.summary;
+    panel.innerHTML = `
+      <h3>${esc(changeTitle)}</h3>
+      <div class="impact-panel-sub">${data.change_event ? formatDate(data.change_event.created_at) : ''} &middot; ${data.change_event ? data.change_event.region_count + ' regions' : ''}</div>
+      <div class="impact-panel-section">
+        <h4>Impact Summary</h4>
+        <div class="impact-stat-grid">
+          <div class="impact-stat-card"><span class="impact-stat-val" style="color:#2E5BFF">${s.direct}</span><span class="impact-stat-label">Direct</span></div>
+          <div class="impact-stat-card"><span class="impact-stat-val" style="color:#FFB547">${s.indirect}</span><span class="impact-stat-label">Indirect</span></div>
+          <div class="impact-stat-card"><span class="impact-stat-val">${s.reviewed}</span><span class="impact-stat-label">Reviewed</span></div>
+          <div class="impact-stat-card"><span class="impact-stat-val">${s.total_reviews}</span><span class="impact-stat-label">Total</span></div>
+        </div>
+      </div>
+      <div class="impact-panel-section">
+        <h4>Reviews</h4>
+        ${data.reviews.map(r => `
+          <div class="impact-review-row">
+            <span class="impact-review-disc">${esc(r.discipline)}</span>
+            <span class="impact-review-badge ${r.status}">${r.status}</span>
+          </div>
+        `).join("") || '<p style="color:#64748B;font-size:13px">No reviews for this change</p>'}
+      </div>`;
+  },
+
+  async chat() {
+    if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
+
+    try {
+      const projects = await api("/projects");
+      const channelDiv = document.getElementById("chat-project-channels");
+      channelDiv.innerHTML = projects.map(p => `
+        <div class="chat-channel" data-project="${p.id}" onclick="chatSelectChannel(${p.id})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          ${esc(p.name)}
+        </div>
+      `).join("");
+    } catch {}
+
+    _chatProjectId = null;
+    chatSelectChannel(null);
   }
 };
+
+// ── Impact Map interaction ────────────────────────────────────────
+
+function impactSelectNode(index) {
+  if (!_impactData || !_impactData.nodes[index]) return;
+  const node = _impactData.nodes[index];
+  const panel = document.getElementById("impact-panel");
+
+  const colors = impactNodeColors[node.impact] || impactNodeColors.none;
+  panel.innerHTML = `
+    <h3>${esc(node.name)}</h3>
+    <div class="impact-panel-sub">Impact: <span style="color:${colors.stroke};font-weight:700">${node.impact.toUpperCase()}</span></div>
+    <div class="impact-panel-section">
+      <h4>Review Status</h4>
+      <div class="impact-review-row">
+        <span class="impact-review-disc">${esc(node.name)}</span>
+        <span class="impact-review-badge ${node.review_status || 'pending'}">${node.review_status || 'none'}</span>
+      </div>
+    </div>
+    <div class="impact-panel-section">
+      <h4>Discipline Details</h4>
+      <p style="color:#94A3B8;font-size:13px;line-height:1.6">
+        ${node.impact === 'direct'
+          ? 'This discipline is directly affected by the change and requires review.'
+          : node.impact === 'indirect'
+          ? 'This discipline may be indirectly affected by downstream dependencies.'
+          : 'No impact detected from the current change event.'}
+      </p>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:12px"
+      onclick="router.go('change', {id: ${_impactData.change_event ? _impactData.change_event.id : 0}})">
+      View Full Change &rarr;
+    </button>`;
+}
+
+// ── Chat functions ────────────────────────────────────────────────
+
+function chatSelectChannel(projectId) {
+  _chatProjectId = projectId;
+
+  document.querySelectorAll(".chat-channel").forEach(el => {
+    const elPid = el.dataset.project ? parseInt(el.dataset.project) : null;
+    el.classList.toggle("active", elPid === projectId);
+    if (!el.dataset.project && projectId === null) el.classList.add("active");
+  });
+
+  const nameEl = document.getElementById("chat-channel-name");
+  const subEl = document.getElementById("chat-channel-sub");
+  if (projectId === null) {
+    nameEl.textContent = "General";
+    subEl.textContent = "Team-wide messages";
+  } else {
+    const ch = document.querySelector(`.chat-channel[data-project="${projectId}"]`);
+    nameEl.textContent = ch ? ch.textContent.trim() : `Project #${projectId}`;
+    subEl.textContent = "Project channel";
+  }
+
+  chatLoadMessages();
+  if (_chatPollTimer) clearInterval(_chatPollTimer);
+  _chatPollTimer = setInterval(chatLoadMessages, 5000);
+}
+
+async function chatLoadMessages() {
+  try {
+    const url = _chatProjectId !== null ? `/messages?project_id=${_chatProjectId}` : '/messages';
+    const messages = await api(url);
+    const container = document.getElementById("chat-messages");
+    const emptyEl = document.getElementById("chat-empty");
+    const currentUser = localStorage.getItem("username") || "";
+
+    if (messages.length === 0) {
+      emptyEl.classList.remove("hidden");
+      container.querySelectorAll(".chat-msg").forEach(el => el.remove());
+      return;
+    }
+
+    emptyEl.classList.add("hidden");
+    const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+
+    container.querySelectorAll(".chat-msg").forEach(el => el.remove());
+    messages.forEach(m => {
+      const div = document.createElement("div");
+      div.className = "chat-msg";
+      div.innerHTML = `
+        <div class="chat-msg-avatar">${esc(m.username.charAt(0).toUpperCase())}</div>
+        <div class="chat-msg-body">
+          <div class="chat-msg-header">
+            <span class="chat-msg-name">${esc(m.username)}</span>
+            <span class="chat-msg-time">${timeAgo(m.created_at)}</span>
+          </div>
+          <div class="chat-msg-text">${esc(m.content)}</div>
+        </div>`;
+      container.appendChild(div);
+    });
+
+    if (wasAtBottom) container.scrollTop = container.scrollHeight;
+  } catch {}
+}
+
+async function chatSend(e) {
+  e.preventDefault();
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text) return false;
+
+  try {
+    const body = { content: text };
+    if (_chatProjectId !== null) body.project_id = _chatProjectId;
+    await api("/messages", { method: "POST", json: body });
+    input.value = "";
+    await chatLoadMessages();
+    const container = document.getElementById("chat-messages");
+    container.scrollTop = container.scrollHeight;
+  } catch (err) { toast(err.message); }
+  return false;
+}
 
 // ── Dashboard right panel ──────────────────────────────────────────
 

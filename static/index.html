@@ -41,6 +41,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Reports
         </a>
+        <a onclick="router.go('chat')" class="nav-link" data-page="chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Messages
+        </a>
         <a onclick="router.go('disciplines')" class="nav-link" data-page="disciplines">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Members
@@ -364,11 +368,70 @@
 
     <!-- IMPACT MAP -->
     <div id="page-impact" class="page hidden">
+      <div class="impact-wrap">
+        <!-- Top bar -->
+        <div class="impact-topbar">
+          <div class="impact-topbar-left">
+            <h2 class="impact-title">Impact Map</h2>
+            <select id="impact-project-select" class="impact-select" onchange="loaders.impactMap()"></select>
+            <select id="impact-change-select" class="impact-select" onchange="loaders.impactMapRender()"></select>
+          </div>
+          <div class="impact-topbar-right">
+            <div class="impact-legend">
+              <span class="impact-legend-item"><i class="impact-dot direct"></i>Direct</span>
+              <span class="impact-legend-item"><i class="impact-dot indirect"></i>Indirect</span>
+              <span class="impact-legend-item"><i class="impact-dot none"></i>None</span>
+            </div>
+          </div>
+        </div>
+        <!-- Canvas + right panel -->
+        <div class="impact-body">
+          <div class="impact-canvas" id="impact-canvas">
+            <svg id="impact-svg" width="100%" height="100%"></svg>
+            <div id="impact-empty" class="impact-empty-state hidden">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+              <p>Select a project with changes to visualize the impact map</p>
+            </div>
+          </div>
+          <div class="impact-panel" id="impact-panel">
+            <div class="impact-panel-empty">
+              <p>Click a discipline node to see details</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT / MESSAGES -->
+    <div id="page-chat" class="page hidden">
       <div class="container">
-        <div class="page-header"><div><h2>Impact Map</h2><p class="text-muted">Visualize how changes ripple across disciplines</p></div></div>
-        <div class="empty-state">
-          <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
-          <h3>Coming Soon</h3><p>Impact mapping will show how design changes cascade across disciplines and stakeholders.</p>
+        <div class="chat-wrap">
+          <div class="chat-sidebar">
+            <div class="chat-sidebar-header">
+              <h3>Channels</h3>
+            </div>
+            <div class="chat-channel active" data-channel="general" onclick="chatSelectChannel(null)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              General
+            </div>
+            <div id="chat-project-channels"></div>
+          </div>
+          <div class="chat-main">
+            <div class="chat-header">
+              <h3 id="chat-channel-name">General</h3>
+              <span class="chat-header-sub" id="chat-channel-sub">Team-wide messages</span>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+              <div class="chat-empty" id="chat-empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                <p>No messages yet. Start the conversation!</p>
+              </div>
+            </div>
+            <form class="chat-input-bar" onsubmit="return chatSend(event)">
+              <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+              <button type="submit" class="btn btn-primary btn-sm">Send</button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
