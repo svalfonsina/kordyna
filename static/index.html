@@ -10,89 +10,127 @@
 </head>
 <body>
 
+  <!-- K LOGO SVG (reusable) -->
+  <svg style="display:none">
+    <symbol id="k-logo" viewBox="0 0 60 60">
+      <path d="M8 8 L8 52 L20 52 L20 38 L22 36" fill="#0c1a3a"/>
+      <path d="M20 30 L38 8 L52 8 L30 34 L52 52 L38 52 L20 30Z" fill="#0c1a3a"/>
+      <path d="M14 20 L14 52 L26 52 L26 38" fill="#2563eb"/>
+      <path d="M26 32 L42 14 L52 14 L34 36 L52 52 L42 52 L26 32Z" fill="#2563eb"/>
+    </symbol>
+  </svg>
+
   <!-- SIDEBAR NAV -->
   <nav id="navbar" class="hidden">
     <div class="nav-inner">
       <div class="nav-brand" onclick="router.go('dashboard')">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect width="28" height="28" rx="6" fill="url(#g1)"/>
-          <path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <defs><linearGradient id="g1" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs>
-        </svg>
-        <span>Kordyna</span>
+        <svg width="32" height="32"><use href="#k-logo"/></svg>
+        <span class="nav-brand-text">Kordyna</span>
       </div>
       <div class="nav-links">
+        <div class="nav-section-label">Main</div>
         <a onclick="router.go('dashboard')" class="nav-link" data-page="dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
           Projects
         </a>
         <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           My Reviews
         </a>
+        <div class="nav-section-label">Settings</div>
         <a onclick="router.go('disciplines')" class="nav-link" data-page="disciplines">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Disciplines
         </a>
       </div>
       <div class="nav-right">
-        <span id="nav-user" class="nav-user"></span>
-        <button onclick="auth.logout()" class="btn btn-ghost btn-sm btn-full">Logout</button>
+        <div class="nav-user">
+          <div class="nav-user-avatar" id="nav-avatar"></div>
+          <div>
+            <div class="nav-user-name" id="nav-user"></div>
+            <div class="nav-user-role">Team Member</div>
+          </div>
+        </div>
+        <button onclick="auth.logout()" class="btn-sidebar-logout">Sign Out</button>
       </div>
     </div>
   </nav>
 
   <!-- AUTH PAGE -->
   <div id="page-auth" class="page">
-    <div class="auth-container">
-      <div class="auth-card">
-        <div class="auth-logo">
-          <svg width="44" height="44" viewBox="0 0 28 28" fill="none">
-            <rect width="28" height="28" rx="6" fill="url(#g2)"/>
-            <path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <defs><linearGradient id="g2" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs>
-          </svg>
-          <h1>Kordyna</h1>
-          <p class="auth-subtitle">Change coordination for design &amp; construction</p>
+    <div class="auth-page">
+      <div class="auth-hero">
+        <div class="auth-hero-content">
+          <svg width="72" height="72"><use href="#k-logo"/></svg>
+          <h2>Kordyna</h2>
+          <div class="tagline">Coordinate Change. Deliver Confidence.</div>
+          <div class="auth-features">
+            <div class="auth-feature">
+              <div class="auth-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+              </div>
+              <span>Upload old and new drawings to automatically detect every change between revisions</span>
+            </div>
+            <div class="auth-feature">
+              <div class="auth-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              </div>
+              <span>Route changes to the right disciplines instantly — no emails, no missed updates</span>
+            </div>
+            <div class="auth-feature">
+              <div class="auth-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+              </div>
+              <span>Track review status across every discipline so nothing falls through the cracks</span>
+            </div>
+          </div>
         </div>
-        <div class="auth-tabs">
-          <button class="auth-tab active" onclick="auth.showTab('login')">Sign In</button>
-          <button class="auth-tab" onclick="auth.showTab('register')">Register</button>
+      </div>
+      <div class="auth-form-side">
+        <div class="auth-card">
+          <div class="auth-card-header">
+            <h1>Welcome back</h1>
+            <p>Sign in to your Kordyna account</p>
+          </div>
+          <div class="auth-tabs">
+            <button class="auth-tab active" onclick="auth.showTab('login')">Sign In</button>
+            <button class="auth-tab" onclick="auth.showTab('register')">Register</button>
+          </div>
+          <form id="form-login" onsubmit="return auth.login(event)">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="login-user" required autocomplete="username" placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="login-pass" required autocomplete="current-password" placeholder="Enter your password">
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+          </form>
+          <form id="form-register" class="hidden" onsubmit="return auth.register(event)">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="reg-user" required autocomplete="username" placeholder="Choose a username">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="reg-pass" required autocomplete="new-password" placeholder="Create a password">
+            </div>
+            <div class="form-group">
+              <label>Discipline</label>
+              <select id="reg-discipline">
+                <option value="">Select a discipline (optional)</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+          </form>
+          <p id="auth-error" class="auth-error hidden"></p>
         </div>
-        <form id="form-login" onsubmit="return auth.login(event)">
-          <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="login-user" required autocomplete="username" placeholder="Enter username">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="login-pass" required autocomplete="current-password" placeholder="Enter password">
-          </div>
-          <button type="submit" class="btn btn-primary btn-full">Sign In</button>
-        </form>
-        <form id="form-register" class="hidden" onsubmit="return auth.register(event)">
-          <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="reg-user" required autocomplete="username" placeholder="Choose a username">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="reg-pass" required autocomplete="new-password" placeholder="Choose a password">
-          </div>
-          <div class="form-group">
-            <label>Discipline</label>
-            <select id="reg-discipline">
-              <option value="">None</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary btn-full">Create Account</button>
-        </form>
-        <p id="auth-error" class="auth-error hidden"></p>
       </div>
     </div>
   </div>
 
-  <!-- APP BODY (everything after auth gets sidebar offset) -->
+  <!-- APP BODY -->
   <div class="app-body">
 
     <!-- DASHBOARD -->
@@ -108,7 +146,7 @@
         <div id="projects-grid" class="card-grid"></div>
         <div id="projects-empty" class="empty-state hidden">
           <div class="empty-icon">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
           </div>
           <h3>No projects yet</h3>
           <p>Create your first project to start tracking design changes across disciplines.</p>
@@ -131,12 +169,10 @@
             <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">Upload Change</button>
           </div>
         </div>
-
         <div class="section">
           <h3>Disciplines</h3>
           <div id="project-members" class="chip-list"></div>
         </div>
-
         <div class="section">
           <h3>Changes</h3>
           <div id="changes-list" class="changes-list"></div>
@@ -157,7 +193,6 @@
             <p id="change-meta" class="text-muted"></p>
           </div>
         </div>
-
         <div class="change-layout">
           <div class="diff-panel">
             <h3>Diff Overlay</h3>
@@ -190,7 +225,7 @@
         <div id="my-reviews-list" class="reviews-queue"></div>
         <div id="my-reviews-empty" class="empty-state hidden">
           <div class="empty-icon">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
           <h3>All caught up</h3>
           <p>No pending reviews for your discipline right now.</p>
@@ -211,7 +246,7 @@
       </div>
     </div>
 
-  </div><!-- /app-body -->
+  </div>
 
   <!-- MODAL: NEW PROJECT -->
   <div id="modal-new-project" class="modal hidden">
@@ -225,7 +260,7 @@
         </div>
         <div class="form-group">
           <label>Description</label>
-          <textarea id="new-project-desc" rows="3" placeholder="Brief description of the project..."></textarea>
+          <textarea id="new-project-desc" rows="3" placeholder="Brief description of the project scope..."></textarea>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-new-project')">Cancel</button>
@@ -247,7 +282,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-add-member')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add</button>
+          <button type="submit" class="btn btn-primary">Add Discipline</button>
         </div>
       </form>
     </div>
@@ -261,7 +296,7 @@
       <form onsubmit="return actions.uploadChange(event)">
         <div class="form-group">
           <label>Title</label>
-          <input type="text" id="change-upload-title" required placeholder="e.g. Sheet A2.1 revision 3">
+          <input type="text" id="change-upload-title" required placeholder="e.g. Sheet A2.1 — revision 3">
         </div>
         <div class="form-row">
           <div class="form-group">

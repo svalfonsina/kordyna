@@ -111,7 +111,9 @@ const router = {
 
     if (!isAuth && !localStorage.getItem("token")) { this.go("auth"); return; }
 
-    document.getElementById("nav-user").textContent = localStorage.getItem("username") || "";
+    const username = localStorage.getItem("username") || "";
+    document.getElementById("nav-user").textContent = username;
+    document.getElementById("nav-avatar").textContent = username.charAt(0).toUpperCase();
 
     document.getElementById(`page-${page}`).classList.remove("hidden");
 
