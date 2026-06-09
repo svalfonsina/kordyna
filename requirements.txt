@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+python-jose[cryptography]
+python-multipart
+psycopg2-binary
+pillow
+opencv-python-headless
+pdf2image
+passlib[bcrypt]
+python-dotenv
