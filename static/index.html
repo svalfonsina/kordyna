@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kordyna</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="navbar" class="hidden">
+    <div class="nav-inner">
+      <div class="nav-brand" onclick="router.go('dashboard')">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#2563eb"/><path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Kordyna</span>
+      </div>
+      <div class="nav-links">
+        <a onclick="router.go('dashboard')" class="nav-link" data-page="dashboard">Projects</a>
+        <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">My Reviews</a>
+      </div>
+      <div class="nav-right">
+        <span id="nav-user" class="nav-user"></span>
+        <button onclick="auth.logout()" class="btn btn-ghost btn-sm">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- AUTH PAGE -->
+  <div id="page-auth" class="page">
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg width="40" height="40" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#2563eb"/><path d="M8 14l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h1>Kordyna</h1>
+          <p class="auth-subtitle">Change coordination for design &amp; construction</p>
+        </div>
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="auth.showTab('login')">Sign In</button>
+          <button class="auth-tab" onclick="auth.showTab('register')">Register</button>
+        </div>
+        <form id="form-login" onsubmit="return auth.login(event)">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="login-user" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-pass" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+        </form>
+        <form id="form-register" class="hidden" onsubmit="return auth.register(event)">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="reg-user" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="reg-pass" required autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label>Discipline</label>
+            <select id="reg-discipline">
+              <option value="">None</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+        </form>
+        <p id="auth-error" class="auth-error hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page hidden">
+    <div class="container">
+      <div class="page-header">
+        <div>
+          <h2>Projects</h2>
+          <p class="text-muted">Manage your design and construction projects</p>
+        </div>
+        <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
+      </div>
+      <div id="projects-grid" class="card-grid"></div>
+      <div id="projects-empty" class="empty-state hidden">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+        <h3>No projects yet</h3>
+        <p>Create your first project to start tracking changes.</p>
+        <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT DETAIL -->
+  <div id="page-project" class="page hidden">
+    <div class="container">
+      <button class="btn-back" onclick="router.go('dashboard')">&larr; Back to Projects</button>
+      <div class="page-header">
+        <div>
+          <h2 id="project-name"></h2>
+          <p id="project-desc" class="text-muted"></p>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-outline" onclick="ui.showModal('modal-add-member')">+ Discipline</button>
+          <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">Upload Change</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Disciplines</h3>
+        <div id="project-members" class="chip-list"></div>
+      </div>
+
+      <div class="section">
+        <h3>Changes</h3>
+        <div id="changes-list" class="changes-list"></div>
+        <div id="changes-empty" class="empty-state-sm hidden">
+          <p>No changes uploaded yet. Upload two versions of a drawing to detect differences.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHANGE DETAIL -->
+  <div id="page-change" class="page hidden">
+    <div class="container">
+      <button class="btn-back" id="change-back">&larr; Back to Project</button>
+      <div class="page-header">
+        <div>
+          <h2 id="change-title"></h2>
+          <p id="change-meta" class="text-muted"></p>
+        </div>
+      </div>
+
+      <div class="change-layout">
+        <div class="diff-panel">
+          <h3>Diff Overlay</h3>
+          <div class="diff-image-wrap">
+            <img id="diff-image" alt="Diff overlay">
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="dot dot-minor"></span> Minor</span>
+            <span class="legend-item"><span class="dot dot-moderate"></span> Moderate</span>
+            <span class="legend-item"><span class="dot dot-major"></span> Major</span>
+          </div>
+        </div>
+        <div class="reviews-panel">
+          <h3>Discipline Reviews</h3>
+          <div id="reviews-list" class="reviews-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY REVIEWS -->
+  <div id="page-reviews" class="page hidden">
+    <div class="container">
+      <div class="page-header">
+        <div>
+          <h2>My Reviews</h2>
+          <p class="text-muted">Pending reviews assigned to your discipline</p>
+        </div>
+      </div>
+      <div id="my-reviews-list" class="reviews-queue"></div>
+      <div id="my-reviews-empty" class="empty-state hidden">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <h3>All caught up</h3>
+        <p>No pending reviews for your discipline.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW PROJECT -->
+  <div id="modal-new-project" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-new-project')"></div>
+    <div class="modal-content">
+      <h3>New Project</h3>
+      <form onsubmit="return actions.createProject(event)">
+        <div class="form-group">
+          <label>Project Name</label>
+          <input type="text" id="new-project-name" required>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="new-project-desc" rows="3"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-new-project')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD MEMBER -->
+  <div id="modal-add-member" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-add-member')"></div>
+    <div class="modal-content">
+      <h3>Add Discipline</h3>
+      <form onsubmit="return actions.addMember(event)">
+        <div class="form-group">
+          <label>Discipline</label>
+          <select id="member-discipline" required></select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-add-member')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD CHANGE -->
+  <div id="modal-upload-change" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-change')"></div>
+    <div class="modal-content">
+      <h3>Upload Change</h3>
+      <form onsubmit="return actions.uploadChange(event)">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="change-upload-title" required placeholder="e.g. Sheet A2.1 revision 3">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Old Drawing</label>
+            <div class="file-drop" id="drop-old">
+              <input type="file" id="file-old" accept=".pdf,.png,.jpg,.jpeg,.tiff" required>
+              <p>Drop or click to upload</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>New Drawing</label>
+            <div class="file-drop" id="drop-new">
+              <input type="file" id="file-new" accept=".pdf,.png,.jpg,.jpeg,.tiff" required>
+              <p>Drop or click to upload</p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-change')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-upload-change">Compare &amp; Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
