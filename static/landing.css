@@ -54,6 +54,8 @@ header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,.9
   color: var(--navy);
   letter-spacing: -.3px;
 }
+.nav-logo-img { height: 32px; }
+.hero-logo-img { max-width: 340px; }
 .nav-links { display: flex; gap: 32px; flex: 1; }
 .nav-links a {
   text-decoration: none;
