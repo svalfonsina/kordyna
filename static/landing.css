@@ -762,28 +762,27 @@ header {
 .disc-icon img { width: 100%; height: 100%; object-fit: contain; }
 .disc-card span { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.3; }
 
-.metrics-stack { display: flex; flex-direction: column; gap: 16px; }
+.metrics-stack { display: flex; flex-direction: column; gap: 24px; }
 .metric-card {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: 200px 1fr;
   align-items: center;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-  padding: 28px 32px;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
 }
+.metric-card:last-child { border-bottom: none; }
 .metric-val {
-  font-size: 52px;
+  font-size: 64px;
   font-weight: 900;
   color: var(--blue);
   letter-spacing: -0.06em;
   line-height: 1;
 }
 .metric-desc {
-  font-size: 16px;
+  font-size: 18px;
   color: #CBD5E1;
   line-height: 1.5;
-  border-left: 1px solid rgba(255,255,255,.1);
+  border-left: 1px solid rgba(255,255,255,.12);
   padding-left: 32px;
 }
 
@@ -888,8 +887,8 @@ footer {
   .disc-metrics-grid { grid-template-columns: 1fr; gap: 64px; }
   .disc-title { font-size: 42px; }
   .disc-grid { grid-template-columns: repeat(3, 1fr); }
-  .metric-card { grid-template-columns: 140px 1fr; padding: 20px 24px; }
-  .metric-val { font-size: 40px; }
+  .metric-card { grid-template-columns: 160px 1fr; }
+  .metric-val { font-size: 48px; }
   .test-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .cta-bar { flex-direction: column; text-align: center; padding: 56px 40px; }
@@ -906,8 +905,8 @@ footer {
   .disc-title { font-size: 32px; }
   .disc-grid { grid-template-columns: repeat(2, 1fr); }
   .metric-card { grid-template-columns: 1fr; }
-  .metric-val { font-size: 36px; }
-  .metric-desc { border-left: none; padding-left: 0; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.1); }
+  .metric-val { font-size: 40px; }
+  .metric-desc { border-left: none; padding-left: 0; padding-top: 8px; }
   .cta-bar { padding: 48px 24px; }
   .cta-text h2 { font-size: 22px; }
   .nav-links { display: none; }
