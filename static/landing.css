@@ -723,14 +723,15 @@ header {
   background: rgba(255,255,255,.03);
 }
 .disc-icon {
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 14px;
 }
+.disc-icon img { width: 100%; height: 100%; object-fit: contain; }
 .disc-card span { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.3; }
 
 .metrics-stack { display: flex; flex-direction: column; gap: 20px; }
