@@ -54,7 +54,7 @@ header {
   flex-direction: column;
   gap: 0;
 }
-.nav-logo-img { height: 48px; }
+.nav-logo-img { width: 220px; height: auto; }
 .nav-logo-tagline {
   font-size: 7.5px;
   font-weight: 600;
