@@ -434,17 +434,26 @@ header {
 .problem-dim { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
 /* ── SOLUTION ─────────────────────────────────────────────────── */
-.solution { padding: 96px 0; background: var(--surface); }
+.solution {
+  padding: 64px 0;
+  background: var(--navy-deep);
+  color: #fff;
+}
+.solution .section-label { color: var(--blue); }
+.solution .section-title-left { color: #fff; }
+.solution .link-arrow { color: #93C5FD; }
 .solution-layout {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 0;
   align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 .solution-header { padding-right: 40px; }
 .solution-card {
   padding: 0 32px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid rgba(255,255,255,.1);
 }
 .solution-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .solution-number {
@@ -459,9 +468,10 @@ header {
   font-size: 12px;
   font-weight: 700;
 }
-.solution-icon { opacity: .5; }
-.solution-card h3 { font-size: 17px; font-weight: 700; color: var(--text-headline); margin-bottom: 8px; }
-.solution-card p { font-size: 14px; color: var(--text-body); line-height: 1.6; }
+.solution-icon { opacity: .4; }
+.solution-icon svg { stroke: #fff; }
+.solution-card h3 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.solution-card p { font-size: 14px; color: rgba(255,255,255,.5); line-height: 1.6; }
 
 /* ── WALKTHROUGH ──────────────────────────────────────────────── */
 .walkthrough {
@@ -871,7 +881,7 @@ footer {
   .dash-mock { transform: none; }
   .problem-grid { grid-template-columns: repeat(2, 1fr); }
   .solution-layout { grid-template-columns: 1fr 1fr; gap: 32px; }
-  .solution-card { border-left: none; border-top: 1px solid var(--border); padding: 24px 0 0; }
+  .solution-card { border-left: none; border-top: 1px solid rgba(255,255,255,.1); padding: 24px 0 0; }
   .walk-grid { grid-template-columns: 1fr; }
   .walk-mock { max-width: 700px; }
   .disc-metrics-grid { grid-template-columns: 1fr; gap: 64px; }
