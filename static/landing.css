@@ -41,7 +41,7 @@ header {
   max-width: 1440px;
   margin: 0 auto;
   padding: 0 64px;
-  height: 80px;
+  height: 88px;
   display: flex;
   align-items: center;
   gap: 48px;
@@ -52,7 +52,7 @@ header {
   text-decoration: none;
   flex-shrink: 0;
 }
-.nav-logo-img { width: 220px; height: auto; }
+.nav-logo-img { width: 240px; height: auto; }
 .nav-links { display: flex; gap: 32px; flex: 1; }
 .nav-links a {
   text-decoration: none;
