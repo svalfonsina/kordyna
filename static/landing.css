@@ -693,10 +693,7 @@ header {
   color: #fff;
 }
 .disc-metrics-grid {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 80px;
-  align-items: start;
+  display: block;
 }
 .section-label-light {
   display: block;
@@ -737,7 +734,7 @@ header {
   transition: all .2s;
 }
 .btn-outline-blue:hover { background: var(--blue); color: #fff; }
-.disc-grid {
+.disc-and-metrics {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 12px;
