@@ -330,8 +330,9 @@ header {
 /* ── TRUSTED ──────────────────────────────────────────────────── */
 .trusted {
   padding: 40px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  background: var(--navy-deep);
+  border-top: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255,255,255,.06);
 }
 .trusted-label {
   text-align: center;
@@ -339,7 +340,7 @@ header {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: var(--text-muted);
+  color: rgba(255,255,255,.35);
   margin-bottom: 28px;
 }
 .trusted-logos {
@@ -352,7 +353,7 @@ header {
 .trust-logo {
   font-size: 16px;
   font-weight: 800;
-  color: #1E293B;
+  color: rgba(255,255,255,.3);
   opacity: .3;
   letter-spacing: .3px;
 }
