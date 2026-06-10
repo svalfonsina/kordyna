@@ -51,6 +51,7 @@ header {
   align-items: center;
   text-decoration: none;
   flex-shrink: 0;
+  align-self: center;
 }
 .nav-logo-img { width: 240px; height: auto; }
 .nav-links { display: flex; gap: 32px; flex: 1; }
