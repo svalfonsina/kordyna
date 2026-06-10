@@ -340,7 +340,7 @@ header {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.6);
   margin-bottom: 28px;
 }
 .trusted-logos {
@@ -353,8 +353,8 @@ header {
 .trust-logo {
   font-size: 16px;
   font-weight: 800;
-  color: rgba(255,255,255,.3);
-  opacity: .3;
+  color: #fff;
+  opacity: .7;
   letter-spacing: .3px;
 }
 
