@@ -463,11 +463,11 @@ header {
 .solution-card h3 { font-size: 17px; font-weight: 700; color: var(--text-headline); margin-bottom: 8px; }
 .solution-card p { font-size: 14px; color: var(--text-body); line-height: 1.6; }
 
-/* ── WALKTHROUGH (dark section) ───────────────────────────────── */
+/* ── WALKTHROUGH ──────────────────────────────────────────────── */
 .walkthrough {
   padding: 96px 0;
-  background: var(--navy-deep);
-  color: #fff;
+  background: #fff;
+  color: var(--text-headline);
 }
 .walk-grid {
   display: grid;
@@ -475,14 +475,31 @@ header {
   gap: 56px;
   align-items: center;
 }
-.walk-content { max-width: 400px; }
+.walk-content { max-width: 480px; }
+.walk-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--blue);
+  margin-bottom: 20px;
+}
 .walk-title {
-  font-size: 40px;
+  font-size: 44px;
   font-weight: 900;
   letter-spacing: -0.05em;
   line-height: 1.15;
+  color: var(--text-headline);
   margin-bottom: 24px;
 }
+.walk-link {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--blue);
+  text-decoration: none;
+}
+.walk-link:hover { text-decoration: underline; }
 
 /* Walk mock — change event detail view */
 .walk-mock {
