@@ -501,7 +501,7 @@ header {
   font-weight: 900;
   letter-spacing: -0.05em;
   line-height: 1.15;
-  color: var(--blue);
+  color: var(--text-headline);
   margin-bottom: 24px;
 }
 .walk-link {
