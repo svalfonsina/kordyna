@@ -3,134 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kordyna</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <title>Kordyna — Lakeside Mixed Use</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 
-  <!-- SIDEBAR NAV -->
-  <nav id="navbar" class="hidden">
-    <div class="nav-inner">
-      <div class="nav-brand" onclick="router.go('dashboard')">
-        <img src="/static/logo.png" alt="Kordyna" style="height:26px;">
-      </div>
-      <div class="nav-links">
-        <a onclick="router.go('dashboard')" class="nav-link" data-page="dashboard">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-          Home
-        </a>
-        <a onclick="router.go('projects')" class="nav-link" data-page="projects">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Projects
-        </a>
-        <a onclick="router.go('changes')" class="nav-link" data-page="changes">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-          Changes
-        </a>
-        <a onclick="router.go('documents')" class="nav-link" data-page="documents">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-          Documents
-        </a>
-        <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          Reviews
-        </a>
-        <a onclick="router.go('impact')" class="nav-link" data-page="impact">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-          Impact Map
-        </a>
-        <a onclick="router.go('reports')" class="nav-link" data-page="reports">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Reports
-        </a>
-        <a onclick="router.go('chat')" class="nav-link" data-page="chat">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          Messages
-        </a>
-        <a onclick="router.go('disciplines')" class="nav-link" data-page="disciplines">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          Members
-        </a>
-      </div>
-      <div class="nav-right">
-        <div class="nav-user" id="nav-user-block">
-          <div class="nav-user-avatar" id="nav-avatar"></div>
-          <div class="nav-user-info">
-            <div class="nav-user-name" id="nav-user"></div>
-            <div class="nav-user-role">Kordyna Demo</div>
-          </div>
-          <svg class="nav-user-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"/></svg>
-        </div>
-      </div>
-    </div>
-  </nav>
-
-  <!-- AUTH PAGE -->
+  <!-- ══ AUTH PAGE ══════════════════════════════════════════════════ -->
   <div id="page-auth" class="page">
     <div class="auth-page">
       <div class="auth-hero">
-        <div class="auth-hero-content">
-          <img src="/static/logo.png" alt="Kordyna" style="max-width:280px;filter:brightness(0) invert(1);margin-bottom:12px;">
+        <div class="auth-hero-inner">
+          <img src="/static/logo.png" alt="Kordyna" class="auth-logo">
+          <p class="auth-tagline">Coordinate Change. Deliver Confidence.</p>
           <div class="auth-features">
-            <div class="auth-feature">
-              <div class="auth-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-              </div>
-              <span>Upload old and new drawings to automatically detect every change between revisions</span>
-            </div>
-            <div class="auth-feature">
-              <div class="auth-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              </div>
-              <span>Route changes to the right disciplines instantly — no emails, no missed updates</span>
-            </div>
-            <div class="auth-feature">
-              <div class="auth-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
-              </div>
-              <span>Track review status across every discipline so nothing falls through the cracks</span>
-            </div>
+            <div class="auth-feat"><span class="auth-feat-num">01</span><span>Upload old and new drawings to detect every change between revisions</span></div>
+            <div class="auth-feat"><span class="auth-feat-num">02</span><span>Route changes to the right disciplines — no emails, no missed updates</span></div>
+            <div class="auth-feat"><span class="auth-feat-num">03</span><span>Track review status across every discipline so nothing falls through</span></div>
           </div>
         </div>
       </div>
       <div class="auth-form-side">
         <div class="auth-card">
-          <div class="auth-card-header">
-            <h1>Welcome back</h1>
-            <p>Sign in to your Kordyna account</p>
-          </div>
+          <h1>Welcome back</h1>
+          <p class="auth-sub">Sign in to your Kordyna account</p>
           <div class="auth-tabs">
             <button class="auth-tab active" onclick="auth.showTab('login')">Sign In</button>
             <button class="auth-tab" onclick="auth.showTab('register')">Register</button>
           </div>
           <form id="form-login" onsubmit="return auth.login(event)">
-            <div class="form-group">
-              <label>Username</label>
-              <input type="text" id="login-user" required autocomplete="username" placeholder="Enter your username">
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input type="password" id="login-pass" required autocomplete="current-password" placeholder="Enter your password">
-            </div>
+            <div class="field"><label>Username</label><input type="text" id="login-user" required autocomplete="username" placeholder="Enter your username"></div>
+            <div class="field"><label>Password</label><input type="password" id="login-pass" required autocomplete="current-password" placeholder="Enter your password"></div>
             <button type="submit" class="btn btn-primary btn-full">Sign In</button>
           </form>
           <form id="form-register" class="hidden" onsubmit="return auth.register(event)">
-            <div class="form-group">
-              <label>Username</label>
-              <input type="text" id="reg-user" required autocomplete="username" placeholder="Choose a username">
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input type="password" id="reg-pass" required autocomplete="new-password" placeholder="Create a password">
-            </div>
-            <div class="form-group">
-              <label>Discipline</label>
-              <select id="reg-discipline">
-                <option value="">Select a discipline (optional)</option>
-              </select>
-            </div>
+            <div class="field"><label>Username</label><input type="text" id="reg-user" required autocomplete="username" placeholder="Choose a username"></div>
+            <div class="field"><label>Password</label><input type="password" id="reg-pass" required autocomplete="new-password" placeholder="Create a password"></div>
+            <div class="field"><label>Discipline</label><select id="reg-discipline"><option value="">Select a discipline (optional)</option></select></div>
             <button type="submit" class="btn btn-primary btn-full">Create Account</button>
           </form>
           <p id="auth-error" class="auth-error hidden"></p>
@@ -139,246 +49,330 @@
     </div>
   </div>
 
-  <!-- APP BODY -->
-  <div class="app-body">
+  <!-- ══ SIDEBAR ═══════════════════════════════════════════════════ -->
+  <nav id="sidebar" class="sidebar hidden">
+    <div class="sidebar-inner">
+      <div class="sidebar-logo" onclick="router.go('overview')">
+        <img src="/static/logo.png" alt="Kordyna">
+      </div>
 
-    <!-- TOP BAR -->
-    <div class="topbar" id="topbar">
+      <div class="sidebar-section">
+        <a class="sidebar-link" data-page="overview" onclick="router.go('overview')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Overview
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Project Management</div>
+        <a class="sidebar-link" data-page="changes" onclick="router.go('changes')">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          Change Events
+        </a>
+        <a class="sidebar-link" data-page="impact" onclick="router.go('impact')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Impact Maps
+        </a>
+        <a class="sidebar-link" data-page="reviews" onclick="router.go('reviews')">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Reviews
+        </a>
+        <a class="sidebar-link" data-page="documents" onclick="router.go('documents')">
+          <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          Documents
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Project Data</div>
+        <a class="sidebar-link" data-page="disciplines" onclick="router.go('disciplines')">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Disciplines
+        </a>
+        <a class="sidebar-link" data-page="confidence" onclick="router.go('confidence')">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Confidence
+        </a>
+        <a class="sidebar-link" data-page="reports" onclick="router.go('reports')">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Reports
+        </a>
+      </div>
+
+      <div class="sidebar-section sidebar-bottom">
+        <div class="sidebar-label">Admin</div>
+        <a class="sidebar-link" data-page="settings" onclick="router.go('settings')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Settings
+        </a>
+      </div>
+
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">JM</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebar-user-name">Jorge Morgan</div>
+          <div class="sidebar-user-role">Project Admin</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══ TOPBAR ════════════════════════════════════════════════════ -->
+  <div id="topbar" class="topbar hidden">
+    <div class="topbar-left">
+      <div class="topbar-project">
+        <span class="topbar-project-name">Lakeside Mixed Use</span>
+        <span class="topbar-separator">·</span>
+        <span class="topbar-project-org">ACME Civil</span>
+      </div>
+    </div>
+    <div class="topbar-center">
+      <div class="topbar-confidence">
+        <svg class="topbar-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="topbar-confidence-val" id="topbar-confidence">92%</span>
+        <span class="topbar-confidence-label">Project Confidence</span>
+      </div>
+    </div>
+    <div class="topbar-right">
       <div class="topbar-search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span>Search...</span>
-        <kbd>&#8984;K</kbd>
+        <kbd>⌘K</kbd>
       </div>
-      <div class="topbar-right">
-        <button class="topbar-icon-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-        </button>
-        <div class="topbar-avatar" id="topbar-avatar"></div>
-      </div>
+      <button class="topbar-icon-btn" id="topbar-notif">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="topbar-notif-dot"></span>
+      </button>
+      <div class="topbar-avatar" id="topbar-avatar">JM</div>
     </div>
+  </div>
 
-    <!-- DASHBOARD (HOME) -->
-    <div id="page-dashboard" class="page hidden">
-      <div class="container">
-        <div class="dash-greeting">
+  <!-- ══ MAIN CONTENT ══════════════════════════════════════════════ -->
+  <main id="main" class="main">
+
+    <!-- PAGE: OVERVIEW ──────────────────────────────────────────── -->
+    <div id="page-overview" class="page hidden">
+      <div class="page-container">
+        <div class="overview-header">
           <div>
-            <div class="topbar-project" id="topbar-project">ACME CIVIL &bull; Project Dashboard</div>
-            <h1 id="greeting-text">Project Change Command Center</h1>
+            <div class="overview-project-label">Project Overview</div>
+            <h1 class="overview-title">Lakeside Mixed Use</h1>
           </div>
         </div>
 
-        <!-- Stat cards -->
-        <div class="stat-cards" id="stat-cards">
-          <div class="stat-card">
-            <span class="stat-card-label">Project Confidence</span>
-            <span class="stat-card-val" id="stat-confidence">—</span>
-            <span class="stat-card-sub up" id="stat-confidence-delta"></span>
+        <!-- KPI Strip -->
+        <div class="kpi-strip">
+          <div class="kpi-card kpi-primary">
+            <div class="kpi-icon-wrap">
+              <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-value" id="kpi-confidence">92%</span>
+              <span class="kpi-label">Project Confidence</span>
+            </div>
           </div>
-          <div class="stat-card">
-            <span class="stat-card-label">Open Changes</span>
-            <span class="stat-card-val" id="stat-changes">0</span>
-            <span class="stat-card-sub up" id="stat-changes-delta"></span>
+          <div class="kpi-card">
+            <div class="kpi-body">
+              <span class="kpi-value" id="kpi-changes">4</span>
+              <span class="kpi-label">Active Changes</span>
+            </div>
           </div>
-          <div class="stat-card">
-            <span class="stat-card-label">Reviews Pending</span>
-            <span class="stat-card-val" id="stat-reviews">0</span>
-            <span class="stat-card-sub down" id="stat-reviews-delta"></span>
+          <div class="kpi-card">
+            <div class="kpi-body">
+              <span class="kpi-value" id="kpi-reviews">2</span>
+              <span class="kpi-label">Pending Reviews</span>
+            </div>
           </div>
-          <div class="stat-card">
-            <span class="stat-card-label">Reviews Completed</span>
-            <span class="stat-card-val" id="stat-resolved">0</span>
-            <span class="stat-card-sub up" id="stat-resolved-delta"></span>
+          <div class="kpi-card kpi-warn">
+            <div class="kpi-body">
+              <span class="kpi-value" id="kpi-conflicts">1</span>
+              <span class="kpi-label">Open Conflict</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-body">
+              <span class="kpi-value" id="kpi-docs">14</span>
+              <span class="kpi-label">Documents Updated</span>
+            </div>
           </div>
         </div>
 
-        <!-- Main dashboard grid -->
-        <div class="dash-main-grid">
-          <div class="dash-left">
-            <!-- Recent Changes -->
-            <div class="dash-section">
-              <div id="dash-changes" class="dash-changes-list">
-                <h2>Recent Change Events</h2>
-                <div id="dash-changes-content"></div>
+        <!-- Main grid -->
+        <div class="overview-grid">
+          <!-- Left column -->
+          <div class="overview-left">
+            <!-- Recent Change Events -->
+            <div class="panel">
+              <div class="panel-header">
+                <h2 class="panel-title">Recent Change Events</h2>
+                <a class="panel-link" onclick="router.go('changes')">View all →</a>
               </div>
-              <div id="dash-changes-empty" class="empty-state-sm hidden">
-                No changes uploaded yet.
+              <div id="overview-changes" class="panel-body"></div>
+            </div>
+
+            <!-- Confidence Factors -->
+            <div class="panel">
+              <div class="panel-header">
+                <h2 class="panel-title">Confidence Factors</h2>
               </div>
+              <div id="overview-factors" class="panel-body"></div>
             </div>
+          </div>
 
-            <!-- Inline Impact Map -->
-            <div id="dash-impact-map" class="dash-impact-map hidden">
-              <div class="impact-map-inner" id="dash-impact-inner">
-                <svg id="dash-impact-svg" width="100%" height="100%"></svg>
+          <!-- Right column -->
+          <div class="overview-right">
+            <!-- Review Progress -->
+            <div class="panel">
+              <div class="panel-header">
+                <h2 class="panel-title">Review Progress</h2>
+                <a class="panel-link" onclick="router.go('reviews')">View all →</a>
               </div>
+              <div id="overview-reviews" class="panel-body"></div>
             </div>
-          </div>
 
-          <!-- Right sidebar -->
-          <div class="dash-right" id="dash-right-panel">
-            <div class="dash-donut-wrap" id="dash-donut-panel">
-              <h2>Reviews by Discipline</h2>
-              <div class="dash-donut-container" id="dash-donut-container"></div>
-              <div class="dash-legend-grid" id="dash-legend-grid"></div>
+            <!-- Activity -->
+            <div class="panel">
+              <div class="panel-header">
+                <h2 class="panel-title">Recent Activity</h2>
+              </div>
+              <div id="overview-activity" class="panel-body"></div>
             </div>
-            <div class="dash-activity-panel" id="dash-activity-panel">
-              <h2>Activity Feed</h2>
-              <ul id="dash-activity-list"></ul>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- PROJECTS LIST -->
-    <div id="page-projects" class="page hidden">
-      <div class="container">
-        <div class="page-header">
-          <div>
-            <h2>Projects</h2>
-            <p class="text-muted">Manage your design and construction projects</p>
-          </div>
-          <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
-        </div>
-        <div id="projects-grid" class="card-grid"></div>
-        <div id="projects-empty" class="empty-state hidden">
-          <div class="empty-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-          </div>
-          <h3>No projects yet</h3>
-          <p>Create your first project to start tracking design changes across disciplines.</p>
-          <button class="btn btn-primary" onclick="ui.showModal('modal-new-project')">+ New Project</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- PROJECT DETAIL -->
-    <div id="page-project" class="page hidden">
-      <div class="container">
-        <button class="btn-back" onclick="router.go('projects')">&larr; Back to Projects</button>
-        <div class="page-header">
-          <div>
-            <h2 id="project-name"></h2>
-            <p id="project-desc" class="text-muted"></p>
-          </div>
-          <div class="btn-group">
-            <button class="btn btn-outline" onclick="ui.showModal('modal-add-member')">+ Discipline</button>
-            <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">Upload Change</button>
-          </div>
-        </div>
-        <div class="section">
-          <h3>Disciplines</h3>
-          <div id="project-members" class="chip-list"></div>
-        </div>
-        <div class="section">
-          <h3>Changes</h3>
-          <div id="changes-list" class="changes-list"></div>
-          <div id="changes-empty" class="empty-state-sm hidden">
-            No changes uploaded yet. Upload two versions of a drawing to detect differences.
           </div>
         </div>
       </div>
     </div>
 
-    <!-- CHANGE DETAIL -->
-    <div id="page-change" class="page hidden">
-      <div class="container">
-        <button class="btn-back" id="change-back">&larr; Back to Project</button>
-        <div class="page-header">
-          <div>
-            <h2 id="change-title"></h2>
-            <p id="change-meta" class="text-muted"></p>
-          </div>
-        </div>
-        <div class="change-layout">
-          <div class="diff-panel">
-            <h3>Diff Overlay</h3>
-            <div class="diff-image-wrap">
-              <img id="diff-image" alt="Diff overlay">
-            </div>
-            <div class="legend">
-              <span class="legend-item"><span class="dot dot-minor"></span> Minor</span>
-              <span class="legend-item"><span class="dot dot-moderate"></span> Moderate</span>
-              <span class="legend-item"><span class="dot dot-major"></span> Major</span>
-            </div>
-          </div>
-          <div class="reviews-panel">
-            <h3>Discipline Reviews</h3>
-            <div id="reviews-list" class="reviews-list"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MY REVIEWS -->
-    <div id="page-reviews" class="page hidden">
-      <div class="container">
-        <div class="page-header">
-          <div>
-            <h2>My Reviews</h2>
-            <p class="text-muted">Pending reviews assigned to your discipline</p>
-          </div>
-        </div>
-        <div id="my-reviews-list" class="reviews-queue"></div>
-        <div id="my-reviews-empty" class="empty-state hidden">
-          <div class="empty-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-          <h3>All caught up</h3>
-          <p>No pending reviews for your discipline right now.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- CHANGES (ALL) -->
+    <!-- PAGE: CHANGE EVENTS ─────────────────────────────────────── -->
     <div id="page-changes" class="page hidden">
-      <div class="container">
-        <div class="page-header">
+      <div class="page-container">
+        <div class="page-top">
           <div>
-            <h2>Changes</h2>
-            <p class="text-muted">All change events across projects</p>
+            <h1 class="page-title">Change Events</h1>
+            <p class="page-desc">Track revisions, impacts, and review progress across the project</p>
           </div>
+          <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">+ New Change Event</button>
         </div>
-        <div id="all-changes-list" class="changes-list"></div>
-        <div id="all-changes-empty" class="empty-state hidden">
-          <div class="empty-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        <div class="change-table">
+          <div class="change-table-header">
+            <span class="ct-col ct-id">ID</span>
+            <span class="ct-col ct-title">Change</span>
+            <span class="ct-col ct-status">Status</span>
+            <span class="ct-col ct-by">Uploaded By</span>
+            <span class="ct-col ct-docs">Documents</span>
+            <span class="ct-col ct-disc">Impacted</span>
+            <span class="ct-col ct-progress">Review Progress</span>
+            <span class="ct-col ct-risk">Risk</span>
+            <span class="ct-col ct-date">Updated</span>
+            <span class="ct-col ct-actions"></span>
           </div>
-          <h3>No changes yet</h3>
-          <p>Upload drawings in a project to start detecting changes.</p>
+          <div id="changes-list"></div>
         </div>
       </div>
     </div>
 
-    <!-- IMPACT MAP -->
+    <!-- PAGE: CHANGE DETAIL ─────────────────────────────────────── -->
+    <div id="page-change-detail" class="page hidden">
+      <div class="page-container">
+        <button class="btn-back" onclick="router.go('changes')">← Back to Change Events</button>
+        <div class="cd-header">
+          <div class="cd-header-left">
+            <span class="cd-id" id="cd-id"></span>
+            <h1 class="cd-title" id="cd-title"></h1>
+            <div class="cd-meta" id="cd-meta"></div>
+          </div>
+          <div class="cd-header-right">
+            <span class="cd-status" id="cd-status"></span>
+          </div>
+        </div>
+
+        <div class="cd-layout">
+          <!-- Main area -->
+          <div class="cd-main">
+            <!-- Summary -->
+            <div class="panel">
+              <div class="panel-header"><h2 class="panel-title">Summary</h2></div>
+              <div class="panel-body" id="cd-summary"></div>
+            </div>
+
+            <!-- Affected Documents -->
+            <div class="panel">
+              <div class="panel-header"><h2 class="panel-title">Affected Documents</h2></div>
+              <div class="panel-body" id="cd-documents"></div>
+            </div>
+
+            <!-- Impact Map -->
+            <div class="panel">
+              <div class="panel-header">
+                <h2 class="panel-title">Impact Map</h2>
+                <a class="panel-link" onclick="router.go('impact')">Expand →</a>
+              </div>
+              <div class="cd-impact-canvas" id="cd-impact-canvas">
+                <svg id="cd-impact-svg" width="100%" height="100%"></svg>
+              </div>
+            </div>
+
+            <!-- Activity Timeline -->
+            <div class="panel">
+              <div class="panel-header"><h2 class="panel-title">Activity Timeline</h2></div>
+              <div class="panel-body" id="cd-timeline"></div>
+            </div>
+          </div>
+
+          <!-- Right panel -->
+          <div class="cd-sidebar">
+            <!-- Review Status -->
+            <div class="panel">
+              <div class="panel-header"><h2 class="panel-title">Review Status</h2></div>
+              <div class="panel-body" id="cd-reviews"></div>
+            </div>
+
+            <!-- Impacted Disciplines -->
+            <div class="panel">
+              <div class="panel-header"><h2 class="panel-title">Impacted Disciplines</h2></div>
+              <div class="panel-body" id="cd-disciplines"></div>
+            </div>
+
+            <!-- Required Actions -->
+            <div class="panel">
+              <div class="panel-header"><h2 class="panel-title">Required Actions</h2></div>
+              <div class="panel-body" id="cd-actions"></div>
+            </div>
+
+            <!-- Confidence Impact -->
+            <div class="panel">
+              <div class="panel-header"><h2 class="panel-title">Confidence Impact</h2></div>
+              <div class="panel-body" id="cd-confidence"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: IMPACT MAP ────────────────────────────────────────── -->
     <div id="page-impact" class="page hidden">
-      <div class="impact-wrap">
-        <!-- Top bar -->
+      <div class="impact-fullpage">
         <div class="impact-topbar">
           <div class="impact-topbar-left">
-            <h2 class="impact-title">Impact Map</h2>
-            <select id="impact-project-select" class="impact-select" onchange="loaders.impactMap()"></select>
-            <select id="impact-change-select" class="impact-select" onchange="loaders.impactMapRender()"></select>
+            <h2>Impact Map</h2>
+            <select id="impact-change-select" class="impact-select" onchange="renderImpactMap()"></select>
           </div>
-          <div class="impact-topbar-right">
-            <div class="impact-legend">
-              <span class="impact-legend-item"><i class="impact-dot direct"></i>Direct</span>
-              <span class="impact-legend-item"><i class="impact-dot indirect"></i>Indirect</span>
-              <span class="impact-legend-item"><i class="impact-dot none"></i>None</span>
-            </div>
+          <div class="impact-legend">
+            <span><i class="dot-reviewed"></i> Reviewed</span>
+            <span><i class="dot-pending"></i> Pending</span>
+            <span><i class="dot-conflict"></i> Conflict</span>
+            <span><i class="dot-none"></i> Not Impacted</span>
+            <span class="legend-sep"></span>
+            <span>── Direct</span>
+            <span>╌╌ Indirect</span>
           </div>
         </div>
-        <!-- Canvas + right panel -->
         <div class="impact-body">
           <div class="impact-canvas" id="impact-canvas">
             <svg id="impact-svg" width="100%" height="100%"></svg>
-            <div id="impact-empty" class="impact-empty-state hidden">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-              <p>Select a project with changes to visualize the impact map</p>
-            </div>
           </div>
           <div class="impact-panel" id="impact-panel">
             <div class="impact-panel-empty">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
               <p>Click a discipline node to see details</p>
             </div>
           </div>
@@ -386,212 +380,173 @@
       </div>
     </div>
 
-    <!-- CHAT / MESSAGES -->
-    <div id="page-chat" class="page hidden">
-      <div class="container">
-        <div class="chat-wrap">
-          <div class="chat-sidebar">
-            <div class="chat-sidebar-header">
-              <h3>Channels</h3>
-            </div>
-            <div class="chat-channel active" data-channel="general" onclick="chatSelectChannel(null)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-              General
-            </div>
-            <div id="chat-project-channels"></div>
-          </div>
-          <div class="chat-main">
-            <div class="chat-header">
-              <h3 id="chat-channel-name">General</h3>
-              <span class="chat-header-sub" id="chat-channel-sub">Team-wide messages</span>
-            </div>
-            <div class="chat-messages" id="chat-messages">
-              <div class="chat-empty" id="chat-empty">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                <p>No messages yet. Start the conversation!</p>
-              </div>
-            </div>
-            <form class="chat-input-bar" onsubmit="return chatSend(event)">
-              <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
-              <button type="submit" class="btn btn-primary btn-sm">Send</button>
-            </form>
+    <!-- PAGE: REVIEWS ───────────────────────────────────────────── -->
+    <div id="page-reviews" class="page hidden">
+      <div class="page-container">
+        <div class="page-top">
+          <div>
+            <h1 class="page-title">Reviews</h1>
+            <p class="page-desc">What needs review and what is blocking project confidence</p>
           </div>
         </div>
+        <div class="review-tabs" id="review-tabs">
+          <button class="review-tab active" data-tab="all" onclick="reviewTab('all')">All Reviews</button>
+          <button class="review-tab" data-tab="mine" onclick="reviewTab('mine')">Assigned to Me</button>
+          <button class="review-tab" data-tab="pending" onclick="reviewTab('pending')">Pending</button>
+          <button class="review-tab" data-tab="conflict" onclick="reviewTab('conflict')">Conflicts</button>
+          <button class="review-tab" data-tab="completed" onclick="reviewTab('completed')">Completed</button>
+        </div>
+        <div id="reviews-list" class="reviews-grid"></div>
       </div>
     </div>
 
-    <!-- DOCUMENTS / ARCHIVE -->
+    <!-- PAGE: DOCUMENTS ─────────────────────────────────────────── -->
     <div id="page-documents" class="page hidden">
-      <div class="container">
-        <div class="page-header">
+      <div class="page-container">
+        <div class="page-top">
           <div>
-            <h2>Document Archive</h2>
-            <p class="text-muted">Construction documents organized by discipline</p>
+            <h1 class="page-title">Project Documents</h1>
+            <p class="page-desc">Construction documents organized by discipline and connected to change events</p>
           </div>
-          <div class="btn-group">
-            <select id="doc-project-select" class="doc-select" onchange="loaders.documents()"></select>
-            <button class="btn btn-primary" onclick="ui.showModal('modal-upload-doc')">+ Upload Document</button>
-          </div>
-        </div>
-
-        <!-- Discipline tabs -->
-        <div class="doc-tabs" id="doc-tabs">
-          <button class="doc-tab active" data-disc="all" onclick="docSelectTab('all')">All</button>
-          <button class="doc-tab" data-disc="history" onclick="docSelectTab('history')">Revision History</button>
-        </div>
-
-        <!-- Document list -->
-        <div id="doc-list" class="doc-list"></div>
-
-        <!-- Revision history view -->
-        <div id="doc-history" class="doc-history hidden"></div>
-
-        <!-- Empty state -->
-        <div id="doc-empty" class="empty-state hidden">
-          <div class="empty-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-          </div>
-          <h3>No documents yet</h3>
-          <p>Upload construction documents to start building your archive.</p>
           <button class="btn btn-primary" onclick="ui.showModal('modal-upload-doc')">+ Upload Document</button>
         </div>
-      </div>
-    </div>
-
-    <!-- REPORTS -->
-    <div id="page-reports" class="page hidden">
-      <div class="container">
-        <div class="page-header"><div><h2>Reports</h2><p class="text-muted">Analytics and coordination metrics</p></div></div>
-        <div class="empty-state">
-          <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-          <h3>Coming Soon</h3><p>Reports will include project confidence scores, review velocity, and discipline alignment metrics.</p>
+        <div class="doc-layout">
+          <div class="doc-list-col">
+            <div id="doc-accordion"></div>
+          </div>
+          <div class="doc-detail-col" id="doc-detail-panel">
+            <div class="doc-detail-empty">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+              <p>Select a document to view details</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- SETTINGS -->
-    <div id="page-settings" class="page hidden">
-      <div class="container">
-        <div class="page-header"><div><h2>Settings</h2><p class="text-muted">Account and workspace configuration</p></div></div>
-        <div class="empty-state">
-          <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
-          <h3>Coming Soon</h3><p>Manage your account, notification preferences, and workspace settings.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- DISCIPLINES -->
+    <!-- PAGE: DISCIPLINES ───────────────────────────────────────── -->
     <div id="page-disciplines" class="page hidden">
-      <div class="container">
-        <div class="page-header"><div><h2>Members</h2><p class="text-muted">Teams involved in change coordination</p></div></div>
-        <div id="disciplines-list" class="card-grid"></div>
+      <div class="page-container">
+        <div class="page-top">
+          <div>
+            <h1 class="page-title">Disciplines</h1>
+            <p class="page-desc">Every discipline's workspace and coordination status</p>
+          </div>
+        </div>
+        <div id="disciplines-grid" class="disc-grid"></div>
       </div>
     </div>
 
-  </div>
-
-  <!-- MODAL: NEW PROJECT -->
-  <div id="modal-new-project" class="modal hidden">
-    <div class="modal-backdrop" onclick="ui.hideModal('modal-new-project')"></div>
-    <div class="modal-content">
-      <h3>New Project</h3>
-      <form onsubmit="return actions.createProject(event)">
-        <div class="form-group">
-          <label>Project Name</label>
-          <input type="text" id="new-project-name" required placeholder="e.g. Main Street Redesign">
+    <!-- PAGE: DISCIPLINE DETAIL ─────────────────────────────────── -->
+    <div id="page-discipline-detail" class="page hidden">
+      <div class="page-container">
+        <button class="btn-back" onclick="router.go('disciplines')">← Back to Disciplines</button>
+        <div class="dd-header" id="dd-header"></div>
+        <div class="dd-grid">
+          <div class="dd-main" id="dd-main"></div>
+          <div class="dd-side" id="dd-side"></div>
         </div>
-        <div class="form-group">
-          <label>Description</label>
-          <textarea id="new-project-desc" rows="3" placeholder="Brief description of the project scope..."></textarea>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-new-project')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create Project</button>
-        </div>
-      </form>
+      </div>
     </div>
-  </div>
 
-  <!-- MODAL: ADD MEMBER -->
-  <div id="modal-add-member" class="modal hidden">
-    <div class="modal-backdrop" onclick="ui.hideModal('modal-add-member')"></div>
-    <div class="modal-content">
-      <h3>Add Discipline</h3>
-      <form onsubmit="return actions.addMember(event)">
-        <div class="form-group">
-          <label>Discipline</label>
-          <select id="member-discipline" required></select>
+    <!-- PAGE: CONFIDENCE ────────────────────────────────────────── -->
+    <div id="page-confidence" class="page hidden">
+      <div class="page-container">
+        <div class="conf-header">
+          <div class="conf-score-wrap">
+            <div class="conf-score-ring" id="conf-ring"></div>
+            <div class="conf-score-info">
+              <h1 class="conf-title">Project Confidence</h1>
+              <p class="conf-sub">Confidence is based on review completion, open conflicts, impact coverage, and document currency.</p>
+            </div>
+          </div>
         </div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-add-member')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Discipline</button>
+        <div class="conf-grid">
+          <div class="conf-main" id="conf-main"></div>
+          <div class="conf-side" id="conf-side"></div>
         </div>
-      </form>
+      </div>
     </div>
-  </div>
 
-  <!-- MODAL: UPLOAD CHANGE -->
+    <!-- PAGE: REPORTS ───────────────────────────────────────────── -->
+    <div id="page-reports" class="page hidden">
+      <div class="page-container">
+        <div class="page-top"><div><h1 class="page-title">Reports</h1><p class="page-desc">Analytics and coordination metrics</p></div></div>
+        <div class="empty-state"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><h3>Coming Soon</h3><p>Reports will include project confidence scores, review velocity, and discipline alignment metrics.</p></div>
+      </div>
+    </div>
+
+    <!-- PAGE: SETTINGS ──────────────────────────────────────────── -->
+    <div id="page-settings" class="page hidden">
+      <div class="page-container">
+        <div class="page-top"><div><h1 class="page-title">Settings</h1><p class="page-desc">Account and workspace configuration</p></div></div>
+        <div class="empty-state"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><h3>Coming Soon</h3><p>Manage your account, notification preferences, and workspace settings.</p></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ══ MODALS ════════════════════════════════════════════════════ -->
+
+  <!-- Modal: Upload Change -->
   <div id="modal-upload-change" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-change')"></div>
     <div class="modal-content">
-      <h3>Upload Change</h3>
+      <h3>New Change Event</h3>
       <form onsubmit="return actions.uploadChange(event)">
-        <div class="form-group">
-          <label>Title</label>
-          <input type="text" id="change-upload-title" required placeholder="e.g. Sheet A2.1 — revision 3">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Old Drawing</label>
-            <div class="file-drop" id="drop-old">
-              <input type="file" id="file-old" accept=".pdf,.png,.jpg,.jpeg,.tiff" required>
-              <p>Drop or browse</p>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>New Drawing</label>
-            <div class="file-drop" id="drop-new">
-              <input type="file" id="file-new" accept=".pdf,.png,.jpg,.jpeg,.tiff" required>
-              <p>Drop or browse</p>
-            </div>
-          </div>
+        <div class="field"><label>Title</label><input type="text" id="change-upload-title" required placeholder="e.g. Grading Revision"></div>
+        <div class="field-row">
+          <div class="field"><label>Old Drawing</label><div class="file-drop" id="drop-old"><input type="file" id="file-old" accept=".pdf,.png,.jpg,.jpeg,.tiff" required><p>Drop or browse</p></div></div>
+          <div class="field"><label>New Drawing</label><div class="file-drop" id="drop-new"><input type="file" id="file-new" accept=".pdf,.png,.jpg,.jpeg,.tiff" required><p>Drop or browse</p></div></div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-change')">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="btn-upload-change">Compare &amp; Upload</button>
+          <button type="submit" class="btn btn-primary" id="btn-upload-change">Compare & Upload</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: UPLOAD DOCUMENT -->
+  <!-- Modal: Upload Document -->
   <div id="modal-upload-doc" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-doc')"></div>
     <div class="modal-content">
       <h3>Upload Document</h3>
       <form onsubmit="return actions.uploadDocument(event)">
-        <div class="form-group">
-          <label>Document Title</label>
-          <input type="text" id="doc-upload-title" required placeholder="e.g. Grading & Drainage Plan">
-        </div>
-        <div class="form-group">
-          <label>Discipline</label>
-          <select id="doc-upload-discipline" required></select>
-        </div>
-        <div class="form-group">
-          <label>File</label>
-          <div class="file-drop" id="drop-doc">
-            <input type="file" id="file-doc" accept=".pdf,.png,.jpg,.jpeg,.tiff,.dwg,.dxf" required>
-            <p>Drop or browse</p>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Notes (optional)</label>
-          <textarea id="doc-upload-notes" rows="2" placeholder="Revision notes..."></textarea>
-        </div>
+        <div class="field"><label>Document Title</label><input type="text" id="doc-upload-title" required placeholder="e.g. Grading Plan"></div>
+        <div class="field"><label>Document Code</label><input type="text" id="doc-upload-code" placeholder="e.g. C4.1"></div>
+        <div class="field"><label>Discipline</label><select id="doc-upload-discipline" required></select></div>
+        <div class="field"><label>Link to Change Event (optional)</label><select id="doc-upload-change"><option value="">None</option></select></div>
+        <div class="field"><label>File</label><div class="file-drop" id="drop-doc"><input type="file" id="file-doc" accept=".pdf,.png,.jpg,.jpeg,.tiff,.dwg,.dxf" required><p>Drop or browse</p></div></div>
+        <div class="field"><label>Notes (optional)</label><textarea id="doc-upload-notes" rows="2" placeholder="Revision notes..."></textarea></div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-doc')">Cancel</button>
           <button type="submit" class="btn btn-primary" id="btn-upload-doc">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Flag Conflict -->
+  <div id="modal-conflict" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-conflict')"></div>
+    <div class="modal-content">
+      <h3>Flag Conflict</h3>
+      <form onsubmit="return actions.flagConflict(event)">
+        <div class="field"><label>Conflict Description</label><textarea id="conflict-desc" rows="3" required placeholder="Describe the conflict..."></textarea></div>
+        <div class="field"><label>Affected Document</label><input type="text" id="conflict-doc" placeholder="e.g. L3.1 Planting Plan"></div>
+        <div class="field"><label>Severity</label>
+          <select id="conflict-severity">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <label class="checkbox-field"><input type="checkbox" id="conflict-notify" checked> Notify project team</label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-conflict')">Cancel</button>
+          <button type="submit" class="btn btn-danger">Flag Conflict</button>
         </div>
       </form>
     </div>

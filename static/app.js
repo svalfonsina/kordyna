@@ -1,1283 +1,1125 @@
+/* ═══════════════════════════════════════════════════════════════════
+   KORDYNA — Revision Intelligence Platform
+   Application Logic
+   ═══════════════════════════════════════════════════════════════════ */
+
 const API = window.location.origin;
 
+// ── API HELPER ─────────────────────────────────────────────────────
 async function api(path, opts = {}) {
   const headers = opts.headers || {};
   const token = localStorage.getItem("token");
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  if (opts.json) {
+  if (token) headers["Authorization"] = "Bearer " + token;
+  if (!(opts.body instanceof FormData) && opts.body) {
     headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(opts.json);
-    delete opts.json;
+    opts.body = JSON.stringify(opts.body);
   }
   const res = await fetch(API + path, { ...opts, headers });
   if (res.status === 401) { auth.logout(); throw new Error("Unauthorized"); }
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || `Error ${res.status}`);
-  }
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-// ── Auth ────────────────────────────────────────────────────────────
-
-const auth = {
-  showTab(tab) {
-    document.querySelectorAll(".auth-tab").forEach((t, i) => {
-      t.classList.toggle("active", (tab === "login" ? i === 0 : i === 1));
-    });
-    document.getElementById("form-login").classList.toggle("hidden", tab !== "login");
-    document.getElementById("form-register").classList.toggle("hidden", tab !== "register");
-    document.getElementById("auth-error").classList.add("hidden");
-  },
-
-  async login(e) {
-    e.preventDefault();
-    const errEl = document.getElementById("auth-error");
-    errEl.classList.add("hidden");
-    try {
-      const form = new URLSearchParams();
-      form.append("username", document.getElementById("login-user").value);
-      form.append("password", document.getElementById("login-pass").value);
-      const data = await fetch(API + "/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: form,
-      }).then(r => r.json());
-      if (data.access_token) {
-        localStorage.setItem("token", data.access_token);
-        localStorage.setItem("username", document.getElementById("login-user").value);
-        router.go("dashboard");
-      } else {
-        throw new Error(data.detail || "Login failed");
-      }
-    } catch (err) {
-      errEl.textContent = err.message;
-      errEl.classList.remove("hidden");
-    }
-    return false;
-  },
-
-  async register(e) {
-    e.preventDefault();
-    const errEl = document.getElementById("auth-error");
-    errEl.classList.add("hidden");
-    try {
-      const body = {
-        username: document.getElementById("reg-user").value,
-        password: document.getElementById("reg-pass").value,
-      };
-      const discVal = document.getElementById("reg-discipline").value;
-      if (discVal) body.discipline_id = parseInt(discVal);
-      const data = await api("/auth/register", { method: "POST", json: body });
-      if (data.access_token) {
-        localStorage.setItem("token", data.access_token);
-        localStorage.setItem("username", body.username);
-        router.go("dashboard");
-      }
-    } catch (err) {
-      errEl.textContent = err.message;
-      errEl.classList.remove("hidden");
-    }
-    return false;
-  },
-
-  logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    router.go("auth");
-  }
-};
-
-// ── Router ──────────────────────────────────────────────────────────
-
-const router = {
-  current: null,
-  params: {},
-
-  go(page, params = {}) {
-    this.params = params;
-    this.current = page;
-
-    document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
-    document.querySelectorAll(".nav-link").forEach(l =>
-      l.classList.toggle("active", l.dataset.page === page)
-    );
-
-    const isAuth = page === "auth";
-    document.getElementById("navbar").classList.toggle("hidden", isAuth);
-    const topbar = document.getElementById("topbar");
-    if (topbar) topbar.style.display = isAuth ? "none" : "";
-    document.querySelector(".app-body").style.display = isAuth ? "none" : "";
-
-    if (!isAuth && !localStorage.getItem("token")) { this.go("auth"); return; }
-
-    const username = localStorage.getItem("username") || "";
-    document.getElementById("nav-user").textContent = username;
-    document.getElementById("nav-avatar").textContent = username.charAt(0).toUpperCase();
-    const topAvatar = document.getElementById("topbar-avatar");
-    if (topAvatar) topAvatar.textContent = username.charAt(0).toUpperCase();
-
-    const pageEl = document.getElementById(`page-${page}`);
-    if (pageEl) pageEl.classList.remove("hidden");
-
-    if (page === "dashboard") loaders.dashboard();
-    else if (page === "projects") loaders.projectsList();
-    else if (page === "project") loaders.project(params.id);
-    else if (page === "change") loaders.change(params.id);
-    else if (page === "reviews") loaders.myReviews();
-    else if (page === "changes") loaders.allChanges();
-    else if (page === "disciplines") loaders.disciplines();
-    else if (page === "impact") loaders.impactMap();
-    else if (page === "documents") loaders.documents();
-    else if (page === "chat") loaders.chat();
-    else if (page === "auth") loaders.authInit();
-  }
-};
-
-// ── Helpers ─────────────────────────────────────────────────────────
-
-function esc(str) {
-  const d = document.createElement("div");
-  d.textContent = str || "";
-  return d.innerHTML;
-}
-
-function formatDate(d) {
-  if (!d) return "";
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function timeAgo(d) {
-  if (!d) return "";
-  const diff = Date.now() - new Date(d).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function confidenceRing(pct, size = 56) {
-  const r = (size - 8) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - pct / 100);
-  const color = pct >= 80 ? '#2E5BFF' : pct >= 60 ? '#FFB547' : '#FF5A5F';
-  return `
-    <div class="dash-project-confidence" style="width:${size}px;height:${size}px">
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#E2E8F0" stroke-width="4"/>
-        <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="4"
-          stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
-          stroke-linecap="round" transform="rotate(-90 ${size/2} ${size/2})"/>
-      </svg>
-      <div class="confidence-label">
-        <span class="confidence-val">${pct}%</span>
-        <span class="confidence-sub">Confidence</span>
-      </div>
-    </div>`;
-}
-
-const thumbColors = [
-  'linear-gradient(135deg, #1a365d 0%, #2E5BFF 100%)',
-  'linear-gradient(135deg, #064e3b 0%, #059669 100%)',
-  'linear-gradient(135deg, #7c2d12 0%, #ea580c 100%)',
-  'linear-gradient(135deg, #312e81 0%, #7c3aed 100%)',
-  'linear-gradient(135deg, #1e3a5f 0%, #0ea5e9 100%)',
+// ── SAMPLE DATA ────────────────────────────────────────────────────
+const DISCIPLINES = [
+  { id: 1, name: "Landscape Architecture", abbr: "LA", icon: "🌿", color: "#2ECC71" },
+  { id: 2, name: "Civil Engineering", abbr: "CE", icon: "🏗️", color: "#2E5BFF" },
+  { id: 3, name: "Irrigation", abbr: "IR", icon: "💧", color: "#00D1FF" },
+  { id: 4, name: "Architecture", abbr: "AR", icon: "🏛️", color: "#9B59B6" },
+  { id: 5, name: "Structural Engineering", abbr: "SE", icon: "🔩", color: "#F5A623" },
+  { id: 6, name: "MEP Engineering", abbr: "ME", icon: "⚡", color: "#E74C3C" },
+  { id: 7, name: "Contractor", abbr: "GC", icon: "🔨", color: "#8899B4" },
+  { id: 8, name: "Survey", abbr: "SV", icon: "📐", color: "#F39C12" },
+  { id: 9, name: "Traffic Engineering", abbr: "TE", icon: "🚦", color: "#1ABC9C" },
 ];
 
-const disciplineColors = ['blue', 'green', 'orange', 'red'];
+const USERS = [
+  { id: 1, name: "Jorge Morgan", initials: "JM", role: "Project Admin", discipline: null },
+  { id: 2, name: "Sara Vega", initials: "SV", role: "Landscape Lead", discipline: 1 },
+  { id: 3, name: "Tom Chen", initials: "TC", role: "Civil Lead", discipline: 2 },
+  { id: 4, name: "Maria Lopez", initials: "ML", role: "Irrigation Eng.", discipline: 3 },
+  { id: 5, name: "David Kim", initials: "DK", role: "Architect", discipline: 4 },
+  { id: 6, name: "Priya Patel", initials: "PP", role: "Structural Eng.", discipline: 5 },
+  { id: 7, name: "Alex Rivera", initials: "AR", role: "GC Super", discipline: 7 },
+];
 
-const impactNodeColors = {
-  direct:  { fill: '#1E3A8A', stroke: '#2E5BFF', glow: 'rgba(46,91,255,.35)' },
-  indirect:{ fill: '#78350F', stroke: '#FFB547', glow: 'rgba(255,181,71,.25)' },
-  none:    { fill: '#1E293B', stroke: '#334155', glow: 'none' },
+const CHANGES = [
+  {
+    id: "CE-001", title: "Grading Revision — East Retaining Wall",
+    status: "in_review", risk: "high", uploadedBy: 3,
+    docs: 3, date: "Jun 4, 2026",
+    impacted: [2, 1, 5, 7],
+    reviews: [
+      { disc: 2, status: "reviewed", user: 3 },
+      { disc: 1, status: "pending", user: 2 },
+      { disc: 5, status: "flagged", user: 6 },
+      { disc: 7, status: "pending", user: 7 },
+    ],
+    summary: "Revised grading at the east retaining wall to accommodate updated stormwater management requirements. The wall height increases from 6 ft to 8.5 ft, which triggers structural review and impacts landscape planting areas along the eastern edge. Civil drawings C3.1 and C3.2 updated with new contour elevations.",
+    timeline: [
+      { text: "<strong>Tom Chen</strong> uploaded new drawings C3.1, C3.2", time: "Jun 4, 10:32 AM", color: "var(--primary)" },
+      { text: "Diff engine detected <strong>14 change regions</strong>", time: "Jun 4, 10:33 AM", color: "var(--cyan)" },
+      { text: "Reviews routed to <strong>4 disciplines</strong>", time: "Jun 4, 10:33 AM", color: "var(--amber)" },
+      { text: "<strong>Tom Chen</strong> (Civil) marked as reviewed", time: "Jun 5, 2:15 PM", color: "var(--green)" },
+      { text: "<strong>Priya Patel</strong> (Structural) flagged conflict — wall exceeds load spec", time: "Jun 6, 9:45 AM", color: "var(--red)" },
+    ],
+    actions: [
+      { text: "Structural engineer to verify wall load calculations", done: false },
+      { text: "Landscape to confirm planting setback from revised wall", done: false },
+      { text: "Contractor to update construction sequence", done: false },
+      { text: "Civil drawings uploaded", done: true },
+    ],
+    affectedDocs: [
+      { code: "C3.1", name: "Grading Plan — East", rev: "Rev 3", status: "Updated" },
+      { code: "C3.2", name: "Retaining Wall Detail", rev: "Rev 2", status: "Updated" },
+      { code: "L2.1", name: "Planting Plan — East Edge", rev: "Rev 1", status: "Review Needed" },
+    ],
+    confidence: { score: 88, delta: -4 },
+  },
+  {
+    id: "CE-002", title: "Irrigation Main Line Reroute",
+    status: "in_review", risk: "medium", uploadedBy: 4,
+    docs: 2, date: "Jun 2, 2026",
+    impacted: [3, 1, 2],
+    reviews: [
+      { disc: 3, status: "reviewed", user: 4 },
+      { disc: 1, status: "reviewed", user: 2 },
+      { disc: 2, status: "pending", user: 3 },
+    ],
+    summary: "Main irrigation line rerouted around Building B foundation to avoid conflict with structural footings. New route adds 120 LF of 4\" PVC and requires a pressure boost calculation. Landscape confirms planting zones remain within coverage.",
+    timeline: [
+      { text: "<strong>Maria Lopez</strong> uploaded IR2.1 revision", time: "Jun 2, 3:15 PM", color: "var(--primary)" },
+      { text: "Diff engine detected <strong>8 change regions</strong>", time: "Jun 2, 3:16 PM", color: "var(--cyan)" },
+      { text: "<strong>Maria Lopez</strong> (Irrigation) marked as reviewed", time: "Jun 3, 11:00 AM", color: "var(--green)" },
+      { text: "<strong>Sara Vega</strong> (Landscape) marked as reviewed", time: "Jun 3, 4:30 PM", color: "var(--green)" },
+    ],
+    actions: [
+      { text: "Civil to confirm no utility conflicts on new route", done: false },
+      { text: "Irrigation coverage calculations updated", done: true },
+      { text: "Landscape confirmed planting coverage", done: true },
+    ],
+    affectedDocs: [
+      { code: "IR2.1", name: "Irrigation Plan — Building B", rev: "Rev 2", status: "Updated" },
+      { code: "L1.3", name: "Planting Plan — Building B", rev: "Rev 1", status: "Reviewed" },
+    ],
+    confidence: { score: 92, delta: 0 },
+  },
+  {
+    id: "CE-003", title: "Parking Lot Restripe — ADA Compliance",
+    status: "approved", risk: "low", uploadedBy: 3,
+    docs: 1, date: "May 28, 2026",
+    impacted: [2, 9, 7],
+    reviews: [
+      { disc: 2, status: "reviewed", user: 3 },
+      { disc: 9, status: "reviewed", user: null },
+      { disc: 7, status: "reviewed", user: 7 },
+    ],
+    summary: "Parking lot restriped to add 2 additional ADA-compliant spaces per updated code requirement. Traffic flow patterns adjusted at entry/exit. All discipline reviews completed.",
+    timeline: [
+      { text: "<strong>Tom Chen</strong> uploaded C5.1 revision", time: "May 28, 9:00 AM", color: "var(--primary)" },
+      { text: "All <strong>3 reviews</strong> completed", time: "May 30, 4:45 PM", color: "var(--green)" },
+      { text: "Change approved — no conflicts", time: "May 30, 5:00 PM", color: "var(--green)" },
+    ],
+    actions: [
+      { text: "ADA compliance verified", done: true },
+      { text: "Traffic flow updated", done: true },
+      { text: "Contractor confirmed schedule impact: none", done: true },
+    ],
+    affectedDocs: [
+      { code: "C5.1", name: "Parking Lot Plan", rev: "Rev 4", status: "Approved" },
+    ],
+    confidence: { score: 100, delta: +2 },
+  },
+  {
+    id: "CE-004", title: "Building B Foundation Depth Revision",
+    status: "open", risk: "critical", uploadedBy: 6,
+    docs: 2, date: "Jun 8, 2026",
+    impacted: [5, 2, 4, 6, 7],
+    reviews: [
+      { disc: 5, status: "pending", user: 6 },
+      { disc: 2, status: "pending", user: 3 },
+      { disc: 4, status: "pending", user: 5 },
+      { disc: 6, status: "pending", user: null },
+      { disc: 7, status: "pending", user: 7 },
+    ],
+    summary: "Geotechnical report came back requiring deeper foundations for Building B. Footing depth increases from 4 ft to 7 ft. This affects MEP underground routing, civil utility depths, and potentially the architectural floor-to-floor heights. Highest-impact change event this cycle.",
+    timeline: [
+      { text: "<strong>Priya Patel</strong> uploaded S1.2, S1.3", time: "Jun 8, 11:00 AM", color: "var(--primary)" },
+      { text: "Diff engine detected <strong>22 change regions</strong>", time: "Jun 8, 11:01 AM", color: "var(--cyan)" },
+      { text: "Reviews routed to <strong>5 disciplines</strong>", time: "Jun 8, 11:01 AM", color: "var(--amber)" },
+    ],
+    actions: [
+      { text: "Structural to finalize footing design", done: false },
+      { text: "Civil to adjust utility depth at Building B", done: false },
+      { text: "MEP to verify underground routing clearance", done: false },
+      { text: "Architecture to review floor-to-floor impact", done: false },
+      { text: "Contractor to re-estimate excavation scope", done: false },
+    ],
+    affectedDocs: [
+      { code: "S1.2", name: "Foundation Plan — Building B", rev: "Rev 2", status: "Updated" },
+      { code: "S1.3", name: "Footing Detail — Building B", rev: "Rev 1", status: "New" },
+    ],
+    confidence: { score: 78, delta: -14 },
+  },
+];
+
+const DOCUMENTS = [
+  { id: 1, code: "C3.1", title: "Grading Plan — East", discipline: 2, rev: 3, date: "Jun 4, 2026", linkedChange: "CE-001", revisions: [{n:3,date:"Jun 4, 2026",note:"Retaining wall grading update"},{n:2,date:"May 15, 2026",note:"Storm drainage adjustments"},{n:1,date:"Apr 2, 2026",note:"Initial issue"}] },
+  { id: 2, code: "C3.2", title: "Retaining Wall Detail", discipline: 2, rev: 2, date: "Jun 4, 2026", linkedChange: "CE-001", revisions: [{n:2,date:"Jun 4, 2026",note:"Height increase to 8.5 ft"},{n:1,date:"Apr 2, 2026",note:"Initial issue"}] },
+  { id: 3, code: "C5.1", title: "Parking Lot Plan", discipline: 2, rev: 4, date: "May 28, 2026", linkedChange: "CE-003", revisions: [{n:4,date:"May 28, 2026",note:"ADA restripe"},{n:3,date:"May 1, 2026",note:"Drain inlet relocation"},{n:2,date:"Apr 10, 2026",note:"Curb revisions"},{n:1,date:"Mar 15, 2026",note:"Initial issue"}] },
+  { id: 4, code: "L2.1", title: "Planting Plan — East Edge", discipline: 1, rev: 1, date: "Apr 5, 2026", linkedChange: "CE-001", revisions: [{n:1,date:"Apr 5, 2026",note:"Initial issue"}] },
+  { id: 5, code: "L1.3", title: "Planting Plan — Building B", discipline: 1, rev: 2, date: "Jun 3, 2026", linkedChange: "CE-002", revisions: [{n:2,date:"Jun 3, 2026",note:"Updated for irrigation reroute"},{n:1,date:"Apr 5, 2026",note:"Initial issue"}] },
+  { id: 6, code: "IR2.1", title: "Irrigation Plan — Building B", discipline: 3, rev: 2, date: "Jun 2, 2026", linkedChange: "CE-002", revisions: [{n:2,date:"Jun 2, 2026",note:"Main line reroute"},{n:1,date:"Apr 8, 2026",note:"Initial issue"}] },
+  { id: 7, code: "S1.2", title: "Foundation Plan — Building B", discipline: 5, rev: 2, date: "Jun 8, 2026", linkedChange: "CE-004", revisions: [{n:2,date:"Jun 8, 2026",note:"Deeper foundations per geotech"},{n:1,date:"Apr 1, 2026",note:"Initial issue"}] },
+  { id: 8, code: "S1.3", title: "Footing Detail — Building B", discipline: 5, rev: 1, date: "Jun 8, 2026", linkedChange: "CE-004", revisions: [{n:1,date:"Jun 8, 2026",note:"New detail for revised footings"}] },
+  { id: 9, code: "A2.1", title: "Floor Plan — Building B Level 1", discipline: 4, rev: 1, date: "Apr 3, 2026", linkedChange: null, revisions: [{n:1,date:"Apr 3, 2026",note:"Initial issue"}] },
+  { id:10, code: "A2.2", title: "Building Section — Building B", discipline: 4, rev: 1, date: "Apr 3, 2026", linkedChange: null, revisions: [{n:1,date:"Apr 3, 2026",note:"Initial issue"}] },
+  { id:11, code: "M1.1", title: "MEP Underground — Building B", discipline: 6, rev: 1, date: "Apr 10, 2026", linkedChange: null, revisions: [{n:1,date:"Apr 10, 2026",note:"Initial issue"}] },
+  { id:12, code: "C1.1", title: "Overall Site Plan", discipline: 2, rev: 2, date: "May 1, 2026", linkedChange: null, revisions: [{n:2,date:"May 1, 2026",note:"Phase 2 overlay added"},{n:1,date:"Mar 15, 2026",note:"Initial issue"}] },
+  { id:13, code: "SV1.1", title: "Topographic Survey", discipline: 8, rev: 1, date: "Mar 10, 2026", linkedChange: null, revisions: [{n:1,date:"Mar 10, 2026",note:"Initial survey"}] },
+  { id:14, code: "TE1.1", title: "Traffic Impact Study", discipline: 9, rev: 1, date: "Mar 20, 2026", linkedChange: null, revisions: [{n:1,date:"Mar 20, 2026",note:"Initial study"}] },
+];
+
+const CONFIDENCE = {
+  score: 92,
+  factors: [
+    { name: "Review Completion", value: 85, desc: "85% of required discipline reviews are complete" },
+    { name: "Open Conflicts", value: 95, desc: "1 open conflict (Structural flagged wall load)" },
+    { name: "Impact Coverage", value: 90, desc: "All change events have impact maps assigned" },
+    { name: "Document Currency", value: 98, desc: "14 of 14 documents are current revision" },
+  ],
 };
 
-let _impactData = null;
-let _chatPollTimer = null;
-let _chatProjectId = null;
+const ACTIVITY = [
+  { text: "<strong>Priya Patel</strong> uploaded Foundation Plan — Building B", time: "2h ago", color: "var(--red)" },
+  { text: "<strong>Priya Patel</strong> flagged conflict on CE-001 — wall exceeds load spec", time: "3d ago", color: "var(--red)" },
+  { text: "<strong>Tom Chen</strong> marked Civil review as complete on CE-001", time: "5d ago", color: "var(--green)" },
+  { text: "<strong>Sara Vega</strong> completed Landscape review on CE-002", time: "1w ago", color: "var(--green)" },
+  { text: "CE-003 Parking Lot Restripe — all reviews approved", time: "1w ago", color: "var(--green)" },
+  { text: "<strong>Maria Lopez</strong> rerouted irrigation main line (CE-002)", time: "1w ago", color: "var(--primary)" },
+];
 
-// ── Page loaders ────────────────────────────────────────────────────
+// ── HELPERS ────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function disc(id) { return DISCIPLINES.find(d => d.id === id) || { name: "Unknown", abbr: "??", icon: "❓", color: "#8899B4" }; }
+function user(id) { return USERS.find(u => u.id === id) || { name: "Unknown", initials: "??" }; }
 
-const loaders = {
-  async authInit() {
-    try {
-      const discs = await fetch(API + "/disciplines").then(r => r.json());
-      const sel = document.getElementById("reg-discipline");
-      sel.innerHTML = '<option value="">None</option>';
-      discs.forEach(d => {
-        sel.innerHTML += `<option value="${d.id}">${d.name}</option>`;
-      });
-    } catch {}
+function statusBadge(s) {
+  const map = {
+    open: ["Open", "badge-blue"],
+    in_review: ["In Review", "badge-amber"],
+    approved: ["Approved", "badge-green"],
+    flagged: ["Conflict", "badge-red"],
+    pending: ["Pending", "badge-amber"],
+    reviewed: ["Reviewed", "badge-green"],
+  };
+  const [label, cls] = map[s] || [s, "badge-gray"];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function riskBadge(r) {
+  const map = {
+    low: "badge-green", medium: "badge-amber", high: "badge-red", critical: "badge-red",
+  };
+  return `<span class="badge ${map[r] || 'badge-gray'}">${r.charAt(0).toUpperCase() + r.slice(1)}</span>`;
+}
+
+function progressBar(reviews, color) {
+  const done = reviews.filter(r => r.status === "reviewed").length;
+  const pct = Math.round((done / reviews.length) * 100);
+  const c = pct === 100 ? "var(--green)" : pct > 0 ? "var(--amber)" : "var(--text-dim)";
+  return `<div class="progress-mini">
+    <div class="progress-mini-bar"><div class="progress-mini-fill" style="width:${pct}%;background:${color || c}"></div></div>
+    <span class="progress-mini-text">${done}/${reviews.length}</span>
+  </div>`;
+}
+
+function factorColor(v) {
+  if (v >= 90) return "var(--green)";
+  if (v >= 70) return "var(--amber)";
+  return "var(--red)";
+}
+
+// ── ROUTER ─────────────────────────────────────────────────────────
+const router = {
+  current: null,
+  go(page, data) {
+    document.querySelectorAll('#main > .page').forEach(p => p.classList.add('hidden'));
+    const el = $('page-' + page);
+    if (el) el.classList.remove('hidden');
+    document.querySelectorAll('.sidebar-link').forEach(l => {
+      l.classList.toggle('active', l.dataset.page === page);
+    });
+    this.current = page;
+    if (loaders[page]) loaders[page](data);
+    $('main').scrollTop = 0;
   },
+};
 
-  async dashboard() {
-    document.getElementById("greeting-text").textContent = "Project Change Command Center";
-
-    try {
-      const [projects, disciplines, myReviews] = await Promise.all([
-        api("/projects"),
-        api("/disciplines"),
-        api("/my-reviews").catch(() => []),
-      ]);
-
-      const allChanges = [];
-      for (const p of projects) {
-        const changes = await api(`/projects/${p.id}/changes`);
-        changes.forEach(c => { c.project_name = p.name; c.project_id = p.id; });
-        allChanges.push(...changes);
-      }
-      allChanges.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-      // Confidence calculation
-      const totalReviews = allChanges.length + myReviews.length || 1;
-      const completedReviews = Math.max(0, allChanges.length - myReviews.length);
-      const confidence = allChanges.length > 0 ? Math.min(98, Math.max(60, Math.round(completedReviews / totalReviews * 100) + 40)) : 92;
-
-      // Stat cards
-      document.getElementById("stat-confidence").textContent = confidence + "%";
-      document.getElementById("stat-confidence-delta").textContent = "↑ 4% this week";
-      document.getElementById("stat-changes").textContent = allChanges.length;
-      document.getElementById("stat-changes-delta").textContent = "↑ 17% last 30 days";
-      document.getElementById("stat-reviews").textContent = myReviews.length;
-      document.getElementById("stat-reviews-delta").textContent = "↓ 3%";
-      document.getElementById("stat-resolved").textContent = confidence + "%";
-      document.getElementById("stat-resolved-delta").textContent = "↑ 14%";
-
-      // Project name in topbar
-      if (projects.length > 0) {
-        document.getElementById("topbar-project").textContent = `${projects[0].name} · Dashboard`;
-      }
-
-      // Recent changes with discipline subtitles
-      const changesContent = document.getElementById("dash-changes-content");
-      const changesEmpty = document.getElementById("dash-changes-empty");
-
-      if (allChanges.length === 0) {
-        changesContent.innerHTML = "";
-        changesEmpty.classList.remove("hidden");
-      } else {
-        changesEmpty.classList.add("hidden");
-        const statuses = ['review', 'review', 'complete', 'complete', 'complete'];
-        const statusLabels = ['In Review', 'In Review', 'Complete', 'Complete', 'Complete'];
-        const discNames = disciplines.map(d => d.name);
-
-        changesContent.innerHTML = allChanges.slice(0, 5).map((c, idx) => {
-          const st = statuses[idx % statuses.length];
-          const stLabel = statusLabels[idx % statusLabels.length];
-          const impactDiscs = discNames.slice(0, 3).join(', ');
-          return `
-          <div class="dash-change-row" onclick="router.go('change', {id: ${c.id}})">
-            <div class="dash-change-id">#${c.id}</div>
-            <div class="dash-change-info">
-              <div class="dash-change-title">${esc(c.title)}</div>
-              <div class="dash-change-sub">${esc(c.project_name)} · impacts ${impactDiscs}</div>
-            </div>
-            <span class="dash-chip ${st === 'review' ? 'orange' : 'green'}">${stLabel}</span>
-          </div>`;
-        }).join("");
-      }
-
-      // Donut chart
-      const donutContainer = document.getElementById("dash-donut-container");
-      const pct = confidence;
-      const strokePct = (pct / 100) * 314;
-      donutContainer.innerHTML = `
-        <div class="dash-donut-svg" style="position:relative;width:190px;height:190px">
-          <svg viewBox="0 0 120 120" width="190" height="190">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="10"/>
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#2E5BFF" stroke-width="10"
-              stroke-dasharray="${strokePct} 314" stroke-dashoffset="0" stroke-linecap="round"
-              transform="rotate(-90 60 60)"/>
-          </svg>
-          <div class="dash-donut-label-center">
-            <strong>${pct}%</strong>
-            <small>Completed</small>
-          </div>
-        </div>`;
-
-      // Legend
-      const legendColors = [
-        { name: 'Civil', color: '#2E5BFF' },
-        { name: 'Irrigation', color: '#00C48C' },
-        { name: 'Architecture', color: '#FFB547' },
-        { name: 'Structural', color: '#FF5A5F' },
-      ];
-      document.getElementById("dash-legend-grid").innerHTML = legendColors.map(l =>
-        `<span><span class="dash-legend-dot" style="background:${l.color}"></span>${l.name}</span>`
-      ).join("");
-
-      // Activity feed
-      const actList = document.getElementById("dash-activity-list");
-      const activities = [];
-      if (allChanges.length > 0) {
-        activities.push(`${discNames[0] || 'Landscape'} marked Change #${allChanges[0].id} as reviewed`);
-        activities.push(`Civil uploaded revised sheet C4.2`);
-        activities.push(`Irrigation review requested`);
-        activities.push(`Contractor notified of grading update`);
-      } else {
-        activities.push("No activity yet. Create a project to get started.");
-      }
-      actList.innerHTML = activities.map(a => `<li>${esc(a)}</li>`).join("");
-
-      // Inline impact map
-      const impactMap = document.getElementById("dash-impact-map");
-      const impactInner = document.getElementById("dash-impact-inner");
-      if (allChanges.length > 0 && disciplines.length > 0) {
-        impactMap.classList.remove("hidden");
-        const centerLabel = `Change #${allChanges[0].id}`;
-        const nodeDiscs = disciplines.slice(0, 4);
-        const positions = [
-          { left: '18%', top: '24%' },
-          { right: '18%', top: '24%' },
-          { left: '16%', bottom: '24%' },
-          { right: '17%', bottom: '24%' },
-        ];
-
-        let nodesHtml = `<div class="im-node center">${esc(centerLabel)}</div>`;
-        nodeDiscs.forEach((d, i) => {
-          const pos = positions[i];
-          const style = Object.entries(pos).map(([k,v]) => `${k}:${v}`).join(';');
-          nodesHtml += `<div class="im-node" style="${style}">${esc(d.name)}</div>`;
-        });
-
-        // SVG lines from center to each node
-        const svgEl = document.getElementById("dash-impact-svg");
-        svgEl.innerHTML = '';
-        impactInner.querySelectorAll('.im-node').forEach(n => n.remove());
-        impactInner.insertAdjacentHTML('beforeend', nodesHtml);
-      }
-
-    } catch (err) { toast(err.message); }
+// ── AUTH ────────────────────────────────────────────────────────────
+const auth = {
+  showTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.auth-tab[onclick*="${tab}"]`)?.classList.add('active');
+    $('form-login').classList.toggle('hidden', tab !== 'login');
+    $('form-register').classList.toggle('hidden', tab !== 'register');
   },
-
-  async projectsList() {
+  async login(e) {
+    e.preventDefault();
+    const username = $('login-user').value;
+    const password = $('login-pass').value;
     try {
-      const projects = await api("/projects");
-      const grid = document.getElementById("projects-grid");
-      const empty = document.getElementById("projects-empty");
-
-      if (projects.length === 0) {
-        grid.classList.add("hidden");
-        empty.classList.remove("hidden");
-        return;
-      }
-      empty.classList.add("hidden");
-      grid.classList.remove("hidden");
-
-      grid.innerHTML = projects.map(p => `
-        <div class="card" onclick="router.go('project', {id: ${p.id}})">
-          <div class="card-title">${esc(p.name)}</div>
-          <div class="card-desc">${esc(p.description || "No description")}</div>
-          <div class="card-footer">
-            <span>Created ${formatDate(p.created_at)}</span>
-          </div>
-        </div>
-      `).join("");
-    } catch (err) { toast(err.message); }
-  },
-
-  async project(id) {
-    try {
-      const [project, changes, disciplines] = await Promise.all([
-        api(`/projects/${id}`),
-        api(`/projects/${id}/changes`),
-        api("/disciplines"),
-      ]);
-
-      document.getElementById("project-name").textContent = project.name;
-      document.getElementById("project-desc").textContent = project.description || "";
-
-      const memberSel = document.getElementById("member-discipline");
-      memberSel.innerHTML = disciplines.map(d =>
-        `<option value="${d.id}">${d.name}</option>`
-      ).join("");
-
-      document.getElementById("project-members").innerHTML = disciplines.map(d =>
-        `<span class="chip">${esc(d.name)}</span>`
-      ).join("");
-
-      const listDiv = document.getElementById("changes-list");
-      const emptyDiv = document.getElementById("changes-empty");
-
-      if (changes.length === 0) {
-        listDiv.classList.add("hidden");
-        emptyDiv.classList.remove("hidden");
-      } else {
-        emptyDiv.classList.add("hidden");
-        listDiv.classList.remove("hidden");
-        listDiv.innerHTML = changes.map(c => `
-          <div class="change-row">
-            <div class="change-row-left" onclick="router.go('change', {id: ${c.id}, projectId: ${id}})" style="cursor:pointer;flex:1">
-              <h4>${esc(c.title)}</h4>
-              <span>${formatDate(c.created_at)}</span>
-            </div>
-            <span class="change-badge">${c.region_count} region${c.region_count !== 1 ? "s" : ""}</span>
-            <button class="btn-trash" onclick="event.stopPropagation();actions.deleteChange(${c.id}, ${id})" title="Delete change">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            </button>
-          </div>
-        `).join("");
-      }
-
-      router.params.id = id;
-    } catch (err) { toast(err.message); }
-  },
-
-  async change(id) {
-    try {
-      const data = await api(`/changes/${id}`);
-
-      document.getElementById("change-back").onclick = () =>
-        router.go("project", { id: data.project_id });
-      document.getElementById("change-title").textContent = data.title;
-      document.getElementById("change-meta").textContent =
-        `${data.region_count} changed region${data.region_count !== 1 ? "s" : ""} detected • ${formatDate(data.created_at)}`;
-
-      document.getElementById("diff-image").src = API + data.diff_image;
-
-      document.getElementById("reviews-list").innerHTML = data.reviews.map(r => `
-        <div class="review-card">
-          <div class="review-header">
-            <span class="review-discipline">${esc(r.discipline)}</span>
-            <span class="status-badge status-${r.status}">${r.status}</span>
-          </div>
-          ${r.notes ? `<div class="review-notes">${esc(r.notes)}</div>` : ""}
-          <textarea class="review-notes-input" placeholder="Add notes..." id="notes-${r.discipline_id}">${r.notes || ""}</textarea>
-          <div class="review-actions">
-            <button class="btn btn-sm btn-success" onclick="actions.updateReview(${id}, ${r.discipline_id}, 'reviewed')">Reviewed</button>
-            <button class="btn btn-sm btn-warning" onclick="actions.updateReview(${id}, ${r.discipline_id}, 'flagged')">Flag</button>
-            <button class="btn btn-sm btn-ghost" onclick="actions.updateReview(${id}, ${r.discipline_id}, 'pending')">Reset</button>
-          </div>
-        </div>
-      `).join("");
-    } catch (err) { toast(err.message); }
-  },
-
-  async myReviews() {
-    try {
-      const reviews = await api("/my-reviews");
-      const listDiv = document.getElementById("my-reviews-list");
-      const emptyDiv = document.getElementById("my-reviews-empty");
-
-      if (reviews.length === 0) {
-        listDiv.classList.add("hidden");
-        emptyDiv.classList.remove("hidden");
-        return;
-      }
-      emptyDiv.classList.add("hidden");
-      listDiv.classList.remove("hidden");
-
-      listDiv.innerHTML = reviews.map(r => `
-        <div class="review-queue-card" onclick="router.go('change', {id: ${r.change_event_id}})">
-          <div class="review-queue-left">
-            <h4>${esc(r.change_title)}</h4>
-            <span>Project #${r.project_id}</span>
-          </div>
-          <span class="status-badge status-pending">pending</span>
-        </div>
-      `).join("");
-    } catch (err) { toast(err.message); }
-  },
-
-  async allChanges() {
-    try {
-      const projects = await api("/projects");
-      const allChanges = [];
-      for (const p of projects) {
-        const changes = await api(`/projects/${p.id}/changes`);
-        changes.forEach(c => { c.project_name = p.name; c.project_id = p.id; });
-        allChanges.push(...changes);
-      }
-      allChanges.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-      const listDiv = document.getElementById("all-changes-list");
-      const emptyDiv = document.getElementById("all-changes-empty");
-
-      if (allChanges.length === 0) {
-        listDiv.classList.add("hidden");
-        emptyDiv.classList.remove("hidden");
-        return;
-      }
-      emptyDiv.classList.add("hidden");
-      listDiv.classList.remove("hidden");
-
-      listDiv.innerHTML = allChanges.map(c => `
-        <div class="change-row">
-          <div class="change-row-left" onclick="router.go('change', {id: ${c.id}, projectId: ${c.project_id}})" style="cursor:pointer;flex:1">
-            <h4>${esc(c.title)}</h4>
-            <span>${esc(c.project_name)} · ${formatDate(c.created_at)}</span>
-          </div>
-          <span class="change-badge">${c.region_count} region${c.region_count !== 1 ? "s" : ""}</span>
-          <button class="btn-trash" onclick="event.stopPropagation();actions.deleteChange(${c.id})" title="Delete change">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-          </button>
-        </div>
-      `).join("");
-    } catch (err) { toast(err.message); }
-  },
-
-  async disciplines() {
-    try {
-      const discs = await api("/disciplines");
-      const grid = document.getElementById("disciplines-list");
-      const colors = ["#2E5BFF", "#059669", "#ea580c", "#7c3aed"];
-      grid.innerHTML = discs.map((d, i) => `
-        <div class="card" style="cursor:default">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-            <div style="width:36px;height:36px;border-radius:8px;background:${colors[i % 4]}12;display:flex;align-items:center;justify-content:center">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${colors[i % 4]}" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            </div>
-            <div class="card-title">${esc(d.name)}</div>
-          </div>
-        </div>
-      `).join("");
-    } catch (err) { toast(err.message); }
-  },
-
-  async impactMap() {
-    const projSel = document.getElementById("impact-project-select");
-    const changeSel = document.getElementById("impact-change-select");
-    const emptyEl = document.getElementById("impact-empty");
-    const svg = document.getElementById("impact-svg");
-
-    try {
-      const projects = await api("/projects");
-      if (projects.length === 0) {
-        projSel.innerHTML = '<option>No projects</option>';
-        changeSel.innerHTML = '';
-        svg.innerHTML = '';
-        emptyEl.classList.remove("hidden");
-        return;
-      }
-
-      const currentVal = projSel.value;
-      if (!currentVal || !projects.find(p => p.id == currentVal)) {
-        projSel.innerHTML = projects.map(p =>
-          `<option value="${p.id}">${esc(p.name)}</option>`
-        ).join("");
-      }
-
-      const projectId = projSel.value;
-      const data = await api(`/projects/${projectId}/impact-map`);
-      _impactData = data;
-
-      changeSel.innerHTML = data.changes.length === 0
-        ? '<option>No changes</option>'
-        : data.changes.map(c =>
-            `<option value="${c.id}">${esc(c.title)}</option>`
-          ).join("");
-
-      loaders.impactMapRender();
-    } catch (err) { toast(err.message); }
-  },
-
-  impactMapRender() {
-    const svg = document.getElementById("impact-svg");
-    const emptyEl = document.getElementById("impact-empty");
-    const panel = document.getElementById("impact-panel");
-    const data = _impactData;
-
-    if (!data || !data.nodes || data.nodes.length === 0) {
-      svg.innerHTML = '';
-      emptyEl.classList.remove("hidden");
-      panel.innerHTML = '<div class="impact-panel-empty"><p>No data to display</p></div>';
-      return;
+      const form = new URLSearchParams();
+      form.append('username', username);
+      form.append('password', password);
+      const res = await fetch(API + '/token', { method: 'POST', body: form });
+      if (!res.ok) throw new Error('Invalid credentials');
+      const data = await res.json();
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('username', username);
+      this.enter();
+    } catch (err) {
+      $('auth-error').textContent = err.message;
+      $('auth-error').classList.remove('hidden');
     }
+    return false;
+  },
+  async register(e) {
+    e.preventDefault();
+    try {
+      const body = { username: $('reg-user').value, password: $('reg-pass').value };
+      const disc = $('reg-discipline').value;
+      if (disc) body.discipline_id = parseInt(disc);
+      await api('/users', { method: 'POST', body });
+      $('login-user').value = body.username;
+      $('login-pass').value = body.password;
+      this.showTab('login');
+      $('auth-error').textContent = 'Account created. Sign in below.';
+      $('auth-error').classList.remove('hidden');
+      $('auth-error').style.color = 'var(--green)';
+    } catch (err) {
+      $('auth-error').textContent = err.message;
+      $('auth-error').classList.remove('hidden');
+    }
+    return false;
+  },
+  enter() {
+    $('page-auth').classList.add('hidden');
+    $('sidebar').classList.remove('hidden');
+    $('topbar').classList.remove('hidden');
+    const name = localStorage.getItem('username') || 'User';
+    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || name.slice(0, 2).toUpperCase();
+    $('sidebar-user-name').textContent = name;
+    $('sidebar-avatar').textContent = initials;
+    $('topbar-avatar').textContent = initials;
+    router.go('overview');
+  },
+  logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    $('page-auth').classList.remove('hidden');
+    $('sidebar').classList.add('hidden');
+    $('topbar').classList.add('hidden');
+    document.querySelectorAll('#main > .page').forEach(p => p.classList.add('hidden'));
+  },
+  check() {
+    if (localStorage.getItem('token')) { this.enter(); }
+  },
+};
 
-    emptyEl.classList.add("hidden");
-    const rect = svg.parentElement.getBoundingClientRect();
-    const W = rect.width || 800;
-    const H = rect.height || 600;
-    const cx = W / 2;
-    const cy = H / 2;
-    const R = Math.min(W, H) * 0.34;
-    const nodes = data.nodes;
+// ── UI ─────────────────────────────────────────────────────────────
+const ui = {
+  showModal(id) { $(id).classList.remove('hidden'); },
+  hideModal(id) { $(id).classList.add('hidden'); },
+  toast(msg, type = 'success') {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = `toast toast-${type}`;
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.add('hidden'), 3000);
+  },
+};
 
-    let lines = '';
-    let circles = '';
+// ── PAGE LOADERS ───────────────────────────────────────────────────
+const loaders = {};
 
-    // Center node (the change event)
-    const changeTitle = data.change_event ? data.change_event.title : 'Change';
-    circles += `
-      <circle cx="${cx}" cy="${cy}" r="36" fill="#0F172A" stroke="#2E5BFF" stroke-width="2.5" filter="url(#glow-center)"/>
-      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
-        fill="#fff" font-size="11" font-weight="700" font-family="Inter,sans-serif">CHANGE</text>`;
+// Overview
+loaders.overview = function () {
+  // Recent changes
+  $('overview-changes').innerHTML = CHANGES.slice(0, 4).map(c => `
+    <div class="ov-change" onclick="router.go('change-detail','${c.id}')">
+      <span class="ov-change-id">${c.id}</span>
+      <span class="ov-change-title truncate">${c.title}</span>
+      ${statusBadge(c.status)}
+    </div>
+  `).join('');
 
-    nodes.forEach((node, i) => {
-      const angle = (2 * Math.PI * i / nodes.length) - Math.PI / 2;
-      const nx = cx + R * Math.cos(angle);
-      const ny = cy + R * Math.sin(angle);
-      node._x = nx;
-      node._y = ny;
+  // Confidence factors
+  $('overview-factors').innerHTML = CONFIDENCE.factors.map(f => `
+    <div class="ov-factor">
+      <div class="ov-factor-top">
+        <span class="ov-factor-name">${f.name}</span>
+        <span class="ov-factor-val" style="color:${factorColor(f.value)}">${f.value}%</span>
+      </div>
+      <div class="ov-factor-bar">
+        <div class="ov-factor-fill" style="width:${f.value}%;background:${factorColor(f.value)}"></div>
+      </div>
+    </div>
+  `).join('');
 
-      const colors = impactNodeColors[node.impact] || impactNodeColors.none;
-      const nodeR = node.impact === 'direct' ? 30 : node.impact === 'indirect' ? 26 : 22;
+  // Review progress
+  const discReviews = {};
+  CHANGES.forEach(c => {
+    c.reviews.forEach(r => {
+      const d = disc(r.disc);
+      if (!discReviews[d.name]) discReviews[d.name] = { total: 0, done: 0 };
+      discReviews[d.name].total++;
+      if (r.status === 'reviewed') discReviews[d.name].done++;
+    });
+  });
+  $('overview-reviews').innerHTML = Object.entries(discReviews).map(([name, data]) => {
+    const pct = Math.round((data.done / data.total) * 100);
+    const cls = pct === 100 ? 'badge-green' : pct > 0 ? 'badge-amber' : 'badge-gray';
+    return `<div class="ov-review">
+      <span class="ov-review-disc">${name}</span>
+      <span class="ov-review-badge badge ${cls}">${data.done}/${data.total}</span>
+    </div>`;
+  }).join('');
 
-      // Connection line
-      if (node.impact !== 'none') {
-        const lineColor = node.impact === 'direct' ? 'rgba(46,91,255,.4)' : 'rgba(255,181,71,.25)';
-        const dasharray = node.impact === 'direct' ? '' : 'stroke-dasharray="6 4"';
-        lines += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${lineColor}" stroke-width="1.5" ${dasharray}/>`;
-      }
+  // Activity
+  $('overview-activity').innerHTML = ACTIVITY.map(a => `
+    <div class="ov-activity">
+      <div class="ov-activity-dot" style="background:${a.color}"></div>
+      <div>
+        <div class="ov-activity-text">${a.text}</div>
+        <div class="ov-activity-time">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+};
 
-      // Node circle
-      const filterId = node.impact !== 'none' ? `filter="url(#glow-${node.impact})"` : '';
-      circles += `
-        <circle cx="${nx}" cy="${ny}" r="${nodeR}" fill="${colors.fill}" stroke="${colors.stroke}" stroke-width="2" ${filterId}
-          style="cursor:pointer" onclick="impactSelectNode(${i})"/>
-        <text x="${nx}" y="${ny - 6}" text-anchor="middle" fill="#E2E8F0" font-size="10" font-weight="600"
-          font-family="Inter,sans-serif" style="pointer-events:none">${esc(node.name.length > 12 ? node.name.slice(0,10) + '..' : node.name)}</text>
-        <text x="${nx}" y="${ny + 8}" text-anchor="middle" fill="${colors.stroke}" font-size="9" font-weight="700"
-          font-family="Inter,sans-serif" style="pointer-events:none">${node.review_status ? node.review_status.toUpperCase() : ''}</text>`;
+// Change Events
+loaders.changes = function () {
+  $('changes-list').innerHTML = CHANGES.map(c => {
+    const u = user(c.uploadedBy);
+    return `<div class="change-row" onclick="router.go('change-detail','${c.id}')">
+      <span class="ct-col ct-id">${c.id}</span>
+      <span class="ct-col ct-title truncate">${c.title}</span>
+      <span class="ct-col ct-status">${statusBadge(c.status)}</span>
+      <span class="ct-col ct-by">${u.name}</span>
+      <span class="ct-col ct-docs">${c.docs}</span>
+      <span class="ct-col ct-disc">
+        <div class="disc-pills">${c.impacted.slice(0, 3).map(d => `<span class="disc-pill">${disc(d).abbr}</span>`).join('')}${c.impacted.length > 3 ? `<span class="disc-pill">+${c.impacted.length - 3}</span>` : ''}</div>
+      </span>
+      <span class="ct-col ct-progress">${progressBar(c.reviews)}</span>
+      <span class="ct-col ct-risk">${riskBadge(c.risk)}</span>
+      <span class="ct-col ct-date">${c.date}</span>
+      <span class="ct-col ct-actions">
+        <button class="btn-icon" onclick="event.stopPropagation();deleteChange('${c.id}')">
+          <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        </button>
+      </span>
+    </div>`;
+  }).join('');
+};
 
-      // Review status ring
-      if (node.review_status === 'reviewed') {
-        circles += `<circle cx="${nx}" cy="${ny}" r="${nodeR + 4}" fill="none" stroke="#34D399" stroke-width="1.5" stroke-dasharray="4 3" opacity=".6"/>`;
-      } else if (node.review_status === 'flagged') {
-        circles += `<circle cx="${nx}" cy="${ny}" r="${nodeR + 4}" fill="none" stroke="#F87171" stroke-width="1.5" stroke-dasharray="4 3" opacity=".6"/>`;
+// Change Detail
+loaders['change-detail'] = function (id) {
+  const c = CHANGES.find(ch => ch.id === id);
+  if (!c) return;
+
+  $('cd-id').textContent = c.id;
+  $('cd-title').textContent = c.title;
+  $('cd-meta').innerHTML = `
+    <span>Uploaded by ${user(c.uploadedBy).name}</span>
+    <span>·</span>
+    <span>${c.date}</span>
+    <span>·</span>
+    <span>${c.docs} documents</span>
+  `;
+  $('cd-status').innerHTML = statusBadge(c.status).replace('badge ', 'badge cd-status-badge ');
+  $('cd-status').className = 'cd-status';
+
+  // Summary
+  $('cd-summary').innerHTML = `<p class="cd-summary-text">${c.summary}</p>`;
+
+  // Affected docs
+  $('cd-documents').innerHTML = c.affectedDocs.map(d => `
+    <div class="cd-doc">
+      <div class="cd-doc-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
+      <div class="cd-doc-info">
+        <div class="cd-doc-name">${d.code} — ${d.name}</div>
+        <div class="cd-doc-meta">${d.rev}</div>
+      </div>
+      <div class="cd-doc-badge">${statusBadge(d.status === 'Updated' ? 'in_review' : d.status === 'Approved' ? 'approved' : d.status === 'Reviewed' ? 'reviewed' : 'pending')}</div>
+    </div>
+  `).join('');
+
+  // Mini impact map
+  renderMiniImpact(c);
+
+  // Timeline
+  $('cd-timeline').innerHTML = c.timeline.map((t, i) => `
+    <div class="tl-item">
+      <div class="tl-dot-wrap">
+        <div class="tl-dot" style="background:${t.color}"></div>
+        ${i < c.timeline.length - 1 ? '<div class="tl-line"></div>' : ''}
+      </div>
+      <div class="tl-body">
+        <div class="tl-text">${t.text}</div>
+        <div class="tl-time">${t.time}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Review status
+  $('cd-reviews').innerHTML = c.reviews.map(r => {
+    const d = disc(r.disc);
+    const iconBg = r.status === 'reviewed' ? 'var(--green-dim)' : r.status === 'flagged' ? 'var(--red-dim)' : 'var(--amber-dim)';
+    const icon = r.status === 'reviewed' ? '✓' : r.status === 'flagged' ? '⚠' : '⏳';
+    return `<div class="cd-rev">
+      <div class="cd-rev-icon" style="background:${iconBg}">${icon}</div>
+      <span class="cd-rev-name">${d.name}</span>
+      ${statusBadge(r.status)}
+    </div>`;
+  }).join('');
+
+  // Impacted disciplines
+  $('cd-disciplines').innerHTML = c.impacted.map((id, i) => {
+    const d = disc(id);
+    const type = i === 0 ? 'Direct' : 'Indirect';
+    return `<div class="cd-disc-tag">
+      <div class="cd-disc-dot" style="background:${d.color}"></div>
+      <span class="cd-disc-name">${d.name}</span>
+      <span class="cd-disc-type">${type}</span>
+    </div>`;
+  }).join('');
+
+  // Actions
+  $('cd-actions').innerHTML = c.actions.map(a => `
+    <div class="cd-action">
+      <div class="cd-action-check ${a.done ? 'done' : ''}">${a.done ? '✓' : ''}</div>
+      <span class="cd-action-text ${a.done ? 'done' : ''}">${a.text}</span>
+    </div>
+  `).join('');
+
+  // Confidence
+  const deltaColor = c.confidence.delta >= 0 ? 'var(--green)' : 'var(--red)';
+  const deltaSign = c.confidence.delta >= 0 ? '+' : '';
+  $('cd-confidence').innerHTML = `
+    <div class="cd-conf-score">
+      <div class="cd-conf-val" style="color:${factorColor(c.confidence.score)}">${c.confidence.score}%</div>
+      <div class="cd-conf-delta" style="color:${deltaColor}">${deltaSign}${c.confidence.delta}% from baseline</div>
+    </div>
+  `;
+};
+
+// Impact Map
+loaders.impact = function () {
+  const sel = $('impact-change-select');
+  sel.innerHTML = '<option value="all">All Change Events</option>' +
+    CHANGES.map(c => `<option value="${c.id}">${c.id} — ${c.title}</option>`).join('');
+  renderImpactMap();
+};
+
+// Reviews
+loaders.reviews = function () { reviewTab('all'); };
+
+// Documents
+loaders.documents = function () { renderDocuments(); };
+
+// Disciplines
+loaders.disciplines = function () { renderDisciplines(); };
+
+// Discipline Detail
+loaders['discipline-detail'] = function (discId) { renderDisciplineDetail(discId); };
+
+// Confidence
+loaders.confidence = function () { renderConfidence(); };
+
+// ── RENDER: Mini Impact Map ────────────────────────────────────────
+function renderMiniImpact(change) {
+  const svg = $('cd-impact-svg');
+  if (!svg) return;
+  const w = svg.parentElement.clientWidth || 600;
+  const h = 260;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const cx = w / 2, cy = h / 2;
+  const radius = 90;
+  let html = '';
+
+  // Edges
+  change.impacted.forEach((id, i) => {
+    const angle = (i / change.impacted.length) * Math.PI * 2 - Math.PI / 2;
+    const nx = cx + radius * Math.cos(angle);
+    const ny = cy + radius * Math.sin(angle);
+    const r = change.reviews.find(rv => rv.disc === id);
+    const color = r ? (r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--amber)') : 'var(--text-dim)';
+    const dash = i === 0 ? '' : 'stroke-dasharray="6,4"';
+    html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${color}" class="impact-edge" ${dash}/>`;
+  });
+
+  // Center
+  html += `<circle cx="${cx}" cy="${cy}" r="28" class="impact-center-circle"/>`;
+  html += `<text x="${cx}" y="${cy + 1}" class="impact-center-label" dy="0.35em">${change.id}</text>`;
+
+  // Nodes
+  change.impacted.forEach((id, i) => {
+    const d = disc(id);
+    const angle = (i / change.impacted.length) * Math.PI * 2 - Math.PI / 2;
+    const nx = cx + radius * Math.cos(angle);
+    const ny = cy + radius * Math.sin(angle);
+    const r = change.reviews.find(rv => rv.disc === id);
+    const color = r ? (r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--amber)') : 'var(--text-dim)';
+    html += `<g class="impact-node">
+      <circle cx="${nx}" cy="${ny}" r="24" class="impact-node-circle" stroke="${color}"/>
+      <text x="${nx}" y="${ny}" class="impact-node-label" dy="0.35em">${d.abbr}</text>
+    </g>`;
+  });
+
+  svg.innerHTML = html;
+}
+
+// ── RENDER: Full Impact Map ────────────────────────────────────────
+function renderImpactMap() {
+  const sel = $('impact-change-select');
+  const filter = sel ? sel.value : 'all';
+  const svg = $('impact-svg');
+  if (!svg) return;
+  const container = svg.parentElement;
+  const w = container.clientWidth || 800;
+  const h = container.clientHeight || 500;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const cx = w / 2, cy = h / 2;
+  const radius = Math.min(w, h) * 0.32;
+
+  const allDiscs = new Map();
+  const changes = filter === 'all' ? CHANGES : CHANGES.filter(c => c.id === filter);
+
+  changes.forEach(c => {
+    c.impacted.forEach(id => {
+      if (!allDiscs.has(id)) allDiscs.set(id, { reviewed: false, flagged: false, pending: false });
+      const r = c.reviews.find(rv => rv.disc === id);
+      if (r) {
+        if (r.status === 'reviewed') allDiscs.get(id).reviewed = true;
+        if (r.status === 'flagged') allDiscs.get(id).flagged = true;
+        if (r.status === 'pending') allDiscs.get(id).pending = true;
       }
     });
+  });
 
-    svg.innerHTML = `
-      <defs>
-        <filter id="glow-center" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
-          <feFlood flood-color="#2E5BFF" flood-opacity="0.3"/>
-          <feComposite in2="blur" operator="in"/>
-          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        <filter id="glow-direct" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
-          <feFlood flood-color="#2E5BFF" flood-opacity="0.25"/>
-          <feComposite in2="blur" operator="in"/>
-          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        <filter id="glow-indirect" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
-          <feFlood flood-color="#FFB547" flood-opacity="0.2"/>
-          <feComposite in2="blur" operator="in"/>
-          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      ${lines}
-      ${circles}`;
+  const nodes = Array.from(allDiscs.keys());
+  let html = '';
 
-    // Show summary in panel
-    const s = data.summary;
-    panel.innerHTML = `
-      <h3>${esc(changeTitle)}</h3>
-      <div class="impact-panel-sub">${data.change_event ? formatDate(data.change_event.created_at) : ''} &middot; ${data.change_event ? data.change_event.region_count + ' regions' : ''}</div>
-      <div class="impact-panel-section">
-        <h4>Impact Summary</h4>
-        <div class="impact-stat-grid">
-          <div class="impact-stat-card"><span class="impact-stat-val" style="color:#2E5BFF">${s.direct}</span><span class="impact-stat-label">Direct</span></div>
-          <div class="impact-stat-card"><span class="impact-stat-val" style="color:#FFB547">${s.indirect}</span><span class="impact-stat-label">Indirect</span></div>
-          <div class="impact-stat-card"><span class="impact-stat-val">${s.reviewed}</span><span class="impact-stat-label">Reviewed</span></div>
-          <div class="impact-stat-card"><span class="impact-stat-val">${s.total_reviews}</span><span class="impact-stat-label">Total</span></div>
+  // Edges from center to each discipline
+  nodes.forEach((id, i) => {
+    const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+    const nx = cx + radius * Math.cos(angle);
+    const ny = cy + radius * Math.sin(angle);
+    const state = allDiscs.get(id);
+    const color = state.flagged ? 'var(--red)' : state.pending ? 'var(--amber)' : 'var(--green)';
+    html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${color}" class="impact-edge"/>`;
+  });
+
+  // Cross-edges between disciplines that share a change
+  changes.forEach(c => {
+    for (let i = 0; i < c.impacted.length; i++) {
+      for (let j = i + 1; j < c.impacted.length; j++) {
+        const ai = nodes.indexOf(c.impacted[i]);
+        const aj = nodes.indexOf(c.impacted[j]);
+        if (ai < 0 || aj < 0) continue;
+        const a1 = (ai / nodes.length) * Math.PI * 2 - Math.PI / 2;
+        const a2 = (aj / nodes.length) * Math.PI * 2 - Math.PI / 2;
+        html += `<line x1="${cx + radius * Math.cos(a1)}" y1="${cy + radius * Math.sin(a1)}"
+                        x2="${cx + radius * Math.cos(a2)}" y2="${cy + radius * Math.sin(a2)}"
+                        stroke="var(--border-light)" stroke-dasharray="4,4" class="impact-edge" opacity="0.4"/>`;
+      }
+    }
+  });
+
+  // Center
+  html += `<circle cx="${cx}" cy="${cy}" r="32" class="impact-center-circle"/>`;
+  html += `<text x="${cx}" y="${cy}" class="impact-center-label" dy="-0.3em">CHANGE</text>`;
+  html += `<text x="${cx}" y="${cy}" class="impact-center-label" dy="1em" style="font-size:10px;opacity:0.8">${changes.length} event${changes.length !== 1 ? 's' : ''}</text>`;
+
+  // Nodes
+  nodes.forEach((id, i) => {
+    const d = disc(id);
+    const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+    const nx = cx + radius * Math.cos(angle);
+    const ny = cy + radius * Math.sin(angle);
+    const state = allDiscs.get(id);
+    const color = state.flagged ? 'var(--red)' : state.pending ? 'var(--amber)' : 'var(--green)';
+    html += `<g class="impact-node" onclick="showImpactDetail(${id})">
+      <circle cx="${nx}" cy="${ny}" r="30" class="impact-node-circle" stroke="${color}"/>
+      <text x="${nx}" y="${ny - 6}" class="impact-node-label">${d.icon}</text>
+      <text x="${nx}" y="${ny + 10}" class="impact-node-label" style="font-size:10px">${d.abbr}</text>
+    </g>`;
+  });
+
+  svg.innerHTML = html;
+}
+
+function showImpactDetail(discId) {
+  const d = disc(discId);
+  const panel = $('impact-panel');
+  const relatedChanges = CHANGES.filter(c => c.impacted.includes(discId));
+  panel.innerHTML = `
+    <div style="padding:20px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <span style="font-size:28px">${d.icon}</span>
+        <div>
+          <div style="font-weight:700;font-size:16px">${d.name}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${d.abbr}</div>
         </div>
       </div>
-      <div class="impact-panel-section">
-        <h4>Reviews</h4>
-        ${data.reviews.map(r => `
-          <div class="impact-review-row">
-            <span class="impact-review-disc">${esc(r.discipline)}</span>
-            <span class="impact-review-badge ${r.status}">${r.status}</span>
-          </div>
-        `).join("") || '<p style="color:#64748B;font-size:13px">No reviews for this change</p>'}
-      </div>`;
-  },
-
-  async documents() {
-    const projSel = document.getElementById("doc-project-select");
-    const tabsEl = document.getElementById("doc-tabs");
-    const discSel = document.getElementById("doc-upload-discipline");
-
-    // Load projects and disciplines independently
-    let projects = [];
-    let disciplines = [];
-    try { projects = await api("/projects"); } catch {}
-    try { disciplines = await api("/disciplines"); } catch {}
-    _docDisciplines = disciplines;
-
-    // Project selector
-    const currentVal = projSel.value;
-    if (projects.length > 0) {
-      projSel.innerHTML = projects.map(p =>
-        `<option value="${p.id}">${esc(p.name)}</option>`
-      ).join("");
-      if (currentVal && projects.find(p => p.id == currentVal)) projSel.value = currentVal;
-    } else {
-      projSel.innerHTML = '<option value="">No projects</option>';
-    }
-
-    // Build discipline tabs
-    tabsEl.innerHTML = `
-      <button class="doc-tab ${_docCurrentTab === 'all' ? 'active' : ''}" data-disc="all" onclick="docSelectTab('all')">All</button>
-      ${disciplines.map(d => `
-        <button class="doc-tab ${_docCurrentTab === String(d.id) ? 'active' : ''}" data-disc="${d.id}" onclick="docSelectTab('${d.id}')">${esc(d.name)}</button>
-      `).join("")}
-      <button class="doc-tab ${_docCurrentTab === 'history' ? 'active' : ''}" data-disc="history" onclick="docSelectTab('history')">Revision History</button>
-    `;
-
-    // Populate upload modal discipline select
-    discSel.innerHTML = disciplines.map(d =>
-      `<option value="${d.id}">${esc(d.name)}</option>`
-    ).join("");
-
-    // Load documents
-    const projectId = projSel.value;
-    try {
-      if (projectId) {
-        _docAllDocs = await api(`/projects/${projectId}/documents`);
-      } else {
-        _docAllDocs = [];
-      }
-    } catch {
-      _docAllDocs = [];
-    }
-
-    docRender();
-  },
-
-  async chat() {
-    if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
-
-    try {
-      const projects = await api("/projects");
-      const channelDiv = document.getElementById("chat-project-channels");
-      channelDiv.innerHTML = projects.map(p => `
-        <div class="chat-channel" data-project="${p.id}" onclick="chatSelectChannel(${p.id})">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-          ${esc(p.name)}
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-dim);letter-spacing:0.06em;margin-bottom:10px">Related Changes</div>
+      ${relatedChanges.map(c => {
+        const r = c.reviews.find(rv => rv.disc === discId);
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="router.go('change-detail','${c.id}')">
+          <div style="font-weight:600;font-size:13px">${c.id} — ${c.title}</div>
+          <div style="margin-top:4px">${r ? statusBadge(r.status) : '<span class="badge badge-gray">Not Reviewed</span>'}</div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-dim);letter-spacing:0.06em;margin:20px 0 10px">Documents</div>
+      ${DOCUMENTS.filter(doc => doc.discipline === discId).map(doc => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <div style="font-weight:600">${doc.code} — ${doc.title}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Rev ${doc.rev} · ${doc.date}</div>
         </div>
-      `).join("");
-    } catch {}
-
-    _chatProjectId = null;
-    chatSelectChannel(null);
-  }
-};
-
-// ── Documents / Archive ──────────────────────────────────────────
-
-let _docCurrentTab = 'all';
-let _docAllDocs = [];
-let _docDisciplines = [];
-
-function docSelectTab(disc) {
-  _docCurrentTab = disc;
-  document.querySelectorAll('.doc-tab').forEach(t =>
-    t.classList.toggle('active', t.dataset.disc === disc)
-  );
-  docRender();
+      `).join('')}
+    </div>
+  `;
 }
 
-function docRender() {
-  const listEl = document.getElementById('doc-list');
-  const historyEl = document.getElementById('doc-history');
-  const emptyEl = document.getElementById('doc-empty');
-
-  if (_docCurrentTab === 'history') {
-    listEl.classList.add('hidden');
-    historyEl.classList.remove('hidden');
-    docRenderHistory();
-    return;
-  }
-
-  historyEl.classList.add('hidden');
-  listEl.classList.remove('hidden');
-
-  const filtered = _docCurrentTab === 'all'
-    ? _docAllDocs
-    : _docAllDocs.filter(d => String(d.discipline_id) === _docCurrentTab);
-
-  if (filtered.length === 0) {
-    listEl.innerHTML = '';
-    emptyEl.classList.remove('hidden');
-    return;
-  }
-  emptyEl.classList.add('hidden');
-
-  const grouped = {};
-  filtered.forEach(d => {
-    const key = `${d.discipline_id}::${d.title}`;
-    if (!grouped[key]) grouped[key] = { title: d.title, discipline: d.discipline, discipline_id: d.discipline_id, docs: [] };
-    grouped[key].docs.push(d);
+// ── RENDER: Reviews ────────────────────────────────────────────────
+function reviewTab(tab) {
+  document.querySelectorAll('.review-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
   });
 
-  const groups = Object.values(grouped);
-  groups.forEach(g => g.docs.sort((a, b) => b.revision - a.revision));
+  let allReviews = [];
+  CHANGES.forEach(c => {
+    c.reviews.forEach(r => {
+      allReviews.push({ ...r, changeId: c.id, changeTitle: c.title });
+    });
+  });
 
-  listEl.innerHTML = groups.map(g => {
-    const latest = g.docs[0];
-    const revCount = g.docs.length;
-    return `
-      <div class="doc-card">
-        <div class="doc-card-header">
-          <div>
-            <div class="doc-card-title">${esc(g.title)}</div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${revCount} revision${revCount > 1 ? 's' : ''} · Latest: Rev ${latest.revision}</div>
+  if (tab === 'pending') allReviews = allReviews.filter(r => r.status === 'pending');
+  else if (tab === 'conflict') allReviews = allReviews.filter(r => r.status === 'flagged');
+  else if (tab === 'completed') allReviews = allReviews.filter(r => r.status === 'reviewed');
+  else if (tab === 'mine') allReviews = allReviews.filter(r => r.user === 1);
+
+  $('reviews-list').innerHTML = allReviews.length === 0
+    ? '<div class="empty-state"><p>No reviews match this filter</p></div>'
+    : allReviews.map(r => {
+      const d = disc(r.disc);
+      const u = r.user ? user(r.user) : null;
+      return `<div class="review-card" onclick="router.go('change-detail','${r.changeId}')">
+        <div class="review-card-left">
+          <div class="review-avatar" style="background:${d.color}20;color:${d.color}">${d.icon}</div>
+          <div class="review-info">
+            <div class="review-change">${r.changeId}</div>
+            <div class="review-disc">${d.name} Review</div>
+            <div class="review-sub">${r.changeTitle}${u ? ` · Assigned: ${u.name}` : ''}</div>
           </div>
-          <span class="doc-card-disc">${esc(g.discipline)}</span>
         </div>
-        ${g.docs.map(d => `
-          <div class="doc-row">
+        <div class="review-card-right">
+          ${statusBadge(r.status)}
+          ${r.status === 'pending' ? `
+            <div class="review-actions">
+              <button class="btn btn-success btn-sm" onclick="event.stopPropagation();approveReview('${r.changeId}',${r.disc})">Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();ui.showModal('modal-conflict')">Flag</button>
+            </div>
+          ` : ''}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function approveReview(changeId, discId) {
+  const c = CHANGES.find(ch => ch.id === changeId);
+  if (!c) return;
+  const r = c.reviews.find(rv => rv.disc === discId);
+  if (r) r.status = 'reviewed';
+  reviewTab(document.querySelector('.review-tab.active')?.dataset.tab || 'all');
+  ui.toast('Review approved');
+}
+
+// ── RENDER: Documents ──────────────────────────────────────────────
+let selectedDocId = null;
+
+function renderDocuments() {
+  const byDisc = {};
+  DOCUMENTS.forEach(d => {
+    const discName = disc(d.discipline).name;
+    if (!byDisc[discName]) byDisc[discName] = { disc: disc(d.discipline), docs: [] };
+    byDisc[discName].docs.push(d);
+  });
+
+  $('doc-accordion').innerHTML = Object.entries(byDisc).map(([name, data]) => `
+    <div class="doc-accord open">
+      <div class="doc-accord-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="doc-accord-left">
+          <svg class="doc-accord-arrow" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
+          <span style="font-size:16px">${data.disc.icon}</span>
+          <span class="doc-accord-name">${name}</span>
+        </div>
+        <span class="doc-accord-count">${data.docs.length}</span>
+      </div>
+      <div class="doc-accord-body">
+        ${data.docs.map(d => `
+          <div class="doc-row ${selectedDocId === d.id ? 'active' : ''}" onclick="selectDoc(${d.id})">
+            <div class="doc-row-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
             <div class="doc-row-info">
-              <div class="doc-row-title">${esc(d.filename)}</div>
-              <div class="doc-row-sub">Uploaded by ${esc(d.uploaded_by)} ${d.notes ? ' · ' + esc(d.notes) : ''}</div>
-            </div>
-            <span class="doc-row-rev">Rev ${d.revision}</span>
-            <span class="doc-row-date">${formatDate(d.created_at)}</span>
-            <div class="doc-row-actions">
-              <a class="doc-action-btn" href="${API}/documents/${d.id}/file" target="_blank" title="View/Download">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </a>
-            </div>
-          </div>
-        `).join('')}
-      </div>`;
-  }).join('');
-}
-
-function docRenderHistory() {
-  const historyEl = document.getElementById('doc-history');
-  const emptyEl = document.getElementById('doc-empty');
-
-  const grouped = {};
-  _docAllDocs.forEach(d => {
-    const key = `${d.discipline_id}::${d.title}`;
-    if (!grouped[key]) grouped[key] = { title: d.title, discipline: d.discipline, discipline_id: d.discipline_id, docs: [] };
-    grouped[key].docs.push(d);
-  });
-
-  const groups = Object.values(grouped).filter(g => g.docs.length > 1);
-  groups.forEach(g => g.docs.sort((a, b) => b.revision - a.revision));
-
-  if (groups.length === 0 && _docAllDocs.length === 0) {
-    historyEl.innerHTML = '';
-    emptyEl.classList.remove('hidden');
-    return;
-  }
-  emptyEl.classList.add('hidden');
-
-  if (groups.length === 0) {
-    historyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">No documents have multiple revisions yet. Upload a new version of an existing document to start tracking history.</div>';
-    return;
-  }
-
-  historyEl.innerHTML = groups.map(g => `
-    <div class="doc-history-group">
-      <div class="doc-history-title">${esc(g.title)}</div>
-      <div class="doc-history-disc">${esc(g.discipline)} · ${g.docs.length} revisions</div>
-      <div class="doc-timeline">
-        ${g.docs.map((d, i) => `
-          <div class="doc-timeline-item">
-            <div class="doc-timeline-dot"></div>
-            <div class="doc-timeline-rev">Revision ${d.revision} ${i === 0 ? '<span style="color:var(--success);font-size:11px;margin-left:6px">CURRENT</span>' : ''}</div>
-            <div class="doc-timeline-meta">${esc(d.uploaded_by)} · ${formatDate(d.created_at)}</div>
-            ${d.notes ? `<div class="doc-timeline-notes">${esc(d.notes)}</div>` : ''}
-            <div class="doc-timeline-actions">
-              <a class="btn btn-sm btn-ghost" href="${API}/documents/${d.id}/file" target="_blank">View File</a>
+              <div class="doc-row-title">${d.code} — ${d.title}</div>
+              <div class="doc-row-meta">Rev ${d.rev} · ${d.date}</div>
             </div>
           </div>
         `).join('')}
       </div>
     </div>
   `).join('');
+
+  if (selectedDocId) selectDoc(selectedDocId);
 }
 
-// ── Impact Map interaction ────────────────────────────────────────
+function selectDoc(id) {
+  selectedDocId = id;
+  document.querySelectorAll('.doc-row').forEach(r => r.classList.remove('active'));
+  event?.target?.closest?.('.doc-row')?.classList?.add?.('active');
 
-function impactSelectNode(index) {
-  if (!_impactData || !_impactData.nodes[index]) return;
-  const node = _impactData.nodes[index];
-  const panel = document.getElementById("impact-panel");
+  const d = DOCUMENTS.find(doc => doc.id === id);
+  if (!d) return;
+  const di = disc(d.discipline);
+  const linked = d.linkedChange ? CHANGES.find(c => c.id === d.linkedChange) : null;
 
-  const colors = impactNodeColors[node.impact] || impactNodeColors.none;
-  panel.innerHTML = `
-    <h3>${esc(node.name)}</h3>
-    <div class="impact-panel-sub">Impact: <span style="color:${colors.stroke};font-weight:700">${node.impact.toUpperCase()}</span></div>
-    <div class="impact-panel-section">
-      <h4>Review Status</h4>
-      <div class="impact-review-row">
-        <span class="impact-review-disc">${esc(node.name)}</span>
-        <span class="impact-review-badge ${node.review_status || 'pending'}">${node.review_status || 'none'}</span>
+  $('doc-detail-panel').innerHTML = `
+    <div class="doc-detail-header">
+      <div class="doc-detail-code">${d.code}</div>
+      <div class="doc-detail-title">${d.title}</div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <span class="badge badge-blue">${di.name}</span>
+        <span class="badge badge-gray">Rev ${d.rev}</span>
       </div>
     </div>
-    <div class="impact-panel-section">
-      <h4>Discipline Details</h4>
-      <p style="color:#94A3B8;font-size:13px;line-height:1.6">
-        ${node.impact === 'direct'
-          ? 'This discipline is directly affected by the change and requires review.'
-          : node.impact === 'indirect'
-          ? 'This discipline may be indirectly affected by downstream dependencies.'
-          : 'No impact detected from the current change event.'}
-      </p>
+    <div class="doc-detail-section">
+      <div class="doc-detail-section-title">Revision History</div>
+      ${d.revisions.map(r => `
+        <div class="doc-rev-row">
+          <div class="doc-rev-num ${r.n === d.rev ? 'current' : ''}">R${r.n}</div>
+          <div class="doc-rev-info">
+            <div style="font-weight:600">${r.note}</div>
+            <div class="doc-rev-date">${r.date}</div>
+          </div>
+        </div>
+      `).join('')}
     </div>
-    <button class="btn btn-primary" style="width:100%;margin-top:12px"
-      onclick="router.go('change', {id: ${_impactData.change_event ? _impactData.change_event.id : 0}})">
-      View Full Change &rarr;
-    </button>`;
+    ${linked ? `
+      <div class="doc-detail-section">
+        <div class="doc-detail-section-title">Linked Change Event</div>
+        <div style="padding:8px 0;cursor:pointer" onclick="router.go('change-detail','${linked.id}')">
+          <div style="font-weight:700;color:var(--primary);font-size:12px">${linked.id}</div>
+          <div style="font-weight:600;margin-top:2px">${linked.title}</div>
+          <div style="margin-top:4px">${statusBadge(linked.status)} ${riskBadge(linked.risk)}</div>
+        </div>
+      </div>
+    ` : ''}
+    <div class="doc-detail-section">
+      <div class="doc-detail-section-title">Details</div>
+      <div style="font-size:13px;color:var(--text-muted)">
+        <div style="padding:4px 0">Discipline: <strong style="color:var(--text)">${di.name}</strong></div>
+        <div style="padding:4px 0">Last Updated: <strong style="color:var(--text)">${d.date}</strong></div>
+        <div style="padding:4px 0">Total Revisions: <strong style="color:var(--text)">${d.revisions.length}</strong></div>
+      </div>
+    </div>
+  `;
+
+  renderDocuments();
 }
 
-// ── Chat functions ────────────────────────────────────────────────
+// ── RENDER: Disciplines ────────────────────────────────────────────
+function renderDisciplines() {
+  $('disciplines-grid').innerHTML = DISCIPLINES.map(d => {
+    const docs = DOCUMENTS.filter(doc => doc.discipline === d.id);
+    const changes = CHANGES.filter(c => c.impacted.includes(d.id));
+    const reviews = [];
+    CHANGES.forEach(c => { c.reviews.forEach(r => { if (r.disc === d.id) reviews.push(r); }); });
+    const pending = reviews.filter(r => r.status === 'pending').length;
+    const conflicts = reviews.filter(r => r.status === 'flagged').length;
 
-function chatSelectChannel(projectId) {
-  _chatProjectId = projectId;
-
-  document.querySelectorAll(".chat-channel").forEach(el => {
-    const elPid = el.dataset.project ? parseInt(el.dataset.project) : null;
-    el.classList.toggle("active", elPid === projectId);
-    if (!el.dataset.project && projectId === null) el.classList.add("active");
-  });
-
-  const nameEl = document.getElementById("chat-channel-name");
-  const subEl = document.getElementById("chat-channel-sub");
-  if (projectId === null) {
-    nameEl.textContent = "General";
-    subEl.textContent = "Team-wide messages";
-  } else {
-    const ch = document.querySelector(`.chat-channel[data-project="${projectId}"]`);
-    nameEl.textContent = ch ? ch.textContent.trim() : `Project #${projectId}`;
-    subEl.textContent = "Project channel";
-  }
-
-  chatLoadMessages();
-  if (_chatPollTimer) clearInterval(_chatPollTimer);
-  _chatPollTimer = setInterval(chatLoadMessages, 5000);
+    return `<div class="disc-card" onclick="router.go('discipline-detail',${d.id})">
+      <div class="disc-card-header">
+        <div class="disc-card-icon" style="background:${d.color}20">${d.icon}</div>
+        <div>
+          <div class="disc-card-name">${d.name}</div>
+          <div class="disc-card-role">${d.abbr}</div>
+        </div>
+      </div>
+      <div class="disc-card-metrics">
+        <div class="disc-metric"><div class="disc-metric-val">${changes.length}</div><div class="disc-metric-label">Active Changes</div></div>
+        <div class="disc-metric"><div class="disc-metric-val">${docs.length}</div><div class="disc-metric-label">Documents</div></div>
+        <div class="disc-metric"><div class="disc-metric-val" style="color:${pending > 0 ? 'var(--amber)' : 'var(--green)'}">${pending}</div><div class="disc-metric-label">Pending Reviews</div></div>
+        <div class="disc-metric"><div class="disc-metric-val" style="color:${conflicts > 0 ? 'var(--red)' : 'var(--green)'}">${conflicts}</div><div class="disc-metric-label">Conflicts</div></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-async function chatLoadMessages() {
-  try {
-    const url = _chatProjectId !== null ? `/messages?project_id=${_chatProjectId}` : '/messages';
-    const messages = await api(url);
-    const container = document.getElementById("chat-messages");
-    const emptyEl = document.getElementById("chat-empty");
-    const currentUser = localStorage.getItem("username") || "";
+function renderDisciplineDetail(discId) {
+  const d = disc(discId);
+  const docs = DOCUMENTS.filter(doc => doc.discipline === discId);
+  const changes = CHANGES.filter(c => c.impacted.includes(discId));
+  const reviews = [];
+  CHANGES.forEach(c => { c.reviews.forEach(r => { if (r.disc === discId) reviews.push({ ...r, changeId: c.id, changeTitle: c.title }); }); });
 
-    if (messages.length === 0) {
-      emptyEl.classList.remove("hidden");
-      container.querySelectorAll(".chat-msg").forEach(el => el.remove());
-      return;
-    }
+  $('dd-header').innerHTML = `
+    <div class="disc-card-icon" style="background:${d.color}20;font-size:28px;width:56px;height:56px;border-radius:14px">${d.icon}</div>
+    <div>
+      <div style="font-size:20px;font-weight:800">${d.name}</div>
+      <div style="font-size:13px;color:var(--text-muted)">${d.abbr} · ${docs.length} documents · ${changes.length} active changes</div>
+    </div>
+  `;
 
-    emptyEl.classList.add("hidden");
-    const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
-
-    container.querySelectorAll(".chat-msg").forEach(el => el.remove());
-    messages.forEach(m => {
-      const div = document.createElement("div");
-      div.className = "chat-msg";
-      div.innerHTML = `
-        <div class="chat-msg-avatar">${esc(m.username.charAt(0).toUpperCase())}</div>
-        <div class="chat-msg-body">
-          <div class="chat-msg-header">
-            <span class="chat-msg-name">${esc(m.username)}</span>
-            <span class="chat-msg-time">${timeAgo(m.created_at)}</span>
-          </div>
-          <div class="chat-msg-text">${esc(m.content)}</div>
-        </div>`;
-      container.appendChild(div);
-    });
-
-    if (wasAtBottom) container.scrollTop = container.scrollHeight;
-  } catch {}
-}
-
-async function chatSend(e) {
-  e.preventDefault();
-  const input = document.getElementById("chat-input");
-  const text = input.value.trim();
-  if (!text) return false;
-
-  try {
-    const body = { content: text };
-    if (_chatProjectId !== null) body.project_id = _chatProjectId;
-    await api("/messages", { method: "POST", json: body });
-    input.value = "";
-    await chatLoadMessages();
-    const container = document.getElementById("chat-messages");
-    container.scrollTop = container.scrollHeight;
-  } catch (err) { toast(err.message); }
-  return false;
-}
-
-// ── Dashboard right panel ──────────────────────────────────────────
-
-async function dashboardSelectChange(changeId) {
-  const panel = document.getElementById("dash-right-panel");
-  try {
-    const data = await api(`/changes/${changeId}`);
-    const project = await api(`/projects/${data.project_id}`);
-
-    let reviewsHtml = data.reviews.map(r => {
-      if (r.status === "reviewed") {
-        return `
-          <div class="dash-review-row">
-            <div class="dash-review-left">
-              <div class="dash-review-disc">${esc(r.discipline)}</div>
-              ${r.notes ? `<div class="dash-review-note">${esc(r.notes)}</div>` : ''}
+  $('dd-main').innerHTML = `
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">Active Changes</h2></div>
+      <div class="panel-body">
+        ${changes.length === 0 ? '<p style="color:var(--text-dim)">No active changes</p>' :
+          changes.map(c => {
+            const r = c.reviews.find(rv => rv.disc === discId);
+            return `<div class="ov-change" onclick="router.go('change-detail','${c.id}')">
+              <span class="ov-change-id">${c.id}</span>
+              <span class="ov-change-title truncate">${c.title}</span>
+              ${r ? statusBadge(r.status) : ''}
+            </div>`;
+          }).join('')}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">Documents</h2></div>
+      <div class="panel-body">
+        ${docs.map(doc => `
+          <div class="cd-doc">
+            <div class="cd-doc-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
+            <div class="cd-doc-info">
+              <div class="cd-doc-name">${doc.code} — ${doc.title}</div>
+              <div class="cd-doc-meta">Rev ${doc.rev} · ${doc.date}</div>
             </div>
-            <div class="dash-review-actions">
-              <span class="review-badge review-badge-reviewed">Reviewed &#10003;</span>
-            </div>
-          </div>`;
-      }
-      return `
-        <div class="dash-review-row">
-          <div class="dash-review-left">
-            <div class="dash-review-disc">${esc(r.discipline)}</div>
           </div>
-          <div class="dash-review-actions">
-            <span class="review-badge review-badge-pending">Pending</span>
-            <button class="review-badge review-badge-approve" onclick="actions.updateReview(${changeId}, ${r.discipline_id}, 'reviewed');setTimeout(()=>dashboardSelectChange(${changeId}),500)">Approve</button>
-            <button class="review-badge review-badge-flag" onclick="actions.updateReview(${changeId}, ${r.discipline_id}, 'flagged');setTimeout(()=>dashboardSelectChange(${changeId}),500)">Flag conflict</button>
-          </div>
-        </div>`;
-    }).join("");
+        `).join('')}
+      </div>
+    </div>
+  `;
 
-    panel.innerHTML = `
-      <div class="dash-right-header">
-        <div class="dash-right-label">Change #${data.id}</div>
-        <div class="dash-right-title">${esc(data.title)}</div>
+  $('dd-side').innerHTML = `
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">Reviews</h2></div>
+      <div class="panel-body">
+        ${reviews.length === 0 ? '<p style="color:var(--text-dim)">No reviews</p>' :
+          reviews.map(r => `
+            <div class="cd-rev" style="cursor:pointer" onclick="router.go('change-detail','${r.changeId}')">
+              <div class="cd-rev-icon" style="background:${r.status === 'reviewed' ? 'var(--green-dim)' : r.status === 'flagged' ? 'var(--red-dim)' : 'var(--amber-dim)'}">
+                ${r.status === 'reviewed' ? '✓' : r.status === 'flagged' ? '⚠' : '⏳'}
+              </div>
+              <span class="cd-rev-name" style="font-size:12px">${r.changeId}<br><span style="color:var(--text-muted);font-weight:400">${r.changeTitle}</span></span>
+              ${statusBadge(r.status)}
+            </div>
+          `).join('')}
       </div>
-      <div class="dash-right-meta">${esc(project.name)}</div>
-      <div class="dash-right-diff">
-        <div class="dash-right-diff-header">
-          <span>Drawing diff</span>
-          <span>${data.region_count} regions detected</span>
-        </div>
-        <div class="dash-right-diff-legend" style="padding:8px 14px;border-bottom:1px solid var(--border)">
-          <span><i style="background:#FF5A5F"></i> Major change</span>
-          <span><i style="background:#FFB547"></i> Moderate change</span>
-        </div>
-        <img src="${API}${data.diff_image}" alt="Diff">
-      </div>
-      <a class="dash-right-link" onclick="router.go('change', {id: ${data.id}})">View full change &rarr;</a>
-      <div class="dash-right-reviews">
-        <h4>Discipline reviews</h4>
-        ${reviewsHtml}
-      </div>
-      <div class="dash-activity">
-        <h4>Activity</h4>
-        <div class="dash-act-row">
-          <span class="dash-act-dot green"></span>
-          <span class="dash-act-text">Change event #${data.id} created</span>
-          <span class="dash-act-time">${timeAgo(data.created_at)}</span>
-        </div>
-        <div class="dash-act-row">
-          <span class="dash-act-dot blue"></span>
-          <span class="dash-act-text">Diff engine detected ${data.region_count} changed regions</span>
-          <span class="dash-act-time">${timeAgo(data.created_at)}</span>
-        </div>
-        <div class="dash-act-row">
-          <span class="dash-act-dot blue"></span>
-          <span class="dash-act-text">Reviews sent to ${data.reviews.map(r => r.discipline).join(', ')}</span>
-          <span class="dash-act-time">${timeAgo(data.created_at)}</span>
-        </div>
-        <a class="dash-right-viewall" onclick="router.go('change', {id: ${data.id}})">View full activity &rarr;</a>
-      </div>
-    `;
-  } catch {
-    panel.innerHTML = '<div class="dash-right-empty"><p>Could not load change details</p></div>';
-  }
+    </div>
+  `;
 }
 
-// ── Actions ─────────────────────────────────────────────────────────
+// ── RENDER: Confidence ─────────────────────────────────────────────
+function renderConfidence() {
+  const score = CONFIDENCE.score;
+  const circumference = 2 * Math.PI * 48;
+  const offset = circumference - (score / 100) * circumference;
 
+  $('conf-ring').innerHTML = `
+    <svg class="conf-ring-svg" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="48" class="conf-ring-bg"/>
+      <circle cx="60" cy="60" r="48" class="conf-ring-fg" stroke="${factorColor(score)}"
+        stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"/>
+    </svg>
+    <div class="conf-ring-text" style="color:${factorColor(score)}">${score}%</div>
+  `;
+
+  $('conf-main').innerHTML = `
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">Confidence Factors</h2></div>
+      <div class="panel-body">
+        ${CONFIDENCE.factors.map(f => `
+          <div class="conf-factor">
+            <div class="conf-factor-top">
+              <span class="conf-factor-name">${f.name}</span>
+              <span class="conf-factor-val" style="color:${factorColor(f.value)}">${f.value}%</span>
+            </div>
+            <div class="conf-factor-bar">
+              <div class="conf-factor-fill" style="width:${f.value}%;background:${factorColor(f.value)}"></div>
+            </div>
+            <div class="conf-factor-desc">${f.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  $('conf-side').innerHTML = `
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">Score by Change Event</h2></div>
+      <div class="panel-body">
+        ${CHANGES.map(c => `
+          <div class="ov-change" onclick="router.go('change-detail','${c.id}')">
+            <span class="ov-change-id">${c.id}</span>
+            <span class="ov-change-title truncate">${c.title}</span>
+            <span style="font-weight:800;color:${factorColor(c.confidence.score)}">${c.confidence.score}%</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">What's Affecting Confidence</h2></div>
+      <div class="panel-body">
+        <div class="cd-action"><div class="cd-action-check" style="border-color:var(--red)">!</div><span class="cd-action-text">Structural conflict on CE-001 (wall load)</span></div>
+        <div class="cd-action"><div class="cd-action-check" style="border-color:var(--amber)">⏳</div><span class="cd-action-text">5 pending reviews across 2 change events</span></div>
+        <div class="cd-action"><div class="cd-action-check" style="border-color:var(--amber)">⏳</div><span class="cd-action-text">CE-004 has 0/5 reviews complete (critical risk)</span></div>
+        <div class="cd-action"><div class="cd-action-check done">✓</div><span class="cd-action-text done">CE-003 fully approved — no issues</span></div>
+      </div>
+    </div>
+  `;
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────
 const actions = {
-  async createProject(e) {
-    e.preventDefault();
-    try {
-      const name = document.getElementById("new-project-name").value;
-      const desc = document.getElementById("new-project-desc").value;
-      await api("/projects", { method: "POST", json: { name, description: desc || null } });
-      ui.hideModal("modal-new-project");
-      document.getElementById("new-project-name").value = "";
-      document.getElementById("new-project-desc").value = "";
-      toast("Project created");
-      if (router.current === "dashboard") loaders.dashboard();
-      else if (router.current === "projects") loaders.projectsList();
-    } catch (err) { toast(err.message); }
-    return false;
-  },
-
-  async addMember(e) {
-    e.preventDefault();
-    try {
-      const discId = parseInt(document.getElementById("member-discipline").value);
-      await api(`/projects/${router.params.id}/members`, {
-        method: "POST",
-        json: { discipline_id: discId }
-      });
-      ui.hideModal("modal-add-member");
-      toast("Discipline added");
-      loaders.project(router.params.id);
-    } catch (err) { toast(err.message); }
-    return false;
-  },
-
   async uploadChange(e) {
     e.preventDefault();
-    const btn = document.getElementById("btn-upload-change");
+    const title = $('change-upload-title').value;
+    const fileOld = $('file-old').files[0];
+    const fileNew = $('file-new').files[0];
+    if (!title || !fileOld || !fileNew) return;
+
+    const btn = $('btn-upload-change');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Processing...';
-    try {
-      const title = document.getElementById("change-upload-title").value;
-      const oldFile = document.getElementById("file-old").files[0];
-      const newFile = document.getElementById("file-new").files[0];
-      if (!oldFile || !newFile) throw new Error("Please select both files");
+    btn.textContent = 'Comparing...';
 
+    try {
       const form = new FormData();
-      form.append("old_file", oldFile);
-      form.append("new_file", newFile);
-
-      const token = localStorage.getItem("token");
-      const res = await fetch(API + `/projects/${router.params.id}/changes?title=${encodeURIComponent(title)}`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: form,
+      form.append('title', title);
+      form.append('old_file', fileOld);
+      form.append('new_file', fileNew);
+      form.append('project_id', '1');
+      const token = localStorage.getItem('token');
+      const res = await fetch(API + '/changes', {
+        method: 'POST', body: form,
+        headers: { 'Authorization': 'Bearer ' + token },
       });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.detail || "Upload failed");
-      }
-      const data = await res.json();
-
-      ui.hideModal("modal-upload-change");
-      document.getElementById("change-upload-title").value = "";
-      document.getElementById("file-old").value = "";
-      document.getElementById("file-new").value = "";
-      document.querySelectorAll(".file-drop").forEach(d => {
-        d.classList.remove("has-file");
-        d.querySelector("p").textContent = "Drop or browse";
-      });
-
-      toast(`Change uploaded — ${data.region_count} regions detected`);
-      router.go("change", { id: data.id, projectId: router.params.id });
-    } catch (err) { toast(err.message); }
-    btn.disabled = false;
-    btn.innerHTML = "Compare &amp; Upload";
+      if (!res.ok) throw new Error(await res.text());
+      ui.hideModal('modal-upload-change');
+      ui.toast('Change event created');
+      router.go('changes');
+    } catch (err) {
+      ui.toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Compare & Upload';
+    }
     return false;
-  },
-
-  async deleteChange(changeId, projectId) {
-    if (!confirm('Delete this change? This cannot be undone.')) return;
-    try {
-      await fetch(API + `/changes/${changeId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      toast('Change deleted');
-      if (projectId) loaders.project(projectId);
-      else if (router.current === 'changes') loaders.allChanges();
-      else if (router.current === 'dashboard') loaders.dashboard();
-    } catch (err) { toast(err.message); }
   },
 
   async uploadDocument(e) {
     e.preventDefault();
-    const btn = document.getElementById("btn-upload-doc");
+    const title = $('doc-upload-title').value;
+    const file = $('file-doc').files[0];
+    const discipline = $('doc-upload-discipline').value;
+    if (!title || !file || !discipline) return;
+
+    const btn = $('btn-upload-doc');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Uploading...';
+    btn.textContent = 'Uploading...';
+
     try {
-      const title = document.getElementById("doc-upload-title").value;
-      const disciplineId = document.getElementById("doc-upload-discipline").value;
-      const file = document.getElementById("file-doc").files[0];
-      const notes = document.getElementById("doc-upload-notes").value || null;
-      if (!file) throw new Error("Please select a file");
-
-      const projectId = document.getElementById("doc-project-select").value;
-      if (!projectId) throw new Error("No project selected");
-
       const form = new FormData();
-      form.append("file", file);
-
-      const token = localStorage.getItem("token");
-      let url = `${API}/projects/${projectId}/documents?discipline_id=${disciplineId}&title=${encodeURIComponent(title)}`;
-      if (notes) url += `&notes=${encodeURIComponent(notes)}`;
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: form,
+      form.append('title', title);
+      form.append('file', file);
+      form.append('discipline_id', discipline);
+      form.append('project_id', '1');
+      const code = $('doc-upload-code').value;
+      if (code) form.append('code', code);
+      const notes = $('doc-upload-notes').value;
+      if (notes) form.append('notes', notes);
+      const token = localStorage.getItem('token');
+      const res = await fetch(API + '/projects/1/documents', {
+        method: 'POST', body: form,
+        headers: { 'Authorization': 'Bearer ' + token },
       });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.detail || "Upload failed");
-      }
-      const data = await res.json();
-
-      ui.hideModal("modal-upload-doc");
-      document.getElementById("doc-upload-title").value = "";
-      document.getElementById("doc-upload-notes").value = "";
-      document.getElementById("file-doc").value = "";
-      const dropEl = document.getElementById("drop-doc");
-      dropEl.classList.remove("has-file");
-      dropEl.querySelector("p").textContent = "Drop or browse";
-
-      toast(`Document uploaded — Rev ${data.revision}`);
-      loaders.documents();
-    } catch (err) { toast(err.message); }
-    btn.disabled = false;
-    btn.innerHTML = "Upload";
+      if (!res.ok) throw new Error(await res.text());
+      ui.hideModal('modal-upload-doc');
+      ui.toast('Document uploaded');
+      router.go('documents');
+    } catch (err) {
+      ui.toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Upload';
+    }
     return false;
   },
 
-  async updateReview(changeId, disciplineId, status) {
-    try {
-      const notesEl = document.getElementById(`notes-${disciplineId}`);
-      const notes = notesEl ? notesEl.value : null;
-      await api(`/changes/${changeId}/reviews/${disciplineId}`, {
-        method: "PUT",
-        json: { status, notes }
-      });
-      toast(`Review ${status}`);
-      if (router.current === "change") loaders.change(changeId);
-    } catch (err) { toast(err.message); }
+  flagConflict(e) {
+    e.preventDefault();
+    ui.hideModal('modal-conflict');
+    ui.toast('Conflict flagged');
+    return false;
+  },
+};
+
+function deleteChange(id) {
+  if (!confirm('Delete this change event?')) return;
+  const idx = CHANGES.findIndex(c => c.id === id);
+  if (idx >= 0) {
+    CHANGES.splice(idx, 1);
+    router.go('changes');
+    ui.toast('Change deleted');
   }
-};
-
-// ── UI helpers ──────────────────────────────────────────────────────
-
-const ui = {
-  showModal(id) { document.getElementById(id).classList.remove("hidden"); },
-  hideModal(id) { document.getElementById(id).classList.add("hidden"); }
-};
-
-function toast(msg) {
-  const el = document.getElementById("toast");
-  el.textContent = msg;
-  el.classList.remove("hidden");
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.add("hidden"), 3000);
 }
 
-// File drop visual feedback
-document.querySelectorAll(".file-drop input").forEach(input => {
-  input.addEventListener("change", () => {
-    const drop = input.closest(".file-drop");
-    if (input.files.length) {
-      drop.classList.add("has-file");
-      drop.querySelector("p").textContent = input.files[0].name;
-    }
-  });
+// ── POPULATE SELECTS ───────────────────────────────────────────────
+function populateSelects() {
+  const regDisc = $('reg-discipline');
+  if (regDisc) {
+    DISCIPLINES.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.name;
+      regDisc.appendChild(opt);
+    });
+  }
+  const docDisc = $('doc-upload-discipline');
+  if (docDisc) {
+    docDisc.innerHTML = '<option value="">Select discipline</option>';
+    DISCIPLINES.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.name;
+      docDisc.appendChild(opt);
+    });
+  }
+  const docChange = $('doc-upload-change');
+  if (docChange) {
+    docChange.innerHTML = '<option value="">None</option>';
+    CHANGES.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.id} — ${c.title}`;
+      docChange.appendChild(opt);
+    });
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  populateSelects();
+  auth.check();
 });
-
-// ── Init ────────────────────────────────────────────────────────────
-
-if (localStorage.getItem("token")) {
-  router.go("dashboard");
-} else {
-  router.go("auth");
-}
