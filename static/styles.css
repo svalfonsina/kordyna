@@ -51,12 +51,7 @@ img { max-width: 100%; display: block; }
 /* ── AUTH ───────────────────────────────────────────────────────────── */
 .auth-page { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
 .auth-hero { background: linear-gradient(160deg, #081A36 0%, #0A2040 100%); display: flex; align-items: center; justify-content: center; padding: 60px; }
-.auth-hero-inner { max-width: 480px; }
-.auth-logo { height: 40px; margin-bottom: 24px; filter: brightness(0) invert(1); }
-.auth-tagline { font-size: 1.5rem; font-weight: 700; margin-bottom: 48px; line-height: 1.3; }
-.auth-features { display: flex; flex-direction: column; gap: 20px; }
-.auth-feat { display: flex; gap: 16px; align-items: flex-start; color: var(--text-dim); font-size: 0.93rem; line-height: 1.5; }
-.auth-feat-num { font-size: 0.75rem; font-weight: 700; color: var(--primary); background: var(--primary-bg); border-radius: 4px; padding: 2px 8px; flex-shrink: 0; }
+.auth-hero-logo { width: 100%; max-width: 440px; filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
 .auth-form-side { display: flex; align-items: center; justify-content: center; padding: 60px; background: var(--bg); }
 .auth-card { width: 100%; max-width: 400px; }
 .auth-card h1 { font-size: 1.75rem; font-weight: 800; margin-bottom: 4px; }
@@ -87,7 +82,7 @@ img { max-width: 100%; display: block; }
 .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh; background: var(--bg-sidebar); border-right: 1px solid var(--border); z-index: 100; display: flex; flex-direction: column; }
 .sidebar-inner { display: flex; flex-direction: column; height: 100%; padding: 16px 12px; overflow-y: auto; }
 .sidebar-logo { padding: 4px 8px 20px; cursor: pointer; }
-.sidebar-logo img { height: 24px; filter: brightness(0) invert(1); }
+.sidebar-logo img { height: 28px; filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
 .sidebar-section { margin-bottom: 20px; }
 .sidebar-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 0 8px; margin-bottom: 6px; }
 .sidebar-link { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; color: var(--text-dim); transition: all var(--transition); }

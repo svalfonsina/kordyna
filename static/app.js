@@ -233,7 +233,7 @@ const auth = {
     const pass = document.getElementById('login-pass').value;
     try {
       const body = new URLSearchParams({ username: user, password: pass });
-      const res = await fetch('/api/login', { method: 'POST', body });
+      const res = await fetch('/auth/login', { method: 'POST', body });
       if (!res.ok) throw new Error('Invalid credentials');
       const data = await res.json();
       this.token = data.access_token;
@@ -253,7 +253,7 @@ const auth = {
     const pass = document.getElementById('reg-pass').value;
     const disc = document.getElementById('reg-discipline').value;
     try {
-      const res = await fetch('/api/register', {
+      const res = await fetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user, password: pass, discipline_id: disc || null })
