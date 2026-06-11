@@ -128,6 +128,7 @@ const router = {
     else if (page === "changes") loaders.allChanges();
     else if (page === "disciplines") loaders.disciplines();
     else if (page === "impact") loaders.impactMap();
+    else if (page === "documents") loaders.documents();
     else if (page === "chat") loaders.chat();
     else if (page === "auth") loaders.authInit();
   }
@@ -415,12 +416,15 @@ const loaders = {
         emptyDiv.classList.add("hidden");
         listDiv.classList.remove("hidden");
         listDiv.innerHTML = changes.map(c => `
-          <div class="change-row" onclick="router.go('change', {id: ${c.id}, projectId: ${id}})">
-            <div class="change-row-left">
+          <div class="change-row">
+            <div class="change-row-left" onclick="router.go('change', {id: ${c.id}, projectId: ${id}})" style="cursor:pointer;flex:1">
               <h4>${esc(c.title)}</h4>
               <span>${formatDate(c.created_at)}</span>
             </div>
             <span class="change-badge">${c.region_count} region${c.region_count !== 1 ? "s" : ""}</span>
+            <button class="btn-trash" onclick="event.stopPropagation();actions.deleteChange(${c.id}, ${id})" title="Delete change">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
           </div>
         `).join("");
       }
@@ -508,12 +512,15 @@ const loaders = {
       listDiv.classList.remove("hidden");
 
       listDiv.innerHTML = allChanges.map(c => `
-        <div class="change-row" onclick="router.go('change', {id: ${c.id}, projectId: ${c.project_id}})">
-          <div class="change-row-left">
+        <div class="change-row">
+          <div class="change-row-left" onclick="router.go('change', {id: ${c.id}, projectId: ${c.project_id}})" style="cursor:pointer;flex:1">
             <h4>${esc(c.title)}</h4>
             <span>${esc(c.project_name)} · ${formatDate(c.created_at)}</span>
           </div>
           <span class="change-badge">${c.region_count} region${c.region_count !== 1 ? "s" : ""}</span>
+          <button class="btn-trash" onclick="event.stopPropagation();actions.deleteChange(${c.id})" title="Delete change">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
         </div>
       `).join("");
     } catch (err) { toast(err.message); }
@@ -690,6 +697,49 @@ const loaders = {
       </div>`;
   },
 
+  async documents() {
+    try {
+      const [projects, disciplines] = await Promise.all([
+        api("/projects"),
+        api("/disciplines"),
+      ]);
+      _docDisciplines = disciplines;
+
+      const projSel = document.getElementById("doc-project-select");
+      const currentVal = projSel.value;
+      projSel.innerHTML = projects.map(p =>
+        `<option value="${p.id}">${esc(p.name)}</option>`
+      ).join("") || '<option value="">No projects</option>';
+      if (currentVal && projects.find(p => p.id == currentVal)) projSel.value = currentVal;
+
+      // Build discipline tabs
+      const tabsEl = document.getElementById("doc-tabs");
+      tabsEl.innerHTML = `
+        <button class="doc-tab ${_docCurrentTab === 'all' ? 'active' : ''}" data-disc="all" onclick="docSelectTab('all')">All</button>
+        ${disciplines.map(d => `
+          <button class="doc-tab ${_docCurrentTab === String(d.id) ? 'active' : ''}" data-disc="${d.id}" onclick="docSelectTab('${d.id}')">${esc(d.name)}</button>
+        `).join("")}
+        <button class="doc-tab ${_docCurrentTab === 'history' ? 'active' : ''}" data-disc="history" onclick="docSelectTab('history')">Revision History</button>
+      `;
+
+      // Populate upload modal discipline select
+      const discSel = document.getElementById("doc-upload-discipline");
+      discSel.innerHTML = disciplines.map(d =>
+        `<option value="${d.id}">${esc(d.name)}</option>`
+      ).join("");
+
+      // Load documents
+      const projectId = projSel.value;
+      if (projectId) {
+        _docAllDocs = await api(`/projects/${projectId}/documents`);
+      } else {
+        _docAllDocs = [];
+      }
+
+      docRender();
+    } catch (err) { toast(err.message); }
+  },
+
   async chat() {
     if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
 
@@ -708,6 +758,134 @@ const loaders = {
     chatSelectChannel(null);
   }
 };
+
+// ── Documents / Archive ──────────────────────────────────────────
+
+let _docCurrentTab = 'all';
+let _docAllDocs = [];
+let _docDisciplines = [];
+
+function docSelectTab(disc) {
+  _docCurrentTab = disc;
+  document.querySelectorAll('.doc-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.disc === disc)
+  );
+  docRender();
+}
+
+function docRender() {
+  const listEl = document.getElementById('doc-list');
+  const historyEl = document.getElementById('doc-history');
+  const emptyEl = document.getElementById('doc-empty');
+
+  if (_docCurrentTab === 'history') {
+    listEl.classList.add('hidden');
+    historyEl.classList.remove('hidden');
+    docRenderHistory();
+    return;
+  }
+
+  historyEl.classList.add('hidden');
+  listEl.classList.remove('hidden');
+
+  const filtered = _docCurrentTab === 'all'
+    ? _docAllDocs
+    : _docAllDocs.filter(d => String(d.discipline_id) === _docCurrentTab);
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+
+  const grouped = {};
+  filtered.forEach(d => {
+    const key = `${d.discipline_id}::${d.title}`;
+    if (!grouped[key]) grouped[key] = { title: d.title, discipline: d.discipline, discipline_id: d.discipline_id, docs: [] };
+    grouped[key].docs.push(d);
+  });
+
+  const groups = Object.values(grouped);
+  groups.forEach(g => g.docs.sort((a, b) => b.revision - a.revision));
+
+  listEl.innerHTML = groups.map(g => {
+    const latest = g.docs[0];
+    const revCount = g.docs.length;
+    return `
+      <div class="doc-card">
+        <div class="doc-card-header">
+          <div>
+            <div class="doc-card-title">${esc(g.title)}</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${revCount} revision${revCount > 1 ? 's' : ''} · Latest: Rev ${latest.revision}</div>
+          </div>
+          <span class="doc-card-disc">${esc(g.discipline)}</span>
+        </div>
+        ${g.docs.map(d => `
+          <div class="doc-row">
+            <div class="doc-row-info">
+              <div class="doc-row-title">${esc(d.filename)}</div>
+              <div class="doc-row-sub">Uploaded by ${esc(d.uploaded_by)} ${d.notes ? ' · ' + esc(d.notes) : ''}</div>
+            </div>
+            <span class="doc-row-rev">Rev ${d.revision}</span>
+            <span class="doc-row-date">${formatDate(d.created_at)}</span>
+            <div class="doc-row-actions">
+              <a class="doc-action-btn" href="${API}/documents/${d.id}/file" target="_blank" title="View/Download">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </a>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+  }).join('');
+}
+
+function docRenderHistory() {
+  const historyEl = document.getElementById('doc-history');
+  const emptyEl = document.getElementById('doc-empty');
+
+  const grouped = {};
+  _docAllDocs.forEach(d => {
+    const key = `${d.discipline_id}::${d.title}`;
+    if (!grouped[key]) grouped[key] = { title: d.title, discipline: d.discipline, discipline_id: d.discipline_id, docs: [] };
+    grouped[key].docs.push(d);
+  });
+
+  const groups = Object.values(grouped).filter(g => g.docs.length > 1);
+  groups.forEach(g => g.docs.sort((a, b) => b.revision - a.revision));
+
+  if (groups.length === 0 && _docAllDocs.length === 0) {
+    historyEl.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+
+  if (groups.length === 0) {
+    historyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">No documents have multiple revisions yet. Upload a new version of an existing document to start tracking history.</div>';
+    return;
+  }
+
+  historyEl.innerHTML = groups.map(g => `
+    <div class="doc-history-group">
+      <div class="doc-history-title">${esc(g.title)}</div>
+      <div class="doc-history-disc">${esc(g.discipline)} · ${g.docs.length} revisions</div>
+      <div class="doc-timeline">
+        ${g.docs.map((d, i) => `
+          <div class="doc-timeline-item">
+            <div class="doc-timeline-dot"></div>
+            <div class="doc-timeline-rev">Revision ${d.revision} ${i === 0 ? '<span style="color:var(--success);font-size:11px;margin-left:6px">CURRENT</span>' : ''}</div>
+            <div class="doc-timeline-meta">${esc(d.uploaded_by)} · ${formatDate(d.created_at)}</div>
+            ${d.notes ? `<div class="doc-timeline-notes">${esc(d.notes)}</div>` : ''}
+            <div class="doc-timeline-actions">
+              <a class="btn btn-sm btn-ghost" href="${API}/documents/${d.id}/file" target="_blank">View File</a>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
 
 // ── Impact Map interaction ────────────────────────────────────────
 
@@ -981,6 +1159,69 @@ const actions = {
     } catch (err) { toast(err.message); }
     btn.disabled = false;
     btn.innerHTML = "Compare &amp; Upload";
+    return false;
+  },
+
+  async deleteChange(changeId, projectId) {
+    if (!confirm('Delete this change? This cannot be undone.')) return;
+    try {
+      await fetch(API + `/changes/${changeId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      });
+      toast('Change deleted');
+      if (projectId) loaders.project(projectId);
+      else if (router.current === 'changes') loaders.allChanges();
+      else if (router.current === 'dashboard') loaders.dashboard();
+    } catch (err) { toast(err.message); }
+  },
+
+  async uploadDocument(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btn-upload-doc");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Uploading...';
+    try {
+      const title = document.getElementById("doc-upload-title").value;
+      const disciplineId = document.getElementById("doc-upload-discipline").value;
+      const file = document.getElementById("file-doc").files[0];
+      const notes = document.getElementById("doc-upload-notes").value || null;
+      if (!file) throw new Error("Please select a file");
+
+      const projectId = document.getElementById("doc-project-select").value;
+      if (!projectId) throw new Error("No project selected");
+
+      const form = new FormData();
+      form.append("file", file);
+
+      const token = localStorage.getItem("token");
+      let url = `${API}/projects/${projectId}/documents?discipline_id=${disciplineId}&title=${encodeURIComponent(title)}`;
+      if (notes) url += `&notes=${encodeURIComponent(notes)}`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || "Upload failed");
+      }
+      const data = await res.json();
+
+      ui.hideModal("modal-upload-doc");
+      document.getElementById("doc-upload-title").value = "";
+      document.getElementById("doc-upload-notes").value = "";
+      document.getElementById("file-doc").value = "";
+      const dropEl = document.getElementById("drop-doc");
+      dropEl.classList.remove("has-file");
+      dropEl.querySelector("p").textContent = "Drop or browse";
+
+      toast(`Document uploaded — Rev ${data.revision}`);
+      loaders.documents();
+    } catch (err) { toast(err.message); }
+    btn.disabled = false;
+    btn.innerHTML = "Upload";
     return false;
   },
 

@@ -105,6 +105,25 @@ class Review(Base):
     discipline = relationship("Discipline", back_populates="reviews")
 
 
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    discipline_id = Column(Integer, ForeignKey("disciplines.id"), nullable=False)
+    title = Column(String(300), nullable=False)
+    filename = Column(String(500), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    revision = Column(Integer, default=1, nullable=False)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    notes = Column(Text, nullable=True)
+
+    project = relationship("Project")
+    discipline = relationship("Discipline")
+    uploader = relationship("User")
+
+
 class Message(Base):
     __tablename__ = "messages"
 

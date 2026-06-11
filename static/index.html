@@ -29,6 +29,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
           Changes
         </a>
+        <a onclick="router.go('documents')" class="nav-link" data-page="documents">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          Documents
+        </a>
         <a onclick="router.go('reviews')" class="nav-link" data-page="reviews">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           Reviews
@@ -416,6 +420,44 @@
       </div>
     </div>
 
+    <!-- DOCUMENTS / ARCHIVE -->
+    <div id="page-documents" class="page hidden">
+      <div class="container">
+        <div class="page-header">
+          <div>
+            <h2>Document Archive</h2>
+            <p class="text-muted">Construction documents organized by discipline</p>
+          </div>
+          <div class="btn-group">
+            <select id="doc-project-select" class="doc-select" onchange="loaders.documents()"></select>
+            <button class="btn btn-primary" onclick="ui.showModal('modal-upload-doc')">+ Upload Document</button>
+          </div>
+        </div>
+
+        <!-- Discipline tabs -->
+        <div class="doc-tabs" id="doc-tabs">
+          <button class="doc-tab active" data-disc="all" onclick="docSelectTab('all')">All</button>
+          <button class="doc-tab" data-disc="history" onclick="docSelectTab('history')">Revision History</button>
+        </div>
+
+        <!-- Document list -->
+        <div id="doc-list" class="doc-list"></div>
+
+        <!-- Revision history view -->
+        <div id="doc-history" class="doc-history hidden"></div>
+
+        <!-- Empty state -->
+        <div id="doc-empty" class="empty-state hidden">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          </div>
+          <h3>No documents yet</h3>
+          <p>Upload construction documents to start building your archive.</p>
+          <button class="btn btn-primary" onclick="ui.showModal('modal-upload-doc')">+ Upload Document</button>
+        </div>
+      </div>
+    </div>
+
     <!-- REPORTS -->
     <div id="page-reports" class="page hidden">
       <div class="container">
@@ -517,6 +559,39 @@
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-change')">Cancel</button>
           <button type="submit" class="btn btn-primary" id="btn-upload-change">Compare &amp; Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD DOCUMENT -->
+  <div id="modal-upload-doc" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-doc')"></div>
+    <div class="modal-content">
+      <h3>Upload Document</h3>
+      <form onsubmit="return actions.uploadDocument(event)">
+        <div class="form-group">
+          <label>Document Title</label>
+          <input type="text" id="doc-upload-title" required placeholder="e.g. Grading & Drainage Plan">
+        </div>
+        <div class="form-group">
+          <label>Discipline</label>
+          <select id="doc-upload-discipline" required></select>
+        </div>
+        <div class="form-group">
+          <label>File</label>
+          <div class="file-drop" id="drop-doc">
+            <input type="file" id="file-doc" accept=".pdf,.png,.jpg,.jpeg,.tiff,.dwg,.dxf" required>
+            <p>Drop or browse</p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notes (optional)</label>
+          <textarea id="doc-upload-notes" rows="2" placeholder="Revision notes..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-doc')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-upload-doc">Upload</button>
         </div>
       </form>
     </div>

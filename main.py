@@ -16,6 +16,7 @@ from models import (
     Base,
     ChangeEvent,
     Discipline,
+    Document,
     Message,
     Project,
     ProjectMember,
@@ -38,6 +39,7 @@ Base.metadata.create_all(bind=engine)
 seed_disciplines()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+os.makedirs("uploads", exist_ok=True)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -214,7 +216,9 @@ async def create_change(
     db.add(event)
     db.flush()
 
-    discipline_ids = [m.discipline_id for m in db.query(ProjectMember).filter(ProjectMember.project_id == project_id).all()]
+    member_disc_ids = {m.discipline_id for m in db.query(ProjectMember).filter(ProjectMember.project_id == project_id).all()}
+    all_disc_ids = [d.id for d in db.query(Discipline).all()]
+    discipline_ids = list(member_disc_ids) if member_disc_ids else all_disc_ids
     for did in discipline_ids:
         db.add(Review(change_event_id=event.id, discipline_id=did, status="pending"))
 
@@ -281,6 +285,18 @@ def get_diff_image(change_id: int, db: Session = Depends(get_db)):
     if not event or not event.diff_image_path:
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(event.diff_image_path, media_type="image/png")
+
+
+@app.delete("/changes/{change_id}", status_code=204)
+def delete_change(change_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    event = db.query(ChangeEvent).filter(ChangeEvent.id == change_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Change not found")
+    if event.diff_image_path and os.path.exists(event.diff_image_path):
+        os.remove(event.diff_image_path)
+    db.query(Review).filter(Review.change_event_id == change_id).delete()
+    db.delete(event)
+    db.commit()
 
 
 # ── Reviews ──────────────────────────────────────────────────────────
@@ -465,6 +481,168 @@ def get_impact_map(project_id: int, change_id: int | None = None, user: User = D
             for c in changes
         ],
     }
+
+
+# ── Documents / Archive ─────────────────────────────────────────────
+
+ALLOWED_DOC_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".dwg", ".dxf"}
+
+
+@app.post("/projects/{project_id}/documents", status_code=201)
+async def upload_document(
+    project_id: int,
+    discipline_id: int,
+    title: str,
+    file: UploadFile = File(...),
+    notes: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    disc = db.query(Discipline).filter(Discipline.id == discipline_id).first()
+    if not disc:
+        raise HTTPException(status_code=404, detail="Discipline not found")
+
+    existing = (
+        db.query(Document)
+        .filter(
+            Document.project_id == project_id,
+            Document.discipline_id == discipline_id,
+            Document.title == title,
+        )
+        .order_by(Document.revision.desc())
+        .first()
+    )
+    next_rev = (existing.revision + 1) if existing else 1
+
+    import uuid
+    ext = os.path.splitext(file.filename or "file.pdf")[1].lower()
+    stored_name = f"doc_{uuid.uuid4().hex[:12]}{ext}"
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, stored_name)
+
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    doc = Document(
+        project_id=project_id,
+        discipline_id=discipline_id,
+        title=title,
+        filename=file.filename or "file",
+        file_path=file_path,
+        revision=next_rev,
+        uploaded_by=user.id,
+        notes=notes,
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
+    return {
+        "id": doc.id,
+        "project_id": project_id,
+        "discipline_id": discipline_id,
+        "discipline": disc.name,
+        "title": doc.title,
+        "filename": doc.filename,
+        "revision": doc.revision,
+        "notes": doc.notes,
+        "created_at": doc.created_at,
+    }
+
+
+@app.get("/projects/{project_id}/documents")
+def list_documents(
+    project_id: int,
+    discipline_id: int | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Document).filter(Document.project_id == project_id)
+    if discipline_id is not None:
+        q = q.filter(Document.discipline_id == discipline_id)
+    docs = q.order_by(Document.title, Document.revision.desc()).all()
+    return [
+        {
+            "id": d.id,
+            "title": d.title,
+            "filename": d.filename,
+            "discipline_id": d.discipline_id,
+            "discipline": d.discipline.name,
+            "revision": d.revision,
+            "notes": d.notes,
+            "uploaded_by": d.uploader.username,
+            "created_at": d.created_at,
+        }
+        for d in docs
+    ]
+
+
+@app.get("/documents/{doc_id}/file")
+def get_document_file(doc_id: int, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc or not doc.file_path:
+        raise HTTPException(status_code=404, detail="Document not found")
+    ext = os.path.splitext(doc.file_path)[1].lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".tiff": "image/tiff",
+    }
+    return FileResponse(
+        doc.file_path,
+        media_type=media_types.get(ext, "application/octet-stream"),
+        filename=doc.filename,
+    )
+
+
+@app.get("/projects/{project_id}/documents/history")
+def document_history(
+    project_id: int,
+    title: str,
+    discipline_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    docs = (
+        db.query(Document)
+        .filter(
+            Document.project_id == project_id,
+            Document.discipline_id == discipline_id,
+            Document.title == title,
+        )
+        .order_by(Document.revision.desc())
+        .all()
+    )
+    return [
+        {
+            "id": d.id,
+            "title": d.title,
+            "filename": d.filename,
+            "revision": d.revision,
+            "notes": d.notes,
+            "uploaded_by": d.uploader.username,
+            "created_at": d.created_at,
+        }
+        for d in docs
+    ]
+
+
+@app.delete("/documents/{doc_id}", status_code=204)
+def delete_document(doc_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if os.path.exists(doc.file_path):
+        os.remove(doc.file_path)
+    db.delete(doc)
+    db.commit()
 
 
 # ── Entrypoint ───────────────────────────────────────────────────────
