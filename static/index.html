@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kordyna — Lakeside Mixed Use</title>
+  <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
@@ -52,19 +52,44 @@
   <!-- ══ SIDEBAR ═══════════════════════════════════════════════════ -->
   <nav id="sidebar" class="sidebar hidden">
     <div class="sidebar-inner">
-      <div class="sidebar-logo" onclick="router.go('overview')">
+      <div class="sidebar-logo" onclick="router.go('workspace')">
         <img src="/static/logo.png" alt="Kordyna">
       </div>
 
+      <!-- My Workspace section -->
       <div class="sidebar-section">
+        <div class="sidebar-label">My Workspace</div>
+        <a class="sidebar-link" data-page="workspace" onclick="router.go('workspace')">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+          Home
+        </a>
+        <a class="sidebar-link" data-page="my-reviews" onclick="router.go('my-reviews')">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          My Reviews
+        </a>
+        <a class="sidebar-link" data-page="my-projects" onclick="router.go('my-projects')">
+          <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          My Projects
+        </a>
+        <a class="sidebar-link" data-page="my-activity" onclick="router.go('my-activity')">
+          <svg viewBox="0 0 24 24"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+          My Activity
+        </a>
+      </div>
+
+      <!-- Projects section (dynamic) -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Projects</div>
+        <div id="sidebar-projects"></div>
+      </div>
+
+      <!-- Project pages (shown when inside a project) -->
+      <div id="sidebar-project-nav" class="sidebar-section hidden">
+        <div class="sidebar-label" id="sidebar-project-label">Project</div>
         <a class="sidebar-link" data-page="overview" onclick="router.go('overview')">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           Overview
         </a>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-label">Project Management</div>
         <a class="sidebar-link" data-page="changes" onclick="router.go('changes')">
           <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
           Change Events
@@ -81,10 +106,6 @@
           <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
           Documents
         </a>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-label">Project Data</div>
         <a class="sidebar-link" data-page="disciplines" onclick="router.go('disciplines')">
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Disciplines
@@ -93,12 +114,9 @@
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Confidence
         </a>
-        <a class="sidebar-link" data-page="reports" onclick="router.go('reports')">
-          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Reports
-        </a>
       </div>
 
+      <!-- Admin -->
       <div class="sidebar-section sidebar-bottom">
         <div class="sidebar-label">Admin</div>
         <a class="sidebar-link" data-page="settings" onclick="router.go('settings')">
@@ -108,10 +126,10 @@
       </div>
 
       <div class="sidebar-user">
-        <div class="sidebar-avatar" id="sidebar-avatar">JM</div>
+        <div class="sidebar-avatar" id="sidebar-avatar">SV</div>
         <div class="sidebar-user-info">
-          <div class="sidebar-user-name" id="sidebar-user-name">Jorge Morgan</div>
-          <div class="sidebar-user-role">Project Admin</div>
+          <div class="sidebar-user-name" id="sidebar-user-name">Sara Vega</div>
+          <div class="sidebar-user-role" id="sidebar-user-role">Landscape Lead</div>
         </div>
       </div>
     </div>
@@ -120,19 +138,11 @@
   <!-- ══ TOPBAR ════════════════════════════════════════════════════ -->
   <div id="topbar" class="topbar hidden">
     <div class="topbar-left">
-      <div class="topbar-project">
-        <span class="topbar-project-name">Lakeside Mixed Use</span>
-        <span class="topbar-separator">·</span>
-        <span class="topbar-project-org">ACME Civil</span>
+      <div class="topbar-project" id="topbar-project-info">
+        <span class="topbar-project-name" id="topbar-project-name">My Workspace</span>
       </div>
     </div>
-    <div class="topbar-center">
-      <div class="topbar-confidence">
-        <svg class="topbar-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span class="topbar-confidence-val" id="topbar-confidence">92%</span>
-        <span class="topbar-confidence-label">Project Confidence</span>
-      </div>
-    </div>
+    <div class="topbar-center" id="topbar-center"></div>
     <div class="topbar-right">
       <div class="topbar-search">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -143,24 +153,112 @@
         <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <span class="topbar-notif-dot"></span>
       </button>
-      <div class="topbar-avatar" id="topbar-avatar">JM</div>
+      <div class="topbar-avatar" id="topbar-avatar">SV</div>
     </div>
   </div>
 
   <!-- ══ MAIN CONTENT ══════════════════════════════════════════════ -->
   <main id="main" class="main">
 
-    <!-- PAGE: OVERVIEW ──────────────────────────────────────────── -->
+    <!-- PAGE: MY WORKSPACE ──────────────────────────────────────── -->
+    <div id="page-workspace" class="page hidden">
+      <div class="page-container ws-container">
+        <!-- Greeting -->
+        <div class="ws-greeting" id="ws-greeting"></div>
+
+        <!-- Primary Action Card -->
+        <div class="ws-action-card" id="ws-action-card"></div>
+
+        <div class="ws-grid">
+          <div class="ws-main">
+            <!-- My Reviews Inbox -->
+            <div class="ws-section">
+              <div class="ws-section-header">
+                <h2 class="ws-section-title">My Reviews</h2>
+                <a class="panel-link" onclick="router.go('my-reviews')">View all →</a>
+              </div>
+              <div id="ws-reviews" class="ws-inbox"></div>
+            </div>
+
+            <!-- My Projects -->
+            <div class="ws-section">
+              <div class="ws-section-header">
+                <h2 class="ws-section-title">My Projects</h2>
+              </div>
+              <div id="ws-projects" class="ws-project-grid"></div>
+            </div>
+          </div>
+
+          <div class="ws-side">
+            <!-- Recent Activity -->
+            <div class="ws-section">
+              <div class="ws-section-header">
+                <h2 class="ws-section-title">Recent Activity</h2>
+              </div>
+              <div id="ws-activity"></div>
+            </div>
+
+            <!-- Accountability -->
+            <div class="ws-section">
+              <div class="ws-section-header">
+                <h2 class="ws-section-title">My Accountability</h2>
+              </div>
+              <div id="ws-accountability" class="ws-acc-grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: MY REVIEWS ────────────────────────────────────────── -->
+    <div id="page-my-reviews" class="page hidden">
+      <div class="page-container">
+        <div class="page-top">
+          <div>
+            <h1 class="page-title">My Reviews</h1>
+            <p class="page-desc">Reviews assigned to you across all projects</p>
+          </div>
+        </div>
+        <div id="my-reviews-list" class="ws-inbox"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: MY PROJECTS ───────────────────────────────────────── -->
+    <div id="page-my-projects" class="page hidden">
+      <div class="page-container">
+        <div class="page-top">
+          <div>
+            <h1 class="page-title">My Projects</h1>
+            <p class="page-desc">All projects you're a member of</p>
+          </div>
+        </div>
+        <div id="my-projects-grid" class="ws-project-grid ws-project-grid-full"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: MY ACTIVITY ───────────────────────────────────────── -->
+    <div id="page-my-activity" class="page hidden">
+      <div class="page-container">
+        <div class="page-top">
+          <div>
+            <h1 class="page-title">My Activity</h1>
+            <p class="page-desc">Your recent actions across all projects</p>
+          </div>
+        </div>
+        <div id="my-activity-list"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: PROJECT OVERVIEW ──────────────────────────────────── -->
     <div id="page-overview" class="page hidden">
       <div class="page-container">
         <div class="overview-header">
           <div>
             <div class="overview-project-label">Project Overview</div>
-            <h1 class="overview-title">Lakeside Mixed Use</h1>
+            <h1 class="overview-title" id="overview-title">Lakeside Mixed Use</h1>
           </div>
         </div>
 
-        <!-- KPI Strip -->
         <div class="kpi-strip">
           <div class="kpi-card kpi-primary">
             <div class="kpi-icon-wrap">
@@ -197,11 +295,8 @@
           </div>
         </div>
 
-        <!-- Main grid -->
         <div class="overview-grid">
-          <!-- Left column -->
           <div class="overview-left">
-            <!-- Recent Change Events -->
             <div class="panel">
               <div class="panel-header">
                 <h2 class="panel-title">Recent Change Events</h2>
@@ -209,19 +304,12 @@
               </div>
               <div id="overview-changes" class="panel-body"></div>
             </div>
-
-            <!-- Confidence Factors -->
             <div class="panel">
-              <div class="panel-header">
-                <h2 class="panel-title">Confidence Factors</h2>
-              </div>
+              <div class="panel-header"><h2 class="panel-title">Confidence Factors</h2></div>
               <div id="overview-factors" class="panel-body"></div>
             </div>
           </div>
-
-          <!-- Right column -->
           <div class="overview-right">
-            <!-- Review Progress -->
             <div class="panel">
               <div class="panel-header">
                 <h2 class="panel-title">Review Progress</h2>
@@ -229,12 +317,8 @@
               </div>
               <div id="overview-reviews" class="panel-body"></div>
             </div>
-
-            <!-- Activity -->
             <div class="panel">
-              <div class="panel-header">
-                <h2 class="panel-title">Recent Activity</h2>
-              </div>
+              <div class="panel-header"><h2 class="panel-title">Recent Activity</h2></div>
               <div id="overview-activity" class="panel-body"></div>
             </div>
           </div>
@@ -284,23 +368,16 @@
             <span class="cd-status" id="cd-status"></span>
           </div>
         </div>
-
         <div class="cd-layout">
-          <!-- Main area -->
           <div class="cd-main">
-            <!-- Summary -->
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Summary</h2></div>
               <div class="panel-body" id="cd-summary"></div>
             </div>
-
-            <!-- Affected Documents -->
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Affected Documents</h2></div>
               <div class="panel-body" id="cd-documents"></div>
             </div>
-
-            <!-- Impact Map -->
             <div class="panel">
               <div class="panel-header">
                 <h2 class="panel-title">Impact Map</h2>
@@ -310,35 +387,24 @@
                 <svg id="cd-impact-svg" width="100%" height="100%"></svg>
               </div>
             </div>
-
-            <!-- Activity Timeline -->
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Activity Timeline</h2></div>
               <div class="panel-body" id="cd-timeline"></div>
             </div>
           </div>
-
-          <!-- Right panel -->
           <div class="cd-sidebar">
-            <!-- Review Status -->
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Review Status</h2></div>
               <div class="panel-body" id="cd-reviews"></div>
             </div>
-
-            <!-- Impacted Disciplines -->
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Impacted Disciplines</h2></div>
               <div class="panel-body" id="cd-disciplines"></div>
             </div>
-
-            <!-- Required Actions -->
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Required Actions</h2></div>
               <div class="panel-body" id="cd-actions"></div>
             </div>
-
-            <!-- Confidence Impact -->
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Confidence Impact</h2></div>
               <div class="panel-body" id="cd-confidence"></div>
@@ -361,9 +427,6 @@
             <span><i class="dot-pending"></i> Pending</span>
             <span><i class="dot-conflict"></i> Conflict</span>
             <span><i class="dot-none"></i> Not Impacted</span>
-            <span class="legend-sep"></span>
-            <span>── Direct</span>
-            <span>╌╌ Indirect</span>
           </div>
         </div>
         <div class="impact-body">
@@ -411,9 +474,7 @@
           <button class="btn btn-primary" onclick="ui.showModal('modal-upload-doc')">+ Upload Document</button>
         </div>
         <div class="doc-layout">
-          <div class="doc-list-col">
-            <div id="doc-accordion"></div>
-          </div>
+          <div class="doc-list-col"><div id="doc-accordion"></div></div>
           <div class="doc-detail-col" id="doc-detail-panel">
             <div class="doc-detail-empty">
               <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
@@ -427,12 +488,7 @@
     <!-- PAGE: DISCIPLINES ───────────────────────────────────────── -->
     <div id="page-disciplines" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">Disciplines</h1>
-            <p class="page-desc">Every discipline's workspace and coordination status</p>
-          </div>
-        </div>
+        <div class="page-top"><div><h1 class="page-title">Disciplines</h1><p class="page-desc">Every discipline's workspace and coordination status</p></div></div>
         <div id="disciplines-grid" class="disc-grid"></div>
       </div>
     </div>
@@ -468,14 +524,6 @@
       </div>
     </div>
 
-    <!-- PAGE: REPORTS ───────────────────────────────────────────── -->
-    <div id="page-reports" class="page hidden">
-      <div class="page-container">
-        <div class="page-top"><div><h1 class="page-title">Reports</h1><p class="page-desc">Analytics and coordination metrics</p></div></div>
-        <div class="empty-state"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><h3>Coming Soon</h3><p>Reports will include project confidence scores, review velocity, and discipline alignment metrics.</p></div>
-      </div>
-    </div>
-
     <!-- PAGE: SETTINGS ──────────────────────────────────────────── -->
     <div id="page-settings" class="page hidden">
       <div class="page-container">
@@ -487,8 +535,6 @@
   </main>
 
   <!-- ══ MODALS ════════════════════════════════════════════════════ -->
-
-  <!-- Modal: Upload Change -->
   <div id="modal-upload-change" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-change')"></div>
     <div class="modal-content">
@@ -507,7 +553,6 @@
     </div>
   </div>
 
-  <!-- Modal: Upload Document -->
   <div id="modal-upload-doc" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-doc')"></div>
     <div class="modal-content">
@@ -527,7 +572,6 @@
     </div>
   </div>
 
-  <!-- Modal: Flag Conflict -->
   <div id="modal-conflict" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-conflict')"></div>
     <div class="modal-content">
@@ -536,12 +580,7 @@
         <div class="field"><label>Conflict Description</label><textarea id="conflict-desc" rows="3" required placeholder="Describe the conflict..."></textarea></div>
         <div class="field"><label>Affected Document</label><input type="text" id="conflict-doc" placeholder="e.g. L3.1 Planting Plan"></div>
         <div class="field"><label>Severity</label>
-          <select id="conflict-severity">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
-          </select>
+          <select id="conflict-severity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
         </div>
         <label class="checkbox-field"><input type="checkbox" id="conflict-notify" checked> Notify project team</label>
         <div class="modal-actions">
@@ -553,7 +592,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-
   <script src="/static/app.js"></script>
 </body>
 </html>

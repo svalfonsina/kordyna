@@ -50,7 +50,7 @@ def landing():
 
 @app.get("/app", response_class=HTMLResponse)
 def app_page():
-    with open("static/index.html") as f:
+    with open("static/index.html", encoding="utf-8") as f:
         return f.read()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

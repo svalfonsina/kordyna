@@ -3,1123 +3,959 @@
    Application Logic
    ═══════════════════════════════════════════════════════════════════ */
 
-const API = window.location.origin;
+/* ── SAMPLE DATA ───────────────────────────────────────────────────── */
 
-// ── API HELPER ─────────────────────────────────────────────────────
-async function api(path, opts = {}) {
-  const headers = opts.headers || {};
-  const token = localStorage.getItem("token");
-  if (token) headers["Authorization"] = "Bearer " + token;
-  if (!(opts.body instanceof FormData) && opts.body) {
-    headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(opts.body);
-  }
-  const res = await fetch(API + path, { ...opts, headers });
-  if (res.status === 401) { auth.logout(); throw new Error("Unauthorized"); }
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-// ── SAMPLE DATA ────────────────────────────────────────────────────
 const DISCIPLINES = [
-  { id: 1, name: "Landscape Architecture", abbr: "LA", icon: "🌿", color: "#2ECC71" },
-  { id: 2, name: "Civil Engineering", abbr: "CE", icon: "🏗️", color: "#2E5BFF" },
-  { id: 3, name: "Irrigation", abbr: "IR", icon: "💧", color: "#00D1FF" },
-  { id: 4, name: "Architecture", abbr: "AR", icon: "🏛️", color: "#9B59B6" },
-  { id: 5, name: "Structural Engineering", abbr: "SE", icon: "🔩", color: "#F5A623" },
-  { id: 6, name: "MEP Engineering", abbr: "ME", icon: "⚡", color: "#E74C3C" },
-  { id: 7, name: "Contractor", abbr: "GC", icon: "🔨", color: "#8899B4" },
-  { id: 8, name: "Survey", abbr: "SV", icon: "📐", color: "#F39C12" },
-  { id: 9, name: "Traffic Engineering", abbr: "TE", icon: "🚦", color: "#1ABC9C" },
+  { id: 1, name: 'Architecture', abbr: 'ARCH', icon: '🏛️', color: '#2E5BFF', bg: 'rgba(46,91,255,0.15)' },
+  { id: 2, name: 'Structural', abbr: 'STR', icon: '🔩', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)' },
+  { id: 3, name: 'Civil', abbr: 'CIV', icon: '🛣️', color: '#0CCE6B', bg: 'rgba(12,206,107,0.15)' },
+  { id: 4, name: 'Mechanical', abbr: 'MECH', icon: '⚙️', color: '#FF8C42', bg: 'rgba(255,140,66,0.15)' },
+  { id: 5, name: 'Electrical', abbr: 'ELEC', icon: '⚡', color: '#FFA600', bg: 'rgba(255,166,0,0.15)' },
+  { id: 6, name: 'Plumbing', abbr: 'PLMB', icon: '🔧', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)' },
+  { id: 7, name: 'Landscape', abbr: 'LAND', icon: '🌿', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+  { id: 8, name: 'Fire Protection', abbr: 'FP', icon: '🔥', color: '#EF4565', bg: 'rgba(239,69,101,0.15)' },
+  { id: 9, name: 'Geotechnical', abbr: 'GEO', icon: '🪨', color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' }
 ];
 
 const USERS = [
-  { id: 1, name: "Jorge Morgan", initials: "JM", role: "Project Admin", discipline: null },
-  { id: 2, name: "Sara Vega", initials: "SV", role: "Landscape Lead", discipline: 1 },
-  { id: 3, name: "Tom Chen", initials: "TC", role: "Civil Lead", discipline: 2 },
-  { id: 4, name: "Maria Lopez", initials: "ML", role: "Irrigation Eng.", discipline: 3 },
-  { id: 5, name: "David Kim", initials: "DK", role: "Architect", discipline: 4 },
-  { id: 6, name: "Priya Patel", initials: "PP", role: "Structural Eng.", discipline: 5 },
-  { id: 7, name: "Alex Rivera", initials: "AR", role: "GC Super", discipline: 7 },
+  { id: 1, name: 'Sara Vega', initials: 'SV', discipline: 'Landscape' },
+  { id: 2, name: 'James Chen', initials: 'JC', discipline: 'Architecture' },
+  { id: 3, name: 'Maria Santos', initials: 'MS', discipline: 'Structural' },
+  { id: 4, name: 'Kevin Park', initials: 'KP', discipline: 'Civil' },
+  { id: 5, name: 'Diana Ross', initials: 'DR', discipline: 'Mechanical' },
+  { id: 6, name: 'Tom Baker', initials: 'TB', discipline: 'Electrical' },
+  { id: 7, name: 'Lisa Wang', initials: 'LW', discipline: 'Plumbing' }
+];
+
+const PROJECTS = [
+  {
+    id: 1, name: 'Lakeside Mixed Use', client: 'ACME Civil', confidence: 92,
+    changes: 4, pendingReviews: 5, conflicts: 1, docs: 14,
+    disciplines: [1,2,3,4,5,6,7],
+    role: 'Landscape Lead'
+  },
+  {
+    id: 2, name: 'Riverfront Development', client: 'Greenfield Corp', confidence: 84,
+    changes: 6, pendingReviews: 8, conflicts: 2, docs: 22,
+    disciplines: [1,2,3,5,7,9],
+    role: 'Landscape Coordinator'
+  },
+  {
+    id: 3, name: 'Town Center Renovation', client: 'City of Maplewood', confidence: 96,
+    changes: 2, pendingReviews: 1, conflicts: 0, docs: 9,
+    disciplines: [1,2,3,7],
+    role: 'Landscape Lead'
+  }
 ];
 
 const CHANGES = [
   {
-    id: "CE-001", title: "Grading Revision — East Retaining Wall",
-    status: "in_review", risk: "high", uploadedBy: 3,
-    docs: 3, date: "Jun 4, 2026",
-    impacted: [2, 1, 5, 7],
+    id: 'CE-041', title: 'Grading Revision at North Entry',
+    status: 'In Review', risk: 'High', date: 'Jun 9',
+    uploadedBy: 'Kevin Park', documents: 3,
+    impacted: ['Civil', 'Landscape', 'Structural'],
+    reviewProgress: 33, projectId: 1,
+    summary: 'Revised grading plan at the north vehicular entry to accommodate updated stormwater management requirements. Changes affect finished floor elevations for Building A and require retaining wall redesign along the northern property line.',
+    affectedDocs: ['C4.1 Grading Plan', 'C4.2 Stormwater Details', 'L3.1 Planting Plan'],
     reviews: [
-      { disc: 2, status: "reviewed", user: 3 },
-      { disc: 1, status: "pending", user: 2 },
-      { disc: 5, status: "flagged", user: 6 },
-      { disc: 7, status: "pending", user: 7 },
+      { discipline: 'Civil', status: 'Reviewed', by: 'Kevin Park', date: 'Jun 8' },
+      { discipline: 'Landscape', status: 'Pending', by: 'Sara Vega', date: null },
+      { discipline: 'Structural', status: 'Pending', by: 'Maria Santos', date: null }
     ],
-    summary: "Revised grading at the east retaining wall to accommodate updated stormwater management requirements. The wall height increases from 6 ft to 8.5 ft, which triggers structural review and impacts landscape planting areas along the eastern edge. Civil drawings C3.1 and C3.2 updated with new contour elevations.",
     timeline: [
-      { text: "<strong>Tom Chen</strong> uploaded new drawings C3.1, C3.2", time: "Jun 4, 10:32 AM", color: "var(--primary)" },
-      { text: "Diff engine detected <strong>14 change regions</strong>", time: "Jun 4, 10:33 AM", color: "var(--cyan)" },
-      { text: "Reviews routed to <strong>4 disciplines</strong>", time: "Jun 4, 10:33 AM", color: "var(--amber)" },
-      { text: "<strong>Tom Chen</strong> (Civil) marked as reviewed", time: "Jun 5, 2:15 PM", color: "var(--green)" },
-      { text: "<strong>Priya Patel</strong> (Structural) flagged conflict — wall exceeds load spec", time: "Jun 6, 9:45 AM", color: "var(--red)" },
-    ],
-    actions: [
-      { text: "Structural engineer to verify wall load calculations", done: false },
-      { text: "Landscape to confirm planting setback from revised wall", done: false },
-      { text: "Contractor to update construction sequence", done: false },
-      { text: "Civil drawings uploaded", done: true },
-    ],
-    affectedDocs: [
-      { code: "C3.1", name: "Grading Plan — East", rev: "Rev 3", status: "Updated" },
-      { code: "C3.2", name: "Retaining Wall Detail", rev: "Rev 2", status: "Updated" },
-      { code: "L2.1", name: "Planting Plan — East Edge", rev: "Rev 1", status: "Review Needed" },
-    ],
-    confidence: { score: 88, delta: -4 },
+      { text: 'Kevin Park uploaded new grading drawings', time: 'Jun 7, 2:30 PM', type: 'upload' },
+      { text: 'System detected 12 change regions across 3 sheets', time: 'Jun 7, 2:31 PM', type: 'system' },
+      { text: 'Reviews assigned to Civil, Landscape, Structural', time: 'Jun 7, 2:32 PM', type: 'system' },
+      { text: 'Kevin Park completed Civil review', time: 'Jun 8, 10:15 AM', type: 'review' },
+      { text: 'Sara Vega flagged potential conflict with planting areas', time: 'Jun 9, 9:00 AM', type: 'conflict' }
+    ]
   },
   {
-    id: "CE-002", title: "Irrigation Main Line Reroute",
-    status: "in_review", risk: "medium", uploadedBy: 4,
-    docs: 2, date: "Jun 2, 2026",
-    impacted: [3, 1, 2],
+    id: 'CE-040', title: 'MEP Coordination — Level 2 Ceiling',
+    status: 'Open', risk: 'Medium', date: 'Jun 8',
+    uploadedBy: 'Diana Ross', documents: 4,
+    impacted: ['Mechanical', 'Electrical', 'Plumbing', 'Architecture'],
+    reviewProgress: 50, projectId: 1,
+    summary: 'Ceiling space conflicts between HVAC ductwork and electrical conduit runs on Level 2. Requires coordination between MEP disciplines to establish routing priority and maintain minimum ceiling heights.',
+    affectedDocs: ['M2.1 HVAC Plan L2', 'E3.1 Power Plan L2', 'P2.1 Plumbing Plan L2', 'A5.2 RCP Level 2'],
     reviews: [
-      { disc: 3, status: "reviewed", user: 4 },
-      { disc: 1, status: "reviewed", user: 2 },
-      { disc: 2, status: "pending", user: 3 },
+      { discipline: 'Mechanical', status: 'Reviewed', by: 'Diana Ross', date: 'Jun 7' },
+      { discipline: 'Electrical', status: 'Reviewed', by: 'Tom Baker', date: 'Jun 8' },
+      { discipline: 'Plumbing', status: 'Pending', by: 'Lisa Wang', date: null },
+      { discipline: 'Architecture', status: 'Pending', by: 'James Chen', date: null }
     ],
-    summary: "Main irrigation line rerouted around Building B foundation to avoid conflict with structural footings. New route adds 120 LF of 4\" PVC and requires a pressure boost calculation. Landscape confirms planting zones remain within coverage.",
     timeline: [
-      { text: "<strong>Maria Lopez</strong> uploaded IR2.1 revision", time: "Jun 2, 3:15 PM", color: "var(--primary)" },
-      { text: "Diff engine detected <strong>8 change regions</strong>", time: "Jun 2, 3:16 PM", color: "var(--cyan)" },
-      { text: "<strong>Maria Lopez</strong> (Irrigation) marked as reviewed", time: "Jun 3, 11:00 AM", color: "var(--green)" },
-      { text: "<strong>Sara Vega</strong> (Landscape) marked as reviewed", time: "Jun 3, 4:30 PM", color: "var(--green)" },
-    ],
-    actions: [
-      { text: "Civil to confirm no utility conflicts on new route", done: false },
-      { text: "Irrigation coverage calculations updated", done: true },
-      { text: "Landscape confirmed planting coverage", done: true },
-    ],
-    affectedDocs: [
-      { code: "IR2.1", name: "Irrigation Plan — Building B", rev: "Rev 2", status: "Updated" },
-      { code: "L1.3", name: "Planting Plan — Building B", rev: "Rev 1", status: "Reviewed" },
-    ],
-    confidence: { score: 92, delta: 0 },
+      { text: 'Diana Ross uploaded revised HVAC routing', time: 'Jun 6, 4:00 PM', type: 'upload' },
+      { text: 'System detected 8 change regions', time: 'Jun 6, 4:01 PM', type: 'system' },
+      { text: 'Diana Ross completed Mechanical review', time: 'Jun 7, 11:00 AM', type: 'review' },
+      { text: 'Tom Baker completed Electrical review with notes', time: 'Jun 8, 3:30 PM', type: 'review' }
+    ]
   },
   {
-    id: "CE-003", title: "Parking Lot Restripe — ADA Compliance",
-    status: "approved", risk: "low", uploadedBy: 3,
-    docs: 1, date: "May 28, 2026",
-    impacted: [2, 9, 7],
+    id: 'CE-039', title: 'Foundation Redesign — Building B',
+    status: 'Conflict', risk: 'High', date: 'Jun 6',
+    uploadedBy: 'Maria Santos', documents: 2,
+    impacted: ['Structural', 'Civil', 'Geotechnical'],
+    reviewProgress: 67, projectId: 1,
+    summary: 'Updated foundation design for Building B based on revised geotechnical report. Deeper piles required in the southwest corner due to unexpected soil conditions.',
+    affectedDocs: ['S2.1 Foundation Plan', 'S2.2 Pile Schedule'],
     reviews: [
-      { disc: 2, status: "reviewed", user: 3 },
-      { disc: 9, status: "reviewed", user: null },
-      { disc: 7, status: "reviewed", user: 7 },
+      { discipline: 'Structural', status: 'Reviewed', by: 'Maria Santos', date: 'Jun 5' },
+      { discipline: 'Civil', status: 'Reviewed', by: 'Kevin Park', date: 'Jun 6' },
+      { discipline: 'Geotechnical', status: 'Conflict', by: null, date: null }
     ],
-    summary: "Parking lot restriped to add 2 additional ADA-compliant spaces per updated code requirement. Traffic flow patterns adjusted at entry/exit. All discipline reviews completed.",
     timeline: [
-      { text: "<strong>Tom Chen</strong> uploaded C5.1 revision", time: "May 28, 9:00 AM", color: "var(--primary)" },
-      { text: "All <strong>3 reviews</strong> completed", time: "May 30, 4:45 PM", color: "var(--green)" },
-      { text: "Change approved — no conflicts", time: "May 30, 5:00 PM", color: "var(--green)" },
-    ],
-    actions: [
-      { text: "ADA compliance verified", done: true },
-      { text: "Traffic flow updated", done: true },
-      { text: "Contractor confirmed schedule impact: none", done: true },
-    ],
-    affectedDocs: [
-      { code: "C5.1", name: "Parking Lot Plan", rev: "Rev 4", status: "Approved" },
-    ],
-    confidence: { score: 100, delta: +2 },
+      { text: 'Maria Santos uploaded revised foundation plans', time: 'Jun 4, 9:00 AM', type: 'upload' },
+      { text: 'System detected 5 change regions across 2 sheets', time: 'Jun 4, 9:01 AM', type: 'system' },
+      { text: 'Maria Santos completed Structural review', time: 'Jun 5, 2:00 PM', type: 'review' },
+      { text: 'Kevin Park completed Civil review', time: 'Jun 6, 10:00 AM', type: 'review' },
+      { text: 'Geotechnical flagged conflict — soil data discrepancy', time: 'Jun 6, 3:00 PM', type: 'conflict' }
+    ]
   },
   {
-    id: "CE-004", title: "Building B Foundation Depth Revision",
-    status: "open", risk: "critical", uploadedBy: 6,
-    docs: 2, date: "Jun 8, 2026",
-    impacted: [5, 2, 4, 6, 7],
+    id: 'CE-038', title: 'Landscape Irrigation Revision',
+    status: 'Resolved', risk: 'Low', date: 'Jun 3',
+    uploadedBy: 'Sara Vega', documents: 2,
+    impacted: ['Landscape', 'Civil'],
+    reviewProgress: 100, projectId: 1,
+    summary: 'Updated irrigation zones to match revised planting plan. Minor adjustments to head spacing and valve locations. No impact on civil utilities.',
+    affectedDocs: ['L4.1 Irrigation Plan', 'L4.2 Irrigation Details'],
     reviews: [
-      { disc: 5, status: "pending", user: 6 },
-      { disc: 2, status: "pending", user: 3 },
-      { disc: 4, status: "pending", user: 5 },
-      { disc: 6, status: "pending", user: null },
-      { disc: 7, status: "pending", user: 7 },
+      { discipline: 'Landscape', status: 'Reviewed', by: 'Sara Vega', date: 'Jun 2' },
+      { discipline: 'Civil', status: 'Reviewed', by: 'Kevin Park', date: 'Jun 3' }
     ],
-    summary: "Geotechnical report came back requiring deeper foundations for Building B. Footing depth increases from 4 ft to 7 ft. This affects MEP underground routing, civil utility depths, and potentially the architectural floor-to-floor heights. Highest-impact change event this cycle.",
     timeline: [
-      { text: "<strong>Priya Patel</strong> uploaded S1.2, S1.3", time: "Jun 8, 11:00 AM", color: "var(--primary)" },
-      { text: "Diff engine detected <strong>22 change regions</strong>", time: "Jun 8, 11:01 AM", color: "var(--cyan)" },
-      { text: "Reviews routed to <strong>5 disciplines</strong>", time: "Jun 8, 11:01 AM", color: "var(--amber)" },
-    ],
-    actions: [
-      { text: "Structural to finalize footing design", done: false },
-      { text: "Civil to adjust utility depth at Building B", done: false },
-      { text: "MEP to verify underground routing clearance", done: false },
-      { text: "Architecture to review floor-to-floor impact", done: false },
-      { text: "Contractor to re-estimate excavation scope", done: false },
-    ],
-    affectedDocs: [
-      { code: "S1.2", name: "Foundation Plan — Building B", rev: "Rev 2", status: "Updated" },
-      { code: "S1.3", name: "Footing Detail — Building B", rev: "Rev 1", status: "New" },
-    ],
-    confidence: { score: 78, delta: -14 },
-  },
+      { text: 'Sara Vega uploaded revised irrigation plans', time: 'Jun 1, 1:00 PM', type: 'upload' },
+      { text: 'System detected 3 change regions', time: 'Jun 1, 1:01 PM', type: 'system' },
+      { text: 'Sara Vega completed Landscape review', time: 'Jun 2, 10:00 AM', type: 'review' },
+      { text: 'Kevin Park completed Civil review — no impact', time: 'Jun 3, 9:00 AM', type: 'review' },
+      { text: 'Change event resolved — all reviews complete', time: 'Jun 3, 9:00 AM', type: 'system' }
+    ]
+  }
 ];
 
 const DOCUMENTS = [
-  { id: 1, code: "C3.1", title: "Grading Plan — East", discipline: 2, rev: 3, date: "Jun 4, 2026", linkedChange: "CE-001", revisions: [{n:3,date:"Jun 4, 2026",note:"Retaining wall grading update"},{n:2,date:"May 15, 2026",note:"Storm drainage adjustments"},{n:1,date:"Apr 2, 2026",note:"Initial issue"}] },
-  { id: 2, code: "C3.2", title: "Retaining Wall Detail", discipline: 2, rev: 2, date: "Jun 4, 2026", linkedChange: "CE-001", revisions: [{n:2,date:"Jun 4, 2026",note:"Height increase to 8.5 ft"},{n:1,date:"Apr 2, 2026",note:"Initial issue"}] },
-  { id: 3, code: "C5.1", title: "Parking Lot Plan", discipline: 2, rev: 4, date: "May 28, 2026", linkedChange: "CE-003", revisions: [{n:4,date:"May 28, 2026",note:"ADA restripe"},{n:3,date:"May 1, 2026",note:"Drain inlet relocation"},{n:2,date:"Apr 10, 2026",note:"Curb revisions"},{n:1,date:"Mar 15, 2026",note:"Initial issue"}] },
-  { id: 4, code: "L2.1", title: "Planting Plan — East Edge", discipline: 1, rev: 1, date: "Apr 5, 2026", linkedChange: "CE-001", revisions: [{n:1,date:"Apr 5, 2026",note:"Initial issue"}] },
-  { id: 5, code: "L1.3", title: "Planting Plan — Building B", discipline: 1, rev: 2, date: "Jun 3, 2026", linkedChange: "CE-002", revisions: [{n:2,date:"Jun 3, 2026",note:"Updated for irrigation reroute"},{n:1,date:"Apr 5, 2026",note:"Initial issue"}] },
-  { id: 6, code: "IR2.1", title: "Irrigation Plan — Building B", discipline: 3, rev: 2, date: "Jun 2, 2026", linkedChange: "CE-002", revisions: [{n:2,date:"Jun 2, 2026",note:"Main line reroute"},{n:1,date:"Apr 8, 2026",note:"Initial issue"}] },
-  { id: 7, code: "S1.2", title: "Foundation Plan — Building B", discipline: 5, rev: 2, date: "Jun 8, 2026", linkedChange: "CE-004", revisions: [{n:2,date:"Jun 8, 2026",note:"Deeper foundations per geotech"},{n:1,date:"Apr 1, 2026",note:"Initial issue"}] },
-  { id: 8, code: "S1.3", title: "Footing Detail — Building B", discipline: 5, rev: 1, date: "Jun 8, 2026", linkedChange: "CE-004", revisions: [{n:1,date:"Jun 8, 2026",note:"New detail for revised footings"}] },
-  { id: 9, code: "A2.1", title: "Floor Plan — Building B Level 1", discipline: 4, rev: 1, date: "Apr 3, 2026", linkedChange: null, revisions: [{n:1,date:"Apr 3, 2026",note:"Initial issue"}] },
-  { id:10, code: "A2.2", title: "Building Section — Building B", discipline: 4, rev: 1, date: "Apr 3, 2026", linkedChange: null, revisions: [{n:1,date:"Apr 3, 2026",note:"Initial issue"}] },
-  { id:11, code: "M1.1", title: "MEP Underground — Building B", discipline: 6, rev: 1, date: "Apr 10, 2026", linkedChange: null, revisions: [{n:1,date:"Apr 10, 2026",note:"Initial issue"}] },
-  { id:12, code: "C1.1", title: "Overall Site Plan", discipline: 2, rev: 2, date: "May 1, 2026", linkedChange: null, revisions: [{n:2,date:"May 1, 2026",note:"Phase 2 overlay added"},{n:1,date:"Mar 15, 2026",note:"Initial issue"}] },
-  { id:13, code: "SV1.1", title: "Topographic Survey", discipline: 8, rev: 1, date: "Mar 10, 2026", linkedChange: null, revisions: [{n:1,date:"Mar 10, 2026",note:"Initial survey"}] },
-  { id:14, code: "TE1.1", title: "Traffic Impact Study", discipline: 9, rev: 1, date: "Mar 20, 2026", linkedChange: null, revisions: [{n:1,date:"Mar 20, 2026",note:"Initial study"}] },
+  { id: 1, code: 'A1.1', title: 'Site Plan', discipline: 'Architecture', rev: 3, by: 'James Chen', date: 'Jun 5' },
+  { id: 2, code: 'A2.1', title: 'Floor Plan Level 1', discipline: 'Architecture', rev: 4, by: 'James Chen', date: 'Jun 4' },
+  { id: 3, code: 'A5.2', title: 'RCP Level 2', discipline: 'Architecture', rev: 2, by: 'James Chen', date: 'Jun 8' },
+  { id: 4, code: 'S2.1', title: 'Foundation Plan', discipline: 'Structural', rev: 3, by: 'Maria Santos', date: 'Jun 4' },
+  { id: 5, code: 'S2.2', title: 'Pile Schedule', discipline: 'Structural', rev: 2, by: 'Maria Santos', date: 'Jun 4' },
+  { id: 6, code: 'C4.1', title: 'Grading Plan', discipline: 'Civil', rev: 5, by: 'Kevin Park', date: 'Jun 7' },
+  { id: 7, code: 'C4.2', title: 'Stormwater Details', discipline: 'Civil', rev: 3, by: 'Kevin Park', date: 'Jun 7' },
+  { id: 8, code: 'M2.1', title: 'HVAC Plan Level 2', discipline: 'Mechanical', rev: 2, by: 'Diana Ross', date: 'Jun 6' },
+  { id: 9, code: 'E3.1', title: 'Power Plan Level 2', discipline: 'Electrical', rev: 2, by: 'Tom Baker', date: 'Jun 5' },
+  { id: 10, code: 'P2.1', title: 'Plumbing Plan Level 2', discipline: 'Plumbing', rev: 1, by: 'Lisa Wang', date: 'May 28' },
+  { id: 11, code: 'L3.1', title: 'Planting Plan', discipline: 'Landscape', rev: 3, by: 'Sara Vega', date: 'Jun 2' },
+  { id: 12, code: 'L4.1', title: 'Irrigation Plan', discipline: 'Landscape', rev: 4, by: 'Sara Vega', date: 'Jun 1' },
+  { id: 13, code: 'L4.2', title: 'Irrigation Details', discipline: 'Landscape', rev: 2, by: 'Sara Vega', date: 'Jun 1' },
+  { id: 14, code: 'FP1.1', title: 'Fire Sprinkler Plan', discipline: 'Fire Protection', rev: 1, by: 'Tom Baker', date: 'May 20' }
 ];
 
 const CONFIDENCE = {
   score: 92,
   factors: [
-    { name: "Review Completion", value: 85, desc: "85% of required discipline reviews are complete" },
-    { name: "Open Conflicts", value: 95, desc: "1 open conflict (Structural flagged wall load)" },
-    { name: "Impact Coverage", value: 90, desc: "All change events have impact maps assigned" },
-    { name: "Document Currency", value: 98, desc: "14 of 14 documents are current revision" },
-  ],
+    { name: 'Review Completion', score: 88, weight: 30, color: 'var(--green)' },
+    { name: 'Conflict Resolution', score: 85, weight: 25, color: 'var(--yellow)' },
+    { name: 'Impact Coverage', score: 96, weight: 25, color: 'var(--green)' },
+    { name: 'Document Currency', score: 98, weight: 20, color: 'var(--green)' }
+  ]
 };
 
 const ACTIVITY = [
-  { text: "<strong>Priya Patel</strong> uploaded Foundation Plan — Building B", time: "2h ago", color: "var(--red)" },
-  { text: "<strong>Priya Patel</strong> flagged conflict on CE-001 — wall exceeds load spec", time: "3d ago", color: "var(--red)" },
-  { text: "<strong>Tom Chen</strong> marked Civil review as complete on CE-001", time: "5d ago", color: "var(--green)" },
-  { text: "<strong>Sara Vega</strong> completed Landscape review on CE-002", time: "1w ago", color: "var(--green)" },
-  { text: "CE-003 Parking Lot Restripe — all reviews approved", time: "1w ago", color: "var(--green)" },
-  { text: "<strong>Maria Lopez</strong> rerouted irrigation main line (CE-002)", time: "1w ago", color: "var(--primary)" },
+  { text: '<strong>Kevin Park</strong> completed Civil review on CE-041', time: '2 hours ago', type: 'review' },
+  { text: '<strong>Sara Vega</strong> flagged conflict on CE-041 planting areas', time: '3 hours ago', type: 'conflict' },
+  { text: '<strong>Tom Baker</strong> completed Electrical review on CE-040', time: '5 hours ago', type: 'review' },
+  { text: '<strong>Diana Ross</strong> uploaded revised HVAC routing', time: '1 day ago', type: 'upload' },
+  { text: '<strong>Maria Santos</strong> uploaded foundation redesign', time: '2 days ago', type: 'upload' },
+  { text: '<strong>System</strong> resolved CE-038 — all reviews complete', time: '3 days ago', type: 'review' }
 ];
 
-// ── HELPERS ────────────────────────────────────────────────────────
-function $(id) { return document.getElementById(id); }
-function disc(id) { return DISCIPLINES.find(d => d.id === id) || { name: "Unknown", abbr: "??", icon: "❓", color: "#8899B4" }; }
-function user(id) { return USERS.find(u => u.id === id) || { name: "Unknown", initials: "??" }; }
+const MY_REVIEWS = [
+  { id: 1, change: 'CE-041', title: 'Grading Revision at North Entry', discipline: 'Landscape', status: 'pending', project: 'Lakeside Mixed Use', projectId: 1, time: '3h ago', dueIn: 'Due tomorrow' },
+  { id: 2, change: 'CE-052', title: 'Retaining Wall Redesign — Phase 2', discipline: 'Landscape', status: 'pending', project: 'Riverfront Development', projectId: 2, time: '6h ago', dueIn: 'Due in 2 days' },
+  { id: 3, change: 'CE-053', title: 'Courtyard Planting Revision', discipline: 'Landscape', status: 'pending', project: 'Riverfront Development', projectId: 2, time: '1d ago', dueIn: 'Due in 3 days' },
+  { id: 4, change: 'CE-019', title: 'Entry Landscape Buffer Update', discipline: 'Landscape', status: 'pending', project: 'Town Center Renovation', projectId: 3, time: '2d ago', dueIn: 'Due in 4 days' },
+  { id: 5, change: 'CE-040', title: 'MEP Coordination — Level 2 Ceiling', discipline: 'Landscape', status: 'conflict', project: 'Lakeside Mixed Use', projectId: 1, time: '1d ago', dueIn: 'Overdue' },
+  { id: 6, change: 'CE-050', title: 'Stormwater Basin Grading', discipline: 'Landscape', status: 'pending', project: 'Riverfront Development', projectId: 2, time: '3d ago', dueIn: 'Due in 5 days' },
+  { id: 7, change: 'CE-038', title: 'Landscape Irrigation Revision', discipline: 'Landscape', status: 'done', project: 'Lakeside Mixed Use', projectId: 1, time: '5d ago', dueIn: 'Completed' },
+  { id: 8, change: 'CE-015', title: 'Plaza Hardscape Revision', discipline: 'Landscape', status: 'done', project: 'Town Center Renovation', projectId: 3, time: '7d ago', dueIn: 'Completed' }
+];
 
-function statusBadge(s) {
-  const map = {
-    open: ["Open", "badge-blue"],
-    in_review: ["In Review", "badge-amber"],
-    approved: ["Approved", "badge-green"],
-    flagged: ["Conflict", "badge-red"],
-    pending: ["Pending", "badge-amber"],
-    reviewed: ["Reviewed", "badge-green"],
-  };
-  const [label, cls] = map[s] || [s, "badge-gray"];
-  return `<span class="badge ${cls}">${label}</span>`;
-}
+const MY_ACTIVITY_LOG = [
+  { text: 'You flagged a conflict on <strong>CE-041</strong> planting areas', time: '3 hours ago', type: 'conflict', project: 'Lakeside Mixed Use' },
+  { text: 'You completed review on <strong>CE-038</strong> Irrigation Revision', time: '3 days ago', type: 'review', project: 'Lakeside Mixed Use' },
+  { text: 'You uploaded revised planting plans for <strong>CE-053</strong>', time: '4 days ago', type: 'upload', project: 'Riverfront Development' },
+  { text: 'You completed review on <strong>CE-015</strong> Plaza Hardscape', time: '7 days ago', type: 'review', project: 'Town Center Renovation' },
+  { text: 'You commented on <strong>CE-050</strong> stormwater coordination', time: '8 days ago', type: 'comment', project: 'Riverfront Development' }
+];
 
-function riskBadge(r) {
-  const map = {
-    low: "badge-green", medium: "badge-amber", high: "badge-red", critical: "badge-red",
-  };
-  return `<span class="badge ${map[r] || 'badge-gray'}">${r.charAt(0).toUpperCase() + r.slice(1)}</span>`;
-}
 
-function progressBar(reviews, color) {
-  const done = reviews.filter(r => r.status === "reviewed").length;
-  const pct = Math.round((done / reviews.length) * 100);
-  const c = pct === 100 ? "var(--green)" : pct > 0 ? "var(--amber)" : "var(--text-dim)";
-  return `<div class="progress-mini">
-    <div class="progress-mini-bar"><div class="progress-mini-fill" style="width:${pct}%;background:${color || c}"></div></div>
-    <span class="progress-mini-text">${done}/${reviews.length}</span>
-  </div>`;
-}
+/* ── STATE ─────────────────────────────────────────────────────────── */
 
-function factorColor(v) {
-  if (v >= 90) return "var(--green)";
-  if (v >= 70) return "var(--amber)";
-  return "var(--red)";
-}
+let currentProject = null;
 
-// ── ROUTER ─────────────────────────────────────────────────────────
+/* ── ROUTER ────────────────────────────────────────────────────────── */
+
 const router = {
   current: null,
   go(page, data) {
-    document.querySelectorAll('#main > .page').forEach(p => p.classList.add('hidden'));
-    const el = $('page-' + page);
-    if (el) el.classList.remove('hidden');
+    document.querySelectorAll('.main .page').forEach(p => p.classList.add('hidden'));
+    const el = document.getElementById('page-' + page);
+    if (el) { el.classList.remove('hidden'); }
+    this.current = page;
+
     document.querySelectorAll('.sidebar-link').forEach(l => {
       l.classList.toggle('active', l.dataset.page === page);
     });
-    this.current = page;
+
+    updateTopbar(page);
+
     if (loaders[page]) loaders[page](data);
-    $('main').scrollTop = 0;
-  },
+    window.scrollTo(0, 0);
+  }
 };
 
-// ── AUTH ────────────────────────────────────────────────────────────
+
+/* ── AUTH ───────────────────────────────────────────────────────────── */
+
 const auth = {
+  token: localStorage.getItem('kordyna_token'),
+
   showTab(tab) {
-    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.auth-tab[onclick*="${tab}"]`)?.classList.add('active');
-    $('form-login').classList.toggle('hidden', tab !== 'login');
-    $('form-register').classList.toggle('hidden', tab !== 'register');
+    document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
+    document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
+    document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1)));
   },
+
   async login(e) {
     e.preventDefault();
-    const username = $('login-user').value;
-    const password = $('login-pass').value;
+    const user = document.getElementById('login-user').value;
+    const pass = document.getElementById('login-pass').value;
     try {
-      const form = new URLSearchParams();
-      form.append('username', username);
-      form.append('password', password);
-      const res = await fetch(API + '/token', { method: 'POST', body: form });
+      const body = new URLSearchParams({ username: user, password: pass });
+      const res = await fetch('/api/login', { method: 'POST', body });
       if (!res.ok) throw new Error('Invalid credentials');
       const data = await res.json();
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('username', username);
+      this.token = data.access_token;
+      localStorage.setItem('kordyna_token', this.token);
       this.enter();
     } catch (err) {
-      $('auth-error').textContent = err.message;
-      $('auth-error').classList.remove('hidden');
+      const el = document.getElementById('auth-error');
+      el.textContent = err.message;
+      el.classList.remove('hidden');
     }
     return false;
   },
+
   async register(e) {
     e.preventDefault();
+    const user = document.getElementById('reg-user').value;
+    const pass = document.getElementById('reg-pass').value;
+    const disc = document.getElementById('reg-discipline').value;
     try {
-      const body = { username: $('reg-user').value, password: $('reg-pass').value };
-      const disc = $('reg-discipline').value;
-      if (disc) body.discipline_id = parseInt(disc);
-      await api('/users', { method: 'POST', body });
-      $('login-user').value = body.username;
-      $('login-pass').value = body.password;
-      this.showTab('login');
-      $('auth-error').textContent = 'Account created. Sign in below.';
-      $('auth-error').classList.remove('hidden');
-      $('auth-error').style.color = 'var(--green)';
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass, discipline_id: disc || null })
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Registration failed'); }
+      const data = await res.json();
+      this.token = data.access_token;
+      localStorage.setItem('kordyna_token', this.token);
+      this.enter();
     } catch (err) {
-      $('auth-error').textContent = err.message;
-      $('auth-error').classList.remove('hidden');
+      const el = document.getElementById('auth-error');
+      el.textContent = err.message;
+      el.classList.remove('hidden');
     }
     return false;
   },
+
   enter() {
-    $('page-auth').classList.add('hidden');
-    $('sidebar').classList.remove('hidden');
-    $('topbar').classList.remove('hidden');
-    const name = localStorage.getItem('username') || 'User';
-    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || name.slice(0, 2).toUpperCase();
-    $('sidebar-user-name').textContent = name;
-    $('sidebar-avatar').textContent = initials;
-    $('topbar-avatar').textContent = initials;
-    router.go('overview');
+    document.getElementById('page-auth').classList.add('hidden');
+    document.getElementById('sidebar').classList.remove('hidden');
+    document.getElementById('topbar').classList.remove('hidden');
+    document.getElementById('main').style.display = '';
+    buildSidebar();
+    router.go('workspace');
   },
+
   logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    $('page-auth').classList.remove('hidden');
-    $('sidebar').classList.add('hidden');
-    $('topbar').classList.add('hidden');
-    document.querySelectorAll('#main > .page').forEach(p => p.classList.add('hidden'));
+    this.token = null;
+    localStorage.removeItem('kordyna_token');
+    currentProject = null;
+    document.getElementById('page-auth').classList.remove('hidden');
+    document.getElementById('sidebar').classList.add('hidden');
+    document.getElementById('topbar').classList.add('hidden');
+    document.querySelectorAll('.main .page').forEach(p => p.classList.add('hidden'));
   },
+
   check() {
-    if (localStorage.getItem('token')) { this.enter(); }
-  },
+    if (this.token) this.enter();
+    else {
+      document.getElementById('main').style.display = 'none';
+      loadDisciplineSelects();
+    }
+  }
 };
 
-// ── UI ─────────────────────────────────────────────────────────────
+
+/* ── PROJECT CONTEXT ───────────────────────────────────────────────── */
+
+function enterProject(projectId) {
+  currentProject = PROJECTS.find(p => p.id === projectId) || null;
+  updateSidebarProjectState();
+  router.go('overview');
+}
+
+function exitProject() {
+  currentProject = null;
+  updateSidebarProjectState();
+  router.go('workspace');
+}
+
+function updateSidebarProjectState() {
+  const projectNav = document.getElementById('sidebar-project-nav');
+  const projectLabel = document.getElementById('sidebar-project-label');
+
+  if (currentProject) {
+    projectNav.classList.remove('hidden');
+    projectLabel.textContent = currentProject.name;
+  } else {
+    projectNav.classList.add('hidden');
+  }
+
+  document.querySelectorAll('.sidebar-project-link').forEach(l => {
+    l.classList.toggle('active', currentProject && parseInt(l.dataset.projectId) === currentProject.id);
+  });
+}
+
+function updateTopbar(page) {
+  const centerEl = document.getElementById('topbar-center');
+  const infoEl = document.getElementById('topbar-project-info');
+
+  const workspacePages = ['workspace', 'my-reviews', 'my-projects', 'my-activity'];
+
+  if (workspacePages.includes(page)) {
+    centerEl.innerHTML = '';
+    infoEl.innerHTML = `<span class="topbar-project-name">My Workspace</span>`;
+  } else if (currentProject) {
+    infoEl.innerHTML = `
+      <span class="topbar-back-btn" onclick="exitProject()">← Workspace</span>
+      <span class="topbar-project-name">${currentProject.name}</span>
+      <span class="topbar-project-client">${currentProject.client}</span>`;
+    centerEl.innerHTML = `
+      <div class="topbar-confidence">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        ${currentProject.confidence}%
+      </div>`;
+  }
+}
+
+
+/* ── BUILD SIDEBAR ─────────────────────────────────────────────────── */
+
+function buildSidebar() {
+  const container = document.getElementById('sidebar-projects');
+  container.innerHTML = PROJECTS.map(p => {
+    const confColor = p.confidence >= 90 ? 'var(--green)' : p.confidence >= 80 ? 'var(--yellow)' : 'var(--red)';
+    return `<a class="sidebar-project-link" data-project-id="${p.id}" onclick="enterProject(${p.id})">
+      <span class="sidebar-project-dot" style="background:${confColor}"></span>
+      <span>${p.name}</span>
+      <span class="sidebar-project-conf">${p.confidence}%</span>
+    </a>`;
+  }).join('');
+}
+
+
+/* ── UI HELPERS ────────────────────────────────────────────────────── */
+
 const ui = {
-  showModal(id) { $(id).classList.remove('hidden'); },
-  hideModal(id) { $(id).classList.add('hidden'); },
-  toast(msg, type = 'success') {
-    const t = $('toast');
+  showModal(id) { document.getElementById(id).classList.remove('hidden'); },
+  hideModal(id) { document.getElementById(id).classList.add('hidden'); },
+  toast(msg) {
+    const t = document.getElementById('toast');
     t.textContent = msg;
-    t.className = `toast toast-${type}`;
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.classList.add('hidden'), 3000);
-  },
+    t.classList.remove('hidden');
+    t.classList.add('show');
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.classList.add('hidden'), 300); }, 3000);
+  }
 };
 
-// ── PAGE LOADERS ───────────────────────────────────────────────────
-const loaders = {};
+function disc(name) { return DISCIPLINES.find(d => d.name === name); }
+function statusBadge(s) {
+  const map = { 'Open': 'badge-open', 'In Review': 'badge-review', 'Resolved': 'badge-resolved', 'Conflict': 'badge-conflict' };
+  return `<span class="badge ${map[s] || 'badge-open'}">${s}</span>`;
+}
+function reviewStatusBadge(s) {
+  const map = { 'Reviewed': 'badge-resolved', 'Pending': 'badge-review', 'Conflict': 'badge-conflict' };
+  return `<span class="cd-review-status ${map[s]}" style="background:${s==='Reviewed'?'var(--green-bg)':s==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'}; color:${s==='Reviewed'?'var(--green)':s==='Conflict'?'var(--red)':'var(--yellow)'}">${s}</span>`;
+}
 
-// Overview
-loaders.overview = function () {
-  // Recent changes
-  $('overview-changes').innerHTML = CHANGES.slice(0, 4).map(c => `
-    <div class="ov-change" onclick="router.go('change-detail','${c.id}')">
-      <span class="ov-change-id">${c.id}</span>
-      <span class="ov-change-title truncate">${c.title}</span>
-      ${statusBadge(c.status)}
-    </div>
-  `).join('');
-
-  // Confidence factors
-  $('overview-factors').innerHTML = CONFIDENCE.factors.map(f => `
-    <div class="ov-factor">
-      <div class="ov-factor-top">
-        <span class="ov-factor-name">${f.name}</span>
-        <span class="ov-factor-val" style="color:${factorColor(f.value)}">${f.value}%</span>
-      </div>
-      <div class="ov-factor-bar">
-        <div class="ov-factor-fill" style="width:${f.value}%;background:${factorColor(f.value)}"></div>
-      </div>
-    </div>
-  `).join('');
-
-  // Review progress
-  const discReviews = {};
-  CHANGES.forEach(c => {
-    c.reviews.forEach(r => {
-      const d = disc(r.disc);
-      if (!discReviews[d.name]) discReviews[d.name] = { total: 0, done: 0 };
-      discReviews[d.name].total++;
-      if (r.status === 'reviewed') discReviews[d.name].done++;
+function loadDisciplineSelects() {
+  const selects = [document.getElementById('reg-discipline'), document.getElementById('doc-upload-discipline')];
+  selects.forEach(sel => {
+    if (!sel) return;
+    DISCIPLINES.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.name;
+      sel.appendChild(opt);
     });
   });
-  $('overview-reviews').innerHTML = Object.entries(discReviews).map(([name, data]) => {
-    const pct = Math.round((data.done / data.total) * 100);
-    const cls = pct === 100 ? 'badge-green' : pct > 0 ? 'badge-amber' : 'badge-gray';
-    return `<div class="ov-review">
-      <span class="ov-review-disc">${name}</span>
-      <span class="ov-review-badge badge ${cls}">${data.done}/${data.total}</span>
-    </div>`;
-  }).join('');
+}
 
-  // Activity
-  $('overview-activity').innerHTML = ACTIVITY.map(a => `
-    <div class="ov-activity">
-      <div class="ov-activity-dot" style="background:${a.color}"></div>
-      <div>
-        <div class="ov-activity-text">${a.text}</div>
-        <div class="ov-activity-time">${a.time}</div>
+
+/* ── PAGE LOADERS ──────────────────────────────────────────────────── */
+
+const loaders = {};
+
+/* ── WORKSPACE ─────────────────────────────────────────────────────── */
+
+loaders.workspace = function() {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  document.getElementById('ws-greeting').innerHTML = `
+    <div class="ws-greeting-line">Hey Sara 👋</div>
+    <div class="ws-greeting-sub">${greeting} — here's what needs your attention</div>`;
+
+  const pendingReviews = MY_REVIEWS.filter(r => r.status === 'pending').length;
+  const conflictReviews = MY_REVIEWS.filter(r => r.status === 'conflict').length;
+  const dueThisWeek = MY_REVIEWS.filter(r => r.status === 'pending').slice(0, 3).length;
+
+  document.getElementById('ws-action-card').innerHTML = `
+    <div class="ws-action-stat"><span class="ws-action-num blue">${pendingReviews}</span><span class="ws-action-label">Reviews Pending</span></div>
+    <div class="ws-action-sep"></div>
+    <div class="ws-action-stat"><span class="ws-action-num red">${conflictReviews}</span><span class="ws-action-label">Conflicts</span></div>
+    <div class="ws-action-sep"></div>
+    <div class="ws-action-stat"><span class="ws-action-num yellow">${dueThisWeek}</span><span class="ws-action-label">Due This Week</span></div>
+    <div class="ws-action-sep"></div>
+    <div class="ws-action-stat"><span class="ws-action-num">${PROJECTS.length}</span><span class="ws-action-label">Active Projects</span></div>`;
+
+  const reviewsHtml = MY_REVIEWS.filter(r => r.status !== 'done').slice(0, 5).map(r => {
+    const iconClass = r.status === 'conflict' ? 'conflict' : 'pending';
+    const iconText = r.status === 'conflict' ? '!' : '⏳';
+    const badgeClass = r.status;
+    const badgeText = r.status === 'conflict' ? 'Conflict' : 'Pending';
+    return `<div class="ws-review-item" onclick="enterProject(${r.projectId})">
+      <div class="ws-review-icon ${iconClass}">${iconText}</div>
+      <div class="ws-review-body">
+        <div class="ws-review-title">${r.change} · ${r.title}</div>
+        <div class="ws-review-meta"><span>${r.discipline}</span><span class="dot"></span><span>${r.dueIn}</span></div>
       </div>
-    </div>
-  `).join('');
+      <span class="ws-review-project">${r.project}</span>
+      <span class="ws-review-badge ${badgeClass}">${badgeText}</span>
+      <span class="ws-review-time">${r.time}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('ws-reviews').innerHTML = reviewsHtml || '<div class="empty-state"><p>No pending reviews</p></div>';
+
+  document.getElementById('ws-projects').innerHTML = PROJECTS.map(p => {
+    const confClass = p.confidence >= 90 ? 'high' : p.confidence >= 80 ? 'mid' : 'low';
+    return `<div class="ws-project-card" onclick="enterProject(${p.id})">
+      <div class="ws-project-card-header">
+        <div><div class="ws-project-name">${p.name}</div><div class="ws-project-client">${p.client}</div></div>
+        <div class="ws-project-conf ${confClass}">${p.confidence}%</div>
+      </div>
+      <div class="ws-project-stats">
+        <span><span class="ws-project-stat-val">${p.changes}</span> changes</span>
+        <span><span class="ws-project-stat-val">${p.pendingReviews}</span> pending</span>
+        <span><span class="ws-project-stat-val">${p.conflicts}</span> conflicts</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('ws-activity').innerHTML = ACTIVITY.slice(0, 5).map(a =>
+    `<div class="ws-activity-item">
+      <div class="ws-activity-dot ${a.type}"></div>
+      <div class="ws-activity-body">
+        <div class="ws-activity-text">${a.text}</div>
+        <div class="ws-activity-time">${a.time}</div>
+      </div>
+    </div>`
+  ).join('');
+
+  const completed = MY_REVIEWS.filter(r => r.status === 'done').length;
+  const avgTime = '1.2d';
+  document.getElementById('ws-accountability').innerHTML = `
+    <div class="ws-acc-card"><div class="ws-acc-val green">${completed}</div><div class="ws-acc-label">Completed</div></div>
+    <div class="ws-acc-card"><div class="ws-acc-val blue">${pendingReviews}</div><div class="ws-acc-label">In Queue</div></div>
+    <div class="ws-acc-card"><div class="ws-acc-val yellow">${avgTime}</div><div class="ws-acc-label">Avg Response</div></div>
+    <div class="ws-acc-card"><div class="ws-acc-val green">96%</div><div class="ws-acc-label">On-Time Rate</div></div>`;
 };
 
-// Change Events
-loaders.changes = function () {
-  $('changes-list').innerHTML = CHANGES.map(c => {
-    const u = user(c.uploadedBy);
-    return `<div class="change-row" onclick="router.go('change-detail','${c.id}')">
-      <span class="ct-col ct-id">${c.id}</span>
-      <span class="ct-col ct-title truncate">${c.title}</span>
-      <span class="ct-col ct-status">${statusBadge(c.status)}</span>
-      <span class="ct-col ct-by">${u.name}</span>
-      <span class="ct-col ct-docs">${c.docs}</span>
-      <span class="ct-col ct-disc">
-        <div class="disc-pills">${c.impacted.slice(0, 3).map(d => `<span class="disc-pill">${disc(d).abbr}</span>`).join('')}${c.impacted.length > 3 ? `<span class="disc-pill">+${c.impacted.length - 3}</span>` : ''}</div>
-      </span>
-      <span class="ct-col ct-progress">${progressBar(c.reviews)}</span>
-      <span class="ct-col ct-risk">${riskBadge(c.risk)}</span>
-      <span class="ct-col ct-date">${c.date}</span>
-      <span class="ct-col ct-actions">
-        <button class="btn-icon" onclick="event.stopPropagation();deleteChange('${c.id}')">
-          <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-        </button>
-      </span>
+/* ── MY REVIEWS (full page) ────────────────────────────────────────── */
+
+loaders['my-reviews'] = function() {
+  document.getElementById('my-reviews-list').innerHTML = MY_REVIEWS.map(r => {
+    const iconClass = r.status === 'conflict' ? 'conflict' : r.status === 'done' ? 'done' : 'pending';
+    const iconText = r.status === 'conflict' ? '!' : r.status === 'done' ? '✓' : '⏳';
+    const badgeClass = r.status === 'done' ? 'done' : r.status;
+    const badgeText = r.status === 'conflict' ? 'Conflict' : r.status === 'done' ? 'Completed' : 'Pending';
+    return `<div class="ws-review-item" onclick="enterProject(${r.projectId})">
+      <div class="ws-review-icon ${iconClass}">${iconText}</div>
+      <div class="ws-review-body">
+        <div class="ws-review-title">${r.change} · ${r.title}</div>
+        <div class="ws-review-meta"><span>${r.discipline}</span><span class="dot"></span><span>${r.dueIn}</span></div>
+      </div>
+      <span class="ws-review-project">${r.project}</span>
+      <span class="ws-review-badge ${badgeClass}">${badgeText}</span>
+      <span class="ws-review-time">${r.time}</span>
     </div>`;
   }).join('');
 };
 
-// Change Detail
-loaders['change-detail'] = function (id) {
-  const c = CHANGES.find(ch => ch.id === id);
+/* ── MY PROJECTS (full page) ───────────────────────────────────────── */
+
+loaders['my-projects'] = function() {
+  document.getElementById('my-projects-grid').innerHTML = PROJECTS.map(p => {
+    const confClass = p.confidence >= 90 ? 'high' : p.confidence >= 80 ? 'mid' : 'low';
+    return `<div class="ws-project-card" onclick="enterProject(${p.id})">
+      <div class="ws-project-card-header">
+        <div><div class="ws-project-name">${p.name}</div><div class="ws-project-client">${p.client}</div></div>
+        <div class="ws-project-conf ${confClass}">${p.confidence}%</div>
+      </div>
+      <div class="ws-project-stats">
+        <span><span class="ws-project-stat-val">${p.changes}</span> changes</span>
+        <span><span class="ws-project-stat-val">${p.pendingReviews}</span> pending</span>
+        <span><span class="ws-project-stat-val">${p.conflicts}</span> conflicts</span>
+        <span><span class="ws-project-stat-val">${p.docs}</span> docs</span>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+/* ── MY ACTIVITY (full page) ───────────────────────────────────────── */
+
+loaders['my-activity'] = function() {
+  document.getElementById('my-activity-list').innerHTML = MY_ACTIVITY_LOG.map(a =>
+    `<div class="ws-activity-item">
+      <div class="ws-activity-dot ${a.type}"></div>
+      <div class="ws-activity-body">
+        <div class="ws-activity-text">${a.text}</div>
+        <div class="ws-activity-time">${a.time} · ${a.project}</div>
+      </div>
+    </div>`
+  ).join('');
+};
+
+/* ── PROJECT OVERVIEW ──────────────────────────────────────────────── */
+
+loaders.overview = function() {
+  if (!currentProject) { router.go('workspace'); return; }
+
+  document.getElementById('overview-title').textContent = currentProject.name;
+  document.getElementById('kpi-confidence').textContent = currentProject.confidence + '%';
+  document.getElementById('kpi-changes').textContent = currentProject.changes;
+  document.getElementById('kpi-reviews').textContent = currentProject.pendingReviews;
+  document.getElementById('kpi-conflicts').textContent = currentProject.conflicts;
+  document.getElementById('kpi-docs').textContent = currentProject.docs;
+
+  const projectChanges = CHANGES.filter(c => c.projectId === currentProject.id);
+
+  document.getElementById('overview-changes').innerHTML = projectChanges.slice(0, 3).map(c =>
+    `<div class="cd-timeline-item" style="cursor:pointer" onclick="router.go('change-detail',{id:'${c.id}'})">
+      <div class="cd-timeline-dot" style="background:${c.status==='Conflict'?'var(--red)':c.status==='Resolved'?'var(--green)':'var(--yellow)'}"></div>
+      <div>
+        <div class="cd-timeline-text"><strong>${c.id}</strong> ${c.title}</div>
+        <div class="cd-timeline-time">${c.status} · ${c.date}</div>
+      </div>
+    </div>`
+  ).join('') || '<p style="color:var(--text-muted)">No change events</p>';
+
+  document.getElementById('overview-factors').innerHTML = CONFIDENCE.factors.map(f =>
+    `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:0.85rem">${f.name}</span>
+        <span style="font-size:0.85rem;font-weight:700">${f.score}%</span>
+      </div>
+      <div class="ct-progress-bar"><div class="ct-progress-fill" style="width:${f.score}%;background:${f.color}"></div></div>
+    </div>`
+  ).join('');
+
+  const projectReviews = [];
+  projectChanges.forEach(c => c.reviews.forEach(r => projectReviews.push({ ...r, change: c.id, changeTitle: c.title })));
+  document.getElementById('overview-reviews').innerHTML = projectReviews.filter(r => r.status !== 'Reviewed').slice(0, 4).map(r =>
+    `<div class="cd-review-row">
+      <div class="cd-review-disc"><span>${r.discipline}</span><span style="color:var(--text-muted);font-size:0.78rem"> · ${r.change}</span></div>
+      ${reviewStatusBadge(r.status)}
+    </div>`
+  ).join('') || '<p style="color:var(--text-muted)">All reviews complete</p>';
+
+  document.getElementById('overview-activity').innerHTML = ACTIVITY.slice(0, 4).map(a =>
+    `<div class="cd-timeline-item">
+      <div class="cd-timeline-dot" style="background:${a.type==='conflict'?'var(--red)':a.type==='upload'?'var(--primary)':'var(--green)'}"></div>
+      <div><div class="cd-timeline-text">${a.text}</div><div class="cd-timeline-time">${a.time}</div></div>
+    </div>`
+  ).join('');
+};
+
+/* ── CHANGES LIST ──────────────────────────────────────────────────── */
+
+loaders.changes = function() {
+  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
+  document.getElementById('changes-list').innerHTML = projectChanges.map(c =>
+    `<div class="change-row" onclick="router.go('change-detail',{id:'${c.id}'})">
+      <span class="ct-id">${c.id}</span>
+      <span class="ct-title">${c.title}</span>
+      <span class="ct-status">${statusBadge(c.status)}</span>
+      <span>${c.uploadedBy}</span>
+      <span>${c.documents}</span>
+      <span>${c.impacted.length} disciplines</span>
+      <span><div class="ct-progress-bar"><div class="ct-progress-fill" style="width:${c.reviewProgress}%"></div></div></span>
+      <span class="ct-risk risk-${c.risk.toLowerCase()}">${c.risk}</span>
+      <span class="ct-date">${c.date}</span>
+      <span class="ct-actions"><svg viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg></span>
+    </div>`
+  ).join('');
+};
+
+/* ── CHANGE DETAIL ─────────────────────────────────────────────────── */
+
+loaders['change-detail'] = function(data) {
+  const c = CHANGES.find(x => x.id === (data && data.id));
   if (!c) return;
 
-  $('cd-id').textContent = c.id;
-  $('cd-title').textContent = c.title;
-  $('cd-meta').innerHTML = `
-    <span>Uploaded by ${user(c.uploadedBy).name}</span>
-    <span>·</span>
-    <span>${c.date}</span>
-    <span>·</span>
-    <span>${c.docs} documents</span>
-  `;
-  $('cd-status').innerHTML = statusBadge(c.status).replace('badge ', 'badge cd-status-badge ');
-  $('cd-status').className = 'cd-status';
+  document.getElementById('cd-id').textContent = c.id;
+  document.getElementById('cd-title').textContent = c.title;
+  document.getElementById('cd-meta').textContent = `Uploaded by ${c.uploadedBy} · ${c.date} · ${c.documents} documents`;
 
-  // Summary
-  $('cd-summary').innerHTML = `<p class="cd-summary-text">${c.summary}</p>`;
+  const statusClass = c.status === 'Resolved' ? 'badge-resolved' : c.status === 'Conflict' ? 'badge-conflict' : 'badge-review';
+  document.getElementById('cd-status').className = 'cd-status ' + statusClass;
+  document.getElementById('cd-status').textContent = c.status;
+  document.getElementById('cd-status').style.background = c.status === 'Resolved' ? 'var(--green-bg)' : c.status === 'Conflict' ? 'var(--red-bg)' : 'var(--yellow-bg)';
+  document.getElementById('cd-status').style.color = c.status === 'Resolved' ? 'var(--green)' : c.status === 'Conflict' ? 'var(--red)' : 'var(--yellow)';
 
-  // Affected docs
-  $('cd-documents').innerHTML = c.affectedDocs.map(d => `
-    <div class="cd-doc">
-      <div class="cd-doc-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
-      <div class="cd-doc-info">
-        <div class="cd-doc-name">${d.code} — ${d.name}</div>
-        <div class="cd-doc-meta">${d.rev}</div>
-      </div>
-      <div class="cd-doc-badge">${statusBadge(d.status === 'Updated' ? 'in_review' : d.status === 'Approved' ? 'approved' : d.status === 'Reviewed' ? 'reviewed' : 'pending')}</div>
-    </div>
-  `).join('');
+  document.getElementById('cd-summary').innerHTML = `<p style="line-height:1.7;color:var(--text-dim)">${c.summary}</p>`;
 
-  // Mini impact map
-  renderMiniImpact(c);
+  document.getElementById('cd-documents').innerHTML = c.affectedDocs.map(d =>
+    `<div class="cd-doc-item"><span class="cd-doc-icon">📄</span><span>${d}</span></div>`
+  ).join('');
 
-  // Timeline
-  $('cd-timeline').innerHTML = c.timeline.map((t, i) => `
-    <div class="tl-item">
-      <div class="tl-dot-wrap">
-        <div class="tl-dot" style="background:${t.color}"></div>
-        ${i < c.timeline.length - 1 ? '<div class="tl-line"></div>' : ''}
-      </div>
-      <div class="tl-body">
-        <div class="tl-text">${t.text}</div>
-        <div class="tl-time">${t.time}</div>
-      </div>
-    </div>
-  `).join('');
+  document.getElementById('cd-reviews').innerHTML = c.reviews.map(r =>
+    `<div class="cd-review-row"><div class="cd-review-disc">${r.discipline}</div>${reviewStatusBadge(r.status)}</div>`
+  ).join('');
 
-  // Review status
-  $('cd-reviews').innerHTML = c.reviews.map(r => {
-    const d = disc(r.disc);
-    const iconBg = r.status === 'reviewed' ? 'var(--green-dim)' : r.status === 'flagged' ? 'var(--red-dim)' : 'var(--amber-dim)';
-    const icon = r.status === 'reviewed' ? '✓' : r.status === 'flagged' ? '⚠' : '⏳';
-    return `<div class="cd-rev">
-      <div class="cd-rev-icon" style="background:${iconBg}">${icon}</div>
-      <span class="cd-rev-name">${d.name}</span>
-      ${statusBadge(r.status)}
-    </div>`;
+  document.getElementById('cd-disciplines').innerHTML = c.impacted.map(name => {
+    const d = disc(name);
+    return `<span class="cd-disc-tag"><span class="cd-disc-dot" style="background:${d ? d.color : '#666'}"></span>${name}</span>`;
   }).join('');
 
-  // Impacted disciplines
-  $('cd-disciplines').innerHTML = c.impacted.map((id, i) => {
-    const d = disc(id);
-    const type = i === 0 ? 'Direct' : 'Indirect';
-    return `<div class="cd-disc-tag">
-      <div class="cd-disc-dot" style="background:${d.color}"></div>
-      <span class="cd-disc-name">${d.name}</span>
-      <span class="cd-disc-type">${type}</span>
-    </div>`;
-  }).join('');
+  document.getElementById('cd-timeline').innerHTML = c.timeline.map(t =>
+    `<div class="cd-timeline-item"><div class="cd-timeline-dot" style="background:${t.type==='conflict'?'var(--red)':t.type==='upload'?'var(--primary)':'var(--green)'}"></div><div><div class="cd-timeline-text">${t.text}</div><div class="cd-timeline-time">${t.time}</div></div></div>`
+  ).join('');
 
-  // Actions
-  $('cd-actions').innerHTML = c.actions.map(a => `
-    <div class="cd-action">
-      <div class="cd-action-check ${a.done ? 'done' : ''}">${a.done ? '✓' : ''}</div>
-      <span class="cd-action-text ${a.done ? 'done' : ''}">${a.text}</span>
-    </div>
-  `).join('');
+  document.getElementById('cd-actions').innerHTML = c.reviews.filter(r => r.status !== 'Reviewed').map(r =>
+    `<div class="cd-action-item"><span class="cd-action-bullet"></span><span>Complete ${r.discipline} review</span></div>`
+  ).join('') || '<p style="color:var(--text-muted)">No outstanding actions</p>';
 
-  // Confidence
-  const deltaColor = c.confidence.delta >= 0 ? 'var(--green)' : 'var(--red)';
-  const deltaSign = c.confidence.delta >= 0 ? '+' : '';
-  $('cd-confidence').innerHTML = `
-    <div class="cd-conf-score">
-      <div class="cd-conf-val" style="color:${factorColor(c.confidence.score)}">${c.confidence.score}%</div>
-      <div class="cd-conf-delta" style="color:${deltaColor}">${deltaSign}${c.confidence.delta}% from baseline</div>
-    </div>
-  `;
+  const confImpact = c.status === 'Resolved' ? '+2%' : c.status === 'Conflict' ? '-5%' : '-2%';
+  const confColor = c.status === 'Resolved' ? 'var(--green)' : 'var(--red)';
+  document.getElementById('cd-confidence').innerHTML = `
+    <div class="cd-conf-row"><span>Impact on confidence</span><span style="font-weight:700;color:${confColor}">${confImpact}</span></div>
+    <div class="cd-conf-row"><span>Reviews complete</span><span style="font-weight:700">${c.reviews.filter(r=>r.status==='Reviewed').length}/${c.reviews.length}</span></div>
+    <div class="cd-conf-row"><span>Risk level</span><span class="ct-risk risk-${c.risk.toLowerCase()}" style="font-weight:700">${c.risk}</span></div>`;
+
+  drawMiniImpactMap(c);
 };
 
-// Impact Map
-loaders.impact = function () {
-  const sel = $('impact-change-select');
-  sel.innerHTML = '<option value="all">All Change Events</option>' +
-    CHANGES.map(c => `<option value="${c.id}">${c.id} — ${c.title}</option>`).join('');
+/* ── IMPACT MAP ────────────────────────────────────────────────────── */
+
+loaders.impact = function() {
+  const sel = document.getElementById('impact-change-select');
+  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
+  sel.innerHTML = projectChanges.map(c => `<option value="${c.id}">${c.id} — ${c.title}</option>`).join('');
   renderImpactMap();
 };
 
-// Reviews
-loaders.reviews = function () { reviewTab('all'); };
-
-// Documents
-loaders.documents = function () { renderDocuments(); };
-
-// Disciplines
-loaders.disciplines = function () { renderDisciplines(); };
-
-// Discipline Detail
-loaders['discipline-detail'] = function (discId) { renderDisciplineDetail(discId); };
-
-// Confidence
-loaders.confidence = function () { renderConfidence(); };
-
-// ── RENDER: Mini Impact Map ────────────────────────────────────────
-function renderMiniImpact(change) {
-  const svg = $('cd-impact-svg');
-  if (!svg) return;
-  const w = svg.parentElement.clientWidth || 600;
-  const h = 260;
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  const cx = w / 2, cy = h / 2;
-  const radius = 90;
-  let html = '';
-
-  // Edges
-  change.impacted.forEach((id, i) => {
-    const angle = (i / change.impacted.length) * Math.PI * 2 - Math.PI / 2;
-    const nx = cx + radius * Math.cos(angle);
-    const ny = cy + radius * Math.sin(angle);
-    const r = change.reviews.find(rv => rv.disc === id);
-    const color = r ? (r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--amber)') : 'var(--text-dim)';
-    const dash = i === 0 ? '' : 'stroke-dasharray="6,4"';
-    html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${color}" class="impact-edge" ${dash}/>`;
-  });
-
-  // Center
-  html += `<circle cx="${cx}" cy="${cy}" r="28" class="impact-center-circle"/>`;
-  html += `<text x="${cx}" y="${cy + 1}" class="impact-center-label" dy="0.35em">${change.id}</text>`;
-
-  // Nodes
-  change.impacted.forEach((id, i) => {
-    const d = disc(id);
-    const angle = (i / change.impacted.length) * Math.PI * 2 - Math.PI / 2;
-    const nx = cx + radius * Math.cos(angle);
-    const ny = cy + radius * Math.sin(angle);
-    const r = change.reviews.find(rv => rv.disc === id);
-    const color = r ? (r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--amber)') : 'var(--text-dim)';
-    html += `<g class="impact-node">
-      <circle cx="${nx}" cy="${ny}" r="24" class="impact-node-circle" stroke="${color}"/>
-      <text x="${nx}" y="${ny}" class="impact-node-label" dy="0.35em">${d.abbr}</text>
-    </g>`;
-  });
-
-  svg.innerHTML = html;
-}
-
-// ── RENDER: Full Impact Map ────────────────────────────────────────
 function renderImpactMap() {
-  const sel = $('impact-change-select');
-  const filter = sel ? sel.value : 'all';
-  const svg = $('impact-svg');
-  if (!svg) return;
-  const container = svg.parentElement;
-  const w = container.clientWidth || 800;
-  const h = container.clientHeight || 500;
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const changeId = document.getElementById('impact-change-select').value;
+  const change = CHANGES.find(c => c.id === changeId);
+  if (!change) return;
+  const svg = document.getElementById('impact-svg');
+  const w = svg.parentElement.offsetWidth;
+  const h = svg.parentElement.offsetHeight;
   const cx = w / 2, cy = h / 2;
-  const radius = Math.min(w, h) * 0.32;
+  let html = `<circle cx="${cx}" cy="${cy}" r="36" fill="var(--primary)" opacity="0.9"/>
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">${change.id}</text>
+    <text x="${cx}" y="${cy+10}" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">Source</text>`;
 
-  const allDiscs = new Map();
-  const changes = filter === 'all' ? CHANGES : CHANGES.filter(c => c.id === filter);
+  const allDiscs = DISCIPLINES;
+  const angleStep = (2 * Math.PI) / allDiscs.length;
+  const radius = Math.min(w, h) * 0.35;
 
-  changes.forEach(c => {
-    c.impacted.forEach(id => {
-      if (!allDiscs.has(id)) allDiscs.set(id, { reviewed: false, flagged: false, pending: false });
-      const r = c.reviews.find(rv => rv.disc === id);
-      if (r) {
-        if (r.status === 'reviewed') allDiscs.get(id).reviewed = true;
-        if (r.status === 'flagged') allDiscs.get(id).flagged = true;
-        if (r.status === 'pending') allDiscs.get(id).pending = true;
-      }
-    });
-  });
-
-  const nodes = Array.from(allDiscs.keys());
-  let html = '';
-
-  // Edges from center to each discipline
-  nodes.forEach((id, i) => {
-    const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+  allDiscs.forEach((d, i) => {
+    const angle = angleStep * i - Math.PI / 2;
     const nx = cx + radius * Math.cos(angle);
     const ny = cy + radius * Math.sin(angle);
-    const state = allDiscs.get(id);
-    const color = state.flagged ? 'var(--red)' : state.pending ? 'var(--amber)' : 'var(--green)';
-    html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${color}" class="impact-edge"/>`;
-  });
-
-  // Cross-edges between disciplines that share a change
-  changes.forEach(c => {
-    for (let i = 0; i < c.impacted.length; i++) {
-      for (let j = i + 1; j < c.impacted.length; j++) {
-        const ai = nodes.indexOf(c.impacted[i]);
-        const aj = nodes.indexOf(c.impacted[j]);
-        if (ai < 0 || aj < 0) continue;
-        const a1 = (ai / nodes.length) * Math.PI * 2 - Math.PI / 2;
-        const a2 = (aj / nodes.length) * Math.PI * 2 - Math.PI / 2;
-        html += `<line x1="${cx + radius * Math.cos(a1)}" y1="${cy + radius * Math.sin(a1)}"
-                        x2="${cx + radius * Math.cos(a2)}" y2="${cy + radius * Math.sin(a2)}"
-                        stroke="var(--border-light)" stroke-dasharray="4,4" class="impact-edge" opacity="0.4"/>`;
-      }
+    const review = change.reviews.find(r => r.discipline === d.name);
+    const isImpacted = change.impacted.includes(d.name);
+    let nodeColor = 'var(--text-muted)';
+    if (isImpacted && review) {
+      nodeColor = review.status === 'Reviewed' ? 'var(--green)' : review.status === 'Conflict' ? 'var(--red)' : 'var(--yellow)';
     }
-  });
-
-  // Center
-  html += `<circle cx="${cx}" cy="${cy}" r="32" class="impact-center-circle"/>`;
-  html += `<text x="${cx}" y="${cy}" class="impact-center-label" dy="-0.3em">CHANGE</text>`;
-  html += `<text x="${cx}" y="${cy}" class="impact-center-label" dy="1em" style="font-size:10px;opacity:0.8">${changes.length} event${changes.length !== 1 ? 's' : ''}</text>`;
-
-  // Nodes
-  nodes.forEach((id, i) => {
-    const d = disc(id);
-    const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
-    const nx = cx + radius * Math.cos(angle);
-    const ny = cy + radius * Math.sin(angle);
-    const state = allDiscs.get(id);
-    const color = state.flagged ? 'var(--red)' : state.pending ? 'var(--amber)' : 'var(--green)';
-    html += `<g class="impact-node" onclick="showImpactDetail(${id})">
-      <circle cx="${nx}" cy="${ny}" r="30" class="impact-node-circle" stroke="${color}"/>
-      <text x="${nx}" y="${ny - 6}" class="impact-node-label">${d.icon}</text>
-      <text x="${nx}" y="${ny + 10}" class="impact-node-label" style="font-size:10px">${d.abbr}</text>
+    if (isImpacted) {
+      html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nodeColor}" stroke-width="2" opacity="0.4"/>`;
+    }
+    html += `<g class="impact-node" onclick="showImpactDetail('${d.name}','${changeId}')">
+      <circle cx="${nx}" cy="${ny}" r="28" fill="${isImpacted ? nodeColor : 'var(--border)'}" opacity="${isImpacted ? 0.2 : 0.3}"/>
+      <circle cx="${nx}" cy="${ny}" r="28" fill="none" stroke="${isImpacted ? nodeColor : 'var(--border)'}" stroke-width="2"/>
+      <text x="${nx}" y="${ny-4}" text-anchor="middle" fill="var(--text)" font-size="14">${d.icon}</text>
+      <text x="${nx}" y="${ny+14}" text-anchor="middle" fill="var(--text-dim)" font-size="8" font-weight="600">${d.abbr}</text>
     </g>`;
   });
-
   svg.innerHTML = html;
 }
 
-function showImpactDetail(discId) {
-  const d = disc(discId);
-  const panel = $('impact-panel');
-  const relatedChanges = CHANGES.filter(c => c.impacted.includes(discId));
+function showImpactDetail(discName, changeId) {
+  const d = disc(discName);
+  const change = CHANGES.find(c => c.id === changeId);
+  const review = change ? change.reviews.find(r => r.discipline === discName) : null;
+  const isImpacted = change ? change.impacted.includes(discName) : false;
+  const panel = document.getElementById('impact-panel');
   panel.innerHTML = `
-    <div style="padding:20px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-        <span style="font-size:28px">${d.icon}</span>
-        <div>
-          <div style="font-weight:700;font-size:16px">${d.name}</div>
-          <div style="font-size:12px;color:var(--text-muted)">${d.abbr}</div>
-        </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:1.5rem">${d ? d.icon : ''}</span>
+        <div><div style="font-weight:700">${discName}</div><div style="font-size:0.78rem;color:var(--text-dim)">${isImpacted ? 'Impacted by this change' : 'Not impacted'}</div></div>
       </div>
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-dim);letter-spacing:0.06em;margin-bottom:10px">Related Changes</div>
-      ${relatedChanges.map(c => {
-        const r = c.reviews.find(rv => rv.disc === discId);
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="router.go('change-detail','${c.id}')">
-          <div style="font-weight:600;font-size:13px">${c.id} — ${c.title}</div>
-          <div style="margin-top:4px">${r ? statusBadge(r.status) : '<span class="badge badge-gray">Not Reviewed</span>'}</div>
-        </div>`;
-      }).join('')}
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-dim);letter-spacing:0.06em;margin:20px 0 10px">Documents</div>
-      ${DOCUMENTS.filter(doc => doc.discipline === discId).map(doc => `
-        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-          <div style="font-weight:600">${doc.code} — ${doc.title}</div>
-          <div style="font-size:11px;color:var(--text-muted)">Rev ${doc.rev} · ${doc.date}</div>
-        </div>
-      `).join('')}
-    </div>
-  `;
+      ${review ? `<div style="margin-bottom:12px"><span style="font-size:0.78rem;font-weight:600;padding:3px 8px;border-radius:4px;background:${review.status==='Reviewed'?'var(--green-bg)':review.status==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${review.status==='Reviewed'?'var(--green)':review.status==='Conflict'?'var(--red)':'var(--yellow)'}">${review.status}</span></div>` : ''}
+      ${review && review.by ? `<div style="font-size:0.82rem;color:var(--text-dim)">Reviewer: ${review.by}</div>` : ''}
+      ${review && review.date ? `<div style="font-size:0.82rem;color:var(--text-dim)">Reviewed: ${review.date}</div>` : ''}
+    </div>`;
 }
 
-// ── RENDER: Reviews ────────────────────────────────────────────────
+function drawMiniImpactMap(change) {
+  const svg = document.getElementById('cd-impact-svg');
+  if (!svg) return;
+  const w = svg.parentElement.offsetWidth;
+  const h = svg.parentElement.offsetHeight;
+  const cx = w / 2, cy = h / 2;
+  let html = `<circle cx="${cx}" cy="${cy}" r="24" fill="var(--primary)" opacity="0.9"/>
+    <text x="${cx}" y="${cy+4}" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">${change.id}</text>`;
+  const impacted = change.impacted.map(name => ({ ...disc(name), review: change.reviews.find(r => r.discipline === name) })).filter(Boolean);
+  const angleStep = (2 * Math.PI) / impacted.length;
+  const radius = Math.min(w, h) * 0.3;
+  impacted.forEach((d, i) => {
+    const angle = angleStep * i - Math.PI / 2;
+    const nx = cx + radius * Math.cos(angle);
+    const ny = cy + radius * Math.sin(angle);
+    const color = d.review ? (d.review.status === 'Reviewed' ? 'var(--green)' : d.review.status === 'Conflict' ? 'var(--red)' : 'var(--yellow)') : 'var(--text-muted)';
+    html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${color}" stroke-width="1.5" opacity="0.3"/>`;
+    html += `<circle cx="${nx}" cy="${ny}" r="20" fill="${color}" opacity="0.15"/><circle cx="${nx}" cy="${ny}" r="20" fill="none" stroke="${color}" stroke-width="1.5"/>`;
+    html += `<text x="${nx}" y="${ny-2}" text-anchor="middle" font-size="12">${d.icon}</text>`;
+    html += `<text x="${nx}" y="${ny+12}" text-anchor="middle" fill="var(--text-dim)" font-size="7" font-weight="600">${d.abbr}</text>`;
+  });
+  svg.innerHTML = html;
+}
+
+/* ── REVIEWS ───────────────────────────────────────────────────────── */
+
+let currentReviewTab = 'all';
 function reviewTab(tab) {
-  document.querySelectorAll('.review-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.tab === tab);
-  });
-
-  let allReviews = [];
-  CHANGES.forEach(c => {
-    c.reviews.forEach(r => {
-      allReviews.push({ ...r, changeId: c.id, changeTitle: c.title });
-    });
-  });
-
-  if (tab === 'pending') allReviews = allReviews.filter(r => r.status === 'pending');
-  else if (tab === 'conflict') allReviews = allReviews.filter(r => r.status === 'flagged');
-  else if (tab === 'completed') allReviews = allReviews.filter(r => r.status === 'reviewed');
-  else if (tab === 'mine') allReviews = allReviews.filter(r => r.user === 1);
-
-  $('reviews-list').innerHTML = allReviews.length === 0
-    ? '<div class="empty-state"><p>No reviews match this filter</p></div>'
-    : allReviews.map(r => {
-      const d = disc(r.disc);
-      const u = r.user ? user(r.user) : null;
-      return `<div class="review-card" onclick="router.go('change-detail','${r.changeId}')">
-        <div class="review-card-left">
-          <div class="review-avatar" style="background:${d.color}20;color:${d.color}">${d.icon}</div>
-          <div class="review-info">
-            <div class="review-change">${r.changeId}</div>
-            <div class="review-disc">${d.name} Review</div>
-            <div class="review-sub">${r.changeTitle}${u ? ` · Assigned: ${u.name}` : ''}</div>
-          </div>
-        </div>
-        <div class="review-card-right">
-          ${statusBadge(r.status)}
-          ${r.status === 'pending' ? `
-            <div class="review-actions">
-              <button class="btn btn-success btn-sm" onclick="event.stopPropagation();approveReview('${r.changeId}',${r.disc})">Approve</button>
-              <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();ui.showModal('modal-conflict')">Flag</button>
-            </div>
-          ` : ''}
-        </div>
-      </div>`;
-    }).join('');
+  currentReviewTab = tab;
+  document.querySelectorAll('.review-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  loaders.reviews();
 }
 
-function approveReview(changeId, discId) {
-  const c = CHANGES.find(ch => ch.id === changeId);
-  if (!c) return;
-  const r = c.reviews.find(rv => rv.disc === discId);
-  if (r) r.status = 'reviewed';
-  reviewTab(document.querySelector('.review-tab.active')?.dataset.tab || 'all');
-  ui.toast('Review approved');
-}
+loaders.reviews = function() {
+  const allReviews = [];
+  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
+  projectChanges.forEach(c => c.reviews.forEach(r => allReviews.push({ ...r, change: c.id, changeTitle: c.title, changeDate: c.date })));
+  let filtered = allReviews;
+  if (currentReviewTab === 'mine') filtered = allReviews.filter(r => r.discipline === 'Landscape');
+  if (currentReviewTab === 'pending') filtered = allReviews.filter(r => r.status === 'Pending');
+  if (currentReviewTab === 'conflict') filtered = allReviews.filter(r => r.status === 'Conflict');
+  if (currentReviewTab === 'completed') filtered = allReviews.filter(r => r.status === 'Reviewed');
 
-// ── RENDER: Documents ──────────────────────────────────────────────
-let selectedDocId = null;
+  document.getElementById('reviews-list').innerHTML = filtered.map(r => {
+    const d = disc(r.discipline);
+    return `<div class="review-card">
+      <div><div class="review-card-title">${r.changeTitle}</div><div class="review-card-sub">${r.change}</div></div>
+      <div class="review-card-disc"><span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span> ${r.discipline}</div>
+      <div><span class="review-card-status" style="background:${r.status==='Reviewed'?'var(--green-bg)':r.status==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${r.status==='Reviewed'?'var(--green)':r.status==='Conflict'?'var(--red)':'var(--yellow)'}">${r.status}</span></div>
+      <div class="review-card-date">${r.date || 'Not yet'}</div>
+      <div class="review-card-action">${r.status==='Pending'?'<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();ui.toast(\'Review submitted\')">Review</button>':r.status==='Conflict'?'<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();ui.toast(\'Opening conflict\')">Resolve</button>':''}</div>
+    </div>`;
+  }).join('') || '<div class="empty-state"><p>No reviews match this filter</p></div>';
+};
 
-function renderDocuments() {
-  const byDisc = {};
+/* ── DOCUMENTS ─────────────────────────────────────────────────────── */
+
+loaders.documents = function() {
+  const groups = {};
   DOCUMENTS.forEach(d => {
-    const discName = disc(d.discipline).name;
-    if (!byDisc[discName]) byDisc[discName] = { disc: disc(d.discipline), docs: [] };
-    byDisc[discName].docs.push(d);
+    if (!groups[d.discipline]) groups[d.discipline] = [];
+    groups[d.discipline].push(d);
   });
 
-  $('doc-accordion').innerHTML = Object.entries(byDisc).map(([name, data]) => `
-    <div class="doc-accord open">
-      <div class="doc-accord-head" onclick="this.parentElement.classList.toggle('open')">
-        <div class="doc-accord-left">
-          <svg class="doc-accord-arrow" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
-          <span style="font-size:16px">${data.disc.icon}</span>
-          <span class="doc-accord-name">${name}</span>
-        </div>
-        <span class="doc-accord-count">${data.docs.length}</span>
+  document.getElementById('doc-accordion').innerHTML = Object.keys(groups).map(name => {
+    const d = disc(name);
+    const docs = groups[name];
+    return `<div class="doc-group open">
+      <div class="doc-group-header" onclick="this.parentElement.classList.toggle('open')">
+        <span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span>
+        <span>${name}</span>
+        <span class="count">${docs.length}</span>
+        <span class="chevron">▶</span>
       </div>
-      <div class="doc-accord-body">
-        ${data.docs.map(d => `
-          <div class="doc-row ${selectedDocId === d.id ? 'active' : ''}" onclick="selectDoc(${d.id})">
-            <div class="doc-row-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
-            <div class="doc-row-info">
-              <div class="doc-row-title">${d.code} — ${d.title}</div>
-              <div class="doc-row-meta">Rev ${d.rev} · ${d.date}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `).join('');
-
-  if (selectedDocId) selectDoc(selectedDocId);
-}
-
-function selectDoc(id) {
-  selectedDocId = id;
-  document.querySelectorAll('.doc-row').forEach(r => r.classList.remove('active'));
-  event?.target?.closest?.('.doc-row')?.classList?.add?.('active');
-
-  const d = DOCUMENTS.find(doc => doc.id === id);
-  if (!d) return;
-  const di = disc(d.discipline);
-  const linked = d.linkedChange ? CHANGES.find(c => c.id === d.linkedChange) : null;
-
-  $('doc-detail-panel').innerHTML = `
-    <div class="doc-detail-header">
-      <div class="doc-detail-code">${d.code}</div>
-      <div class="doc-detail-title">${d.title}</div>
-      <div style="margin-top:8px;display:flex;gap:8px">
-        <span class="badge badge-blue">${di.name}</span>
-        <span class="badge badge-gray">Rev ${d.rev}</span>
-      </div>
-    </div>
-    <div class="doc-detail-section">
-      <div class="doc-detail-section-title">Revision History</div>
-      ${d.revisions.map(r => `
-        <div class="doc-rev-row">
-          <div class="doc-rev-num ${r.n === d.rev ? 'current' : ''}">R${r.n}</div>
-          <div class="doc-rev-info">
-            <div style="font-weight:600">${r.note}</div>
-            <div class="doc-rev-date">${r.date}</div>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-    ${linked ? `
-      <div class="doc-detail-section">
-        <div class="doc-detail-section-title">Linked Change Event</div>
-        <div style="padding:8px 0;cursor:pointer" onclick="router.go('change-detail','${linked.id}')">
-          <div style="font-weight:700;color:var(--primary);font-size:12px">${linked.id}</div>
-          <div style="font-weight:600;margin-top:2px">${linked.title}</div>
-          <div style="margin-top:4px">${statusBadge(linked.status)} ${riskBadge(linked.risk)}</div>
-        </div>
-      </div>
-    ` : ''}
-    <div class="doc-detail-section">
-      <div class="doc-detail-section-title">Details</div>
-      <div style="font-size:13px;color:var(--text-muted)">
-        <div style="padding:4px 0">Discipline: <strong style="color:var(--text)">${di.name}</strong></div>
-        <div style="padding:4px 0">Last Updated: <strong style="color:var(--text)">${d.date}</strong></div>
-        <div style="padding:4px 0">Total Revisions: <strong style="color:var(--text)">${d.revisions.length}</strong></div>
-      </div>
-    </div>
-  `;
-
-  renderDocuments();
-}
-
-// ── RENDER: Disciplines ────────────────────────────────────────────
-function renderDisciplines() {
-  $('disciplines-grid').innerHTML = DISCIPLINES.map(d => {
-    const docs = DOCUMENTS.filter(doc => doc.discipline === d.id);
-    const changes = CHANGES.filter(c => c.impacted.includes(d.id));
-    const reviews = [];
-    CHANGES.forEach(c => { c.reviews.forEach(r => { if (r.disc === d.id) reviews.push(r); }); });
-    const pending = reviews.filter(r => r.status === 'pending').length;
-    const conflicts = reviews.filter(r => r.status === 'flagged').length;
-
-    return `<div class="disc-card" onclick="router.go('discipline-detail',${d.id})">
-      <div class="disc-card-header">
-        <div class="disc-card-icon" style="background:${d.color}20">${d.icon}</div>
-        <div>
-          <div class="disc-card-name">${d.name}</div>
-          <div class="disc-card-role">${d.abbr}</div>
-        </div>
-      </div>
-      <div class="disc-card-metrics">
-        <div class="disc-metric"><div class="disc-metric-val">${changes.length}</div><div class="disc-metric-label">Active Changes</div></div>
-        <div class="disc-metric"><div class="disc-metric-val">${docs.length}</div><div class="disc-metric-label">Documents</div></div>
-        <div class="disc-metric"><div class="disc-metric-val" style="color:${pending > 0 ? 'var(--amber)' : 'var(--green)'}">${pending}</div><div class="disc-metric-label">Pending Reviews</div></div>
-        <div class="disc-metric"><div class="disc-metric-val" style="color:${conflicts > 0 ? 'var(--red)' : 'var(--green)'}">${conflicts}</div><div class="disc-metric-label">Conflicts</div></div>
+      <div class="doc-group-body">
+        ${docs.map(doc => `<div class="doc-item" onclick="showDocDetail(${doc.id})">
+          <span class="doc-item-code">${doc.code}</span>
+          <span class="doc-item-name">${doc.title}</span>
+          <span class="doc-item-rev">Rev ${doc.rev}</span>
+        </div>`).join('')}
       </div>
     </div>`;
   }).join('');
+
+  document.getElementById('doc-detail-panel').innerHTML = `<div class="doc-detail-empty"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><p>Select a document to view details</p></div>`;
+
+  const changeSelect = document.getElementById('doc-upload-change');
+  if (changeSelect) {
+    const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
+    changeSelect.innerHTML = '<option value="">None</option>' + projectChanges.map(c => `<option value="${c.id}">${c.id} — ${c.title}</option>`).join('');
+  }
+};
+
+function showDocDetail(id) {
+  const doc = DOCUMENTS.find(d => d.id === id);
+  if (!doc) return;
+  const d = disc(doc.discipline);
+  document.querySelectorAll('.doc-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('doc-detail-panel').innerHTML = `
+    <div class="doc-detail-view">
+      <div class="doc-detail-title">${doc.code} — ${doc.title}</div>
+      <div class="doc-detail-meta">${doc.discipline} · Revision ${doc.rev} · Uploaded by ${doc.by} · ${doc.date}</div>
+      <div class="doc-detail-section"><h4>Discipline</h4><p><span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span> ${doc.discipline}</p></div>
+      <div class="doc-detail-section"><h4>Revision History</h4><p>Current revision: ${doc.rev}. Last updated ${doc.date} by ${doc.by}.</p></div>
+      <div class="doc-detail-section"><h4>Linked Changes</h4><p>${CHANGES.filter(c=>c.affectedDocs.some(ad=>ad.includes(doc.code))).map(c=>`<span style="color:var(--primary);cursor:pointer" onclick="router.go('change-detail',{id:'${c.id}'})">${c.id}</span>`).join(', ')||'None'}</p></div>
+    </div>`;
 }
 
-function renderDisciplineDetail(discId) {
-  const d = disc(discId);
-  const docs = DOCUMENTS.filter(doc => doc.discipline === discId);
-  const changes = CHANGES.filter(c => c.impacted.includes(discId));
+/* ── DISCIPLINES ───────────────────────────────────────────────────── */
+
+loaders.disciplines = function() {
+  document.getElementById('disciplines-grid').innerHTML = DISCIPLINES.map(d => {
+    const reviews = [];
+    const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
+    projectChanges.forEach(c => c.reviews.filter(r => r.discipline === d.name).forEach(r => reviews.push(r)));
+    const reviewed = reviews.filter(r => r.status === 'Reviewed').length;
+    const pending = reviews.filter(r => r.status === 'Pending').length;
+    const conflicts = reviews.filter(r => r.status === 'Conflict').length;
+    const docs = DOCUMENTS.filter(doc => doc.discipline === d.name).length;
+    return `<div class="disc-card" onclick="router.go('discipline-detail',{name:'${d.name}'})">
+      <div class="disc-icon-wrap" style="background:${d.bg}">${d.icon}</div>
+      <div class="disc-card-body">
+        <div class="disc-card-name">${d.name}</div>
+        <div class="disc-metric-grid">
+          <div class="disc-metric"><span class="disc-metric-val" style="color:var(--green)">${reviewed}</span> <span class="disc-metric-label">reviewed</span></div>
+          <div class="disc-metric"><span class="disc-metric-val" style="color:var(--yellow)">${pending}</span> <span class="disc-metric-label">pending</span></div>
+          <div class="disc-metric"><span class="disc-metric-val" style="color:var(--red)">${conflicts}</span> <span class="disc-metric-label">conflicts</span></div>
+          <div class="disc-metric"><span class="disc-metric-val">${docs}</span> <span class="disc-metric-label">documents</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+/* ── DISCIPLINE DETAIL ─────────────────────────────────────────────── */
+
+loaders['discipline-detail'] = function(data) {
+  const d = disc(data && data.name);
+  if (!d) return;
   const reviews = [];
-  CHANGES.forEach(c => { c.reviews.forEach(r => { if (r.disc === discId) reviews.push({ ...r, changeId: c.id, changeTitle: c.title }); }); });
+  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
+  projectChanges.forEach(c => c.reviews.filter(r => r.discipline === d.name).forEach(r => reviews.push({ ...r, change: c.id, changeTitle: c.title })));
+  const docs = DOCUMENTS.filter(doc => doc.discipline === d.name);
 
-  $('dd-header').innerHTML = `
-    <div class="disc-card-icon" style="background:${d.color}20;font-size:28px;width:56px;height:56px;border-radius:14px">${d.icon}</div>
-    <div>
-      <div style="font-size:20px;font-weight:800">${d.name}</div>
-      <div style="font-size:13px;color:var(--text-muted)">${d.abbr} · ${docs.length} documents · ${changes.length} active changes</div>
-    </div>
-  `;
+  document.getElementById('dd-header').innerHTML = `
+    <div class="disc-icon-wrap" style="background:${d.bg};font-size:1.5rem">${d.icon}</div>
+    <div class="dd-header-info"><h1>${d.name}</h1><p>${reviews.length} reviews · ${docs.length} documents</p></div>`;
 
-  $('dd-main').innerHTML = `
-    <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">Active Changes</h2></div>
-      <div class="panel-body">
-        ${changes.length === 0 ? '<p style="color:var(--text-dim)">No active changes</p>' :
-          changes.map(c => {
-            const r = c.reviews.find(rv => rv.disc === discId);
-            return `<div class="ov-change" onclick="router.go('change-detail','${c.id}')">
-              <span class="ov-change-id">${c.id}</span>
-              <span class="ov-change-title truncate">${c.title}</span>
-              ${r ? statusBadge(r.status) : ''}
-            </div>`;
-          }).join('')}
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">Documents</h2></div>
-      <div class="panel-body">
-        ${docs.map(doc => `
-          <div class="cd-doc">
-            <div class="cd-doc-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
-            <div class="cd-doc-info">
-              <div class="cd-doc-name">${doc.code} — ${doc.title}</div>
-              <div class="cd-doc-meta">Rev ${doc.rev} · ${doc.date}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
+  document.getElementById('dd-main').innerHTML = `
+    <div class="panel"><div class="panel-header"><h2 class="panel-title">Reviews</h2></div><div class="panel-body">
+      ${reviews.map(r => `<div class="cd-review-row"><div class="cd-review-disc">${r.change} · ${r.changeTitle}</div>${reviewStatusBadge(r.status)}</div>`).join('') || '<p style="color:var(--text-muted)">No reviews</p>'}
+    </div></div>
+    <div class="panel"><div class="panel-header"><h2 class="panel-title">Documents</h2></div><div class="panel-body">
+      ${docs.map(doc => `<div class="cd-doc-item"><span class="cd-doc-icon">📄</span><span>${doc.code} — ${doc.title}</span><span style="margin-left:auto;font-size:0.78rem;color:var(--text-muted)">Rev ${doc.rev}</span></div>`).join('') || '<p style="color:var(--text-muted)">No documents</p>'}
+    </div></div>`;
 
-  $('dd-side').innerHTML = `
-    <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">Reviews</h2></div>
-      <div class="panel-body">
-        ${reviews.length === 0 ? '<p style="color:var(--text-dim)">No reviews</p>' :
-          reviews.map(r => `
-            <div class="cd-rev" style="cursor:pointer" onclick="router.go('change-detail','${r.changeId}')">
-              <div class="cd-rev-icon" style="background:${r.status === 'reviewed' ? 'var(--green-dim)' : r.status === 'flagged' ? 'var(--red-dim)' : 'var(--amber-dim)'}">
-                ${r.status === 'reviewed' ? '✓' : r.status === 'flagged' ? '⚠' : '⏳'}
-              </div>
-              <span class="cd-rev-name" style="font-size:12px">${r.changeId}<br><span style="color:var(--text-muted);font-weight:400">${r.changeTitle}</span></span>
-              ${statusBadge(r.status)}
-            </div>
-          `).join('')}
-      </div>
-    </div>
-  `;
-}
+  const reviewed = reviews.filter(r => r.status === 'Reviewed').length;
+  const total = reviews.length;
+  const pct = total ? Math.round(reviewed / total * 100) : 0;
+  document.getElementById('dd-side').innerHTML = `
+    <div class="panel"><div class="panel-header"><h2 class="panel-title">Performance</h2></div><div class="panel-body">
+      <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:0.85rem">Review completion</span><span style="font-weight:700">${pct}%</span></div>
+      <div class="ct-progress-bar"><div class="ct-progress-fill" style="width:${pct}%;background:var(--green)"></div></div></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem"><span>Reviewed</span><span style="font-weight:700;color:var(--green)">${reviewed}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem"><span>Pending</span><span style="font-weight:700;color:var(--yellow)">${reviews.filter(r=>r.status==='Pending').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:0.85rem"><span>Conflicts</span><span style="font-weight:700;color:var(--red)">${reviews.filter(r=>r.status==='Conflict').length}</span></div>
+    </div></div>`;
+};
 
-// ── RENDER: Confidence ─────────────────────────────────────────────
-function renderConfidence() {
-  const score = CONFIDENCE.score;
-  const circumference = 2 * Math.PI * 48;
-  const offset = circumference - (score / 100) * circumference;
+/* ── CONFIDENCE ────────────────────────────────────────────────────── */
 
-  $('conf-ring').innerHTML = `
-    <svg class="conf-ring-svg" viewBox="0 0 120 120">
-      <circle cx="60" cy="60" r="48" class="conf-ring-bg"/>
-      <circle cx="60" cy="60" r="48" class="conf-ring-fg" stroke="${factorColor(score)}"
-        stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"/>
-    </svg>
-    <div class="conf-ring-text" style="color:${factorColor(score)}">${score}%</div>
-  `;
+loaders.confidence = function() {
+  const score = currentProject ? currentProject.confidence : CONFIDENCE.score;
+  const circ = 2 * Math.PI * 42;
+  const offset = circ * (1 - score / 100);
+  const color = score >= 90 ? 'var(--green)' : score >= 70 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('conf-ring').innerHTML = `
+    <svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="42"/><circle class="ring-fill" cx="50" cy="50" r="42" stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/></svg>
+    <div class="conf-score-num">${score}%</div>`;
 
-  $('conf-main').innerHTML = `
-    <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">Confidence Factors</h2></div>
-      <div class="panel-body">
-        ${CONFIDENCE.factors.map(f => `
-          <div class="conf-factor">
-            <div class="conf-factor-top">
-              <span class="conf-factor-name">${f.name}</span>
-              <span class="conf-factor-val" style="color:${factorColor(f.value)}">${f.value}%</span>
-            </div>
-            <div class="conf-factor-bar">
-              <div class="conf-factor-fill" style="width:${f.value}%;background:${factorColor(f.value)}"></div>
-            </div>
-            <div class="conf-factor-desc">${f.desc}</div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
+  document.getElementById('conf-main').innerHTML = CONFIDENCE.factors.map(f =>
+    `<div class="conf-factor"><div class="conf-factor-header"><span class="conf-factor-name">${f.name}</span><span class="conf-factor-score" style="color:${f.color}">${f.score}%</span></div>
+    <div class="conf-factor-bar"><div class="conf-factor-fill" style="width:${f.score}%;background:${f.color}"></div></div></div>`
+  ).join('');
 
-  $('conf-side').innerHTML = `
-    <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">Score by Change Event</h2></div>
-      <div class="panel-body">
-        ${CHANGES.map(c => `
-          <div class="ov-change" onclick="router.go('change-detail','${c.id}')">
-            <span class="ov-change-id">${c.id}</span>
-            <span class="ov-change-title truncate">${c.title}</span>
-            <span style="font-weight:800;color:${factorColor(c.confidence.score)}">${c.confidence.score}%</span>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">What's Affecting Confidence</h2></div>
-      <div class="panel-body">
-        <div class="cd-action"><div class="cd-action-check" style="border-color:var(--red)">!</div><span class="cd-action-text">Structural conflict on CE-001 (wall load)</span></div>
-        <div class="cd-action"><div class="cd-action-check" style="border-color:var(--amber)">⏳</div><span class="cd-action-text">5 pending reviews across 2 change events</span></div>
-        <div class="cd-action"><div class="cd-action-check" style="border-color:var(--amber)">⏳</div><span class="cd-action-text">CE-004 has 0/5 reviews complete (critical risk)</span></div>
-        <div class="cd-action"><div class="cd-action-check done">✓</div><span class="cd-action-text done">CE-003 fully approved — no issues</span></div>
-      </div>
-    </div>
-  `;
-}
+  document.getElementById('conf-side').innerHTML = `
+    <div class="panel"><div class="panel-header"><h2 class="panel-title">Recommendations</h2></div><div class="panel-body">
+      <div class="cd-action-item"><span class="cd-action-bullet" style="background:var(--red)"></span><span>Resolve geotechnical conflict on CE-039</span></div>
+      <div class="cd-action-item"><span class="cd-action-bullet"></span><span>Complete pending Landscape review on CE-041</span></div>
+      <div class="cd-action-item"><span class="cd-action-bullet"></span><span>Complete Plumbing + Architecture reviews on CE-040</span></div>
+    </div></div>`;
+};
 
-// ── ACTIONS ────────────────────────────────────────────────────────
+
+/* ── ACTIONS ───────────────────────────────────────────────────────── */
+
 const actions = {
   async uploadChange(e) {
     e.preventDefault();
-    const title = $('change-upload-title').value;
-    const fileOld = $('file-old').files[0];
-    const fileNew = $('file-new').files[0];
-    if (!title || !fileOld || !fileNew) return;
-
-    const btn = $('btn-upload-change');
-    btn.disabled = true;
+    const title = document.getElementById('change-upload-title').value;
+    const btn = document.getElementById('btn-upload-change');
     btn.textContent = 'Comparing...';
-
-    try {
-      const form = new FormData();
-      form.append('title', title);
-      form.append('old_file', fileOld);
-      form.append('new_file', fileNew);
-      form.append('project_id', '1');
-      const token = localStorage.getItem('token');
-      const res = await fetch(API + '/changes', {
-        method: 'POST', body: form,
-        headers: { 'Authorization': 'Bearer ' + token },
-      });
-      if (!res.ok) throw new Error(await res.text());
+    btn.disabled = true;
+    setTimeout(() => {
       ui.hideModal('modal-upload-change');
-      ui.toast('Change event created');
-      router.go('changes');
-    } catch (err) {
-      ui.toast(err.message, 'error');
-    } finally {
-      btn.disabled = false;
       btn.textContent = 'Compare & Upload';
-    }
+      btn.disabled = false;
+      ui.toast(`Change event "${title}" created`);
+    }, 2000);
     return false;
   },
 
   async uploadDocument(e) {
     e.preventDefault();
-    const title = $('doc-upload-title').value;
-    const file = $('file-doc').files[0];
-    const discipline = $('doc-upload-discipline').value;
-    if (!title || !file || !discipline) return;
-
-    const btn = $('btn-upload-doc');
-    btn.disabled = true;
-    btn.textContent = 'Uploading...';
-
-    try {
-      const form = new FormData();
-      form.append('title', title);
-      form.append('file', file);
-      form.append('discipline_id', discipline);
-      form.append('project_id', '1');
-      const code = $('doc-upload-code').value;
-      if (code) form.append('code', code);
-      const notes = $('doc-upload-notes').value;
-      if (notes) form.append('notes', notes);
-      const token = localStorage.getItem('token');
-      const res = await fetch(API + '/projects/1/documents', {
-        method: 'POST', body: form,
-        headers: { 'Authorization': 'Bearer ' + token },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      ui.hideModal('modal-upload-doc');
-      ui.toast('Document uploaded');
-      router.go('documents');
-    } catch (err) {
-      ui.toast(err.message, 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Upload';
-    }
+    const title = document.getElementById('doc-upload-title').value;
+    ui.hideModal('modal-upload-doc');
+    ui.toast(`Document "${title}" uploaded`);
     return false;
   },
 
-  flagConflict(e) {
+  async flagConflict(e) {
     e.preventDefault();
     ui.hideModal('modal-conflict');
-    ui.toast('Conflict flagged');
+    ui.toast('Conflict flagged and team notified');
     return false;
-  },
+  }
 };
 
-function deleteChange(id) {
-  if (!confirm('Delete this change event?')) return;
-  const idx = CHANGES.findIndex(c => c.id === id);
-  if (idx >= 0) {
-    CHANGES.splice(idx, 1);
-    router.go('changes');
-    ui.toast('Change deleted');
-  }
-}
 
-// ── POPULATE SELECTS ───────────────────────────────────────────────
-function populateSelects() {
-  const regDisc = $('reg-discipline');
-  if (regDisc) {
-    DISCIPLINES.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.name;
-      regDisc.appendChild(opt);
-    });
-  }
-  const docDisc = $('doc-upload-discipline');
-  if (docDisc) {
-    docDisc.innerHTML = '<option value="">Select discipline</option>';
-    DISCIPLINES.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.name;
-      docDisc.appendChild(opt);
-    });
-  }
-  const docChange = $('doc-upload-change');
-  if (docChange) {
-    docChange.innerHTML = '<option value="">None</option>';
-    CHANGES.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = `${c.id} — ${c.title}`;
-      docChange.appendChild(opt);
-    });
-  }
-}
+/* ── INIT ──────────────────────────────────────────────────────────── */
 
-// ── INIT ───────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  populateSelects();
-  auth.check();
-});
+document.addEventListener('DOMContentLoaded', () => auth.check());
