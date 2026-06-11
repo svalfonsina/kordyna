@@ -698,46 +698,55 @@ const loaders = {
   },
 
   async documents() {
-    try {
-      const [projects, disciplines] = await Promise.all([
-        api("/projects"),
-        api("/disciplines"),
-      ]);
-      _docDisciplines = disciplines;
+    const projSel = document.getElementById("doc-project-select");
+    const tabsEl = document.getElementById("doc-tabs");
+    const discSel = document.getElementById("doc-upload-discipline");
 
-      const projSel = document.getElementById("doc-project-select");
-      const currentVal = projSel.value;
+    // Load projects and disciplines independently
+    let projects = [];
+    let disciplines = [];
+    try { projects = await api("/projects"); } catch {}
+    try { disciplines = await api("/disciplines"); } catch {}
+    _docDisciplines = disciplines;
+
+    // Project selector
+    const currentVal = projSel.value;
+    if (projects.length > 0) {
       projSel.innerHTML = projects.map(p =>
         `<option value="${p.id}">${esc(p.name)}</option>`
-      ).join("") || '<option value="">No projects</option>';
-      if (currentVal && projects.find(p => p.id == currentVal)) projSel.value = currentVal;
-
-      // Build discipline tabs
-      const tabsEl = document.getElementById("doc-tabs");
-      tabsEl.innerHTML = `
-        <button class="doc-tab ${_docCurrentTab === 'all' ? 'active' : ''}" data-disc="all" onclick="docSelectTab('all')">All</button>
-        ${disciplines.map(d => `
-          <button class="doc-tab ${_docCurrentTab === String(d.id) ? 'active' : ''}" data-disc="${d.id}" onclick="docSelectTab('${d.id}')">${esc(d.name)}</button>
-        `).join("")}
-        <button class="doc-tab ${_docCurrentTab === 'history' ? 'active' : ''}" data-disc="history" onclick="docSelectTab('history')">Revision History</button>
-      `;
-
-      // Populate upload modal discipline select
-      const discSel = document.getElementById("doc-upload-discipline");
-      discSel.innerHTML = disciplines.map(d =>
-        `<option value="${d.id}">${esc(d.name)}</option>`
       ).join("");
+      if (currentVal && projects.find(p => p.id == currentVal)) projSel.value = currentVal;
+    } else {
+      projSel.innerHTML = '<option value="">No projects</option>';
+    }
 
-      // Load documents
-      const projectId = projSel.value;
+    // Build discipline tabs
+    tabsEl.innerHTML = `
+      <button class="doc-tab ${_docCurrentTab === 'all' ? 'active' : ''}" data-disc="all" onclick="docSelectTab('all')">All</button>
+      ${disciplines.map(d => `
+        <button class="doc-tab ${_docCurrentTab === String(d.id) ? 'active' : ''}" data-disc="${d.id}" onclick="docSelectTab('${d.id}')">${esc(d.name)}</button>
+      `).join("")}
+      <button class="doc-tab ${_docCurrentTab === 'history' ? 'active' : ''}" data-disc="history" onclick="docSelectTab('history')">Revision History</button>
+    `;
+
+    // Populate upload modal discipline select
+    discSel.innerHTML = disciplines.map(d =>
+      `<option value="${d.id}">${esc(d.name)}</option>`
+    ).join("");
+
+    // Load documents
+    const projectId = projSel.value;
+    try {
       if (projectId) {
         _docAllDocs = await api(`/projects/${projectId}/documents`);
       } else {
         _docAllDocs = [];
       }
+    } catch {
+      _docAllDocs = [];
+    }
 
-      docRender();
-    } catch (err) { toast(err.message); }
+    docRender();
   },
 
   async chat() {
