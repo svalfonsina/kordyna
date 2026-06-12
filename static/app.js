@@ -498,6 +498,21 @@ const ui = {
 };
 
 function disc(name) { return DISCIPLINES.find(d => d.name === name); }
+
+const DISC_COLORS = {
+  'Architecture': '#2E5BFF',
+  'Landscape': '#10B981',
+  'Civil Engineering': '#0CCE6B',
+  'Mechanical': '#FF8C42',
+  'Structural': '#8B5CF6',
+  'Survey': '#FFA600',
+  'Contractor': '#06B6D4'
+};
+function discColor(name) { return DISC_COLORS[name] || '#5A6A80'; }
+function discAbbr(name) {
+  const words = name.split(/\s+/);
+  return (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)).toUpperCase();
+}
 function statusBadge(s) {
   const map = { 'Open': 'badge-open', 'In Review': 'badge-review', 'Resolved': 'badge-resolved', 'Conflict': 'badge-conflict' };
   return `<span class="badge ${map[s] || 'badge-open'}">${s}</span>`;
@@ -953,10 +968,9 @@ loaders['change-detail'] = async function(data) {
     </div>`;
   }).join('') || '<p style="color:var(--text-muted)">No reviews assigned</p>';
 
-  document.getElementById('cd-disciplines').innerHTML = c.reviews.map(r => {
-    const d = disc(r.discipline);
-    return `<span class="cd-disc-tag"><span class="cd-disc-dot" style="background:${d ? d.color : 'var(--primary)'}"></span>${r.discipline}</span>`;
-  }).join('');
+  document.getElementById('cd-disciplines').innerHTML = c.reviews.map(r =>
+    `<span class="cd-disc-tag"><span class="cd-disc-dot" style="background:${discColor(r.discipline)}"></span>${r.discipline}</span>`
+  ).join('');
 
   document.getElementById('cd-timeline').innerHTML = `
     <div class="cd-timeline-item"><div class="cd-timeline-dot" style="background:var(--primary)"></div><div><div class="cd-timeline-text">${c.creator || 'Someone'} uploaded old + new drawings</div><div class="cd-timeline-time">${shortDate(c.created_at)}</div></div></div>
@@ -1015,21 +1029,19 @@ function renderImpactMap() {
     const angle = angleStep * i - Math.PI / 2;
     const nx = cx + radius * Math.cos(angle);
     const ny = cy + radius * Math.sin(angle);
-    const d = disc(r.discipline);
     const nodeColor = r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--yellow)';
     html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nodeColor}" stroke-width="2" opacity="0.4"/>`;
     html += `<g class="impact-node" onclick="showImpactDetail('${r.discipline.replace(/'/g, "\\'")}',${change.id})">
       <circle cx="${nx}" cy="${ny}" r="28" fill="${nodeColor}" opacity="0.2"/>
       <circle cx="${nx}" cy="${ny}" r="28" fill="none" stroke="${nodeColor}" stroke-width="2"/>
-      <text x="${nx}" y="${ny-4}" text-anchor="middle" fill="var(--text)" font-size="14">${d ? d.icon : '📐'}</text>
-      <text x="${nx}" y="${ny+14}" text-anchor="middle" fill="var(--text-dim)" font-size="8" font-weight="600">${r.discipline.slice(0, 6).toUpperCase()}</text>
+      <text x="${nx}" y="${ny-2}" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="800">${discAbbr(r.discipline)}</text>
+      <text x="${nx}" y="${ny+12}" text-anchor="middle" fill="var(--text-dim)" font-size="7" font-weight="600">${r.discipline.slice(0, 10).toUpperCase()}</text>
     </g>`;
   });
   svg.innerHTML = html;
 }
 
 function showImpactDetail(discName, changeId) {
-  const d = disc(discName);
   const cache = currentProject ? (projectChangeCache[currentProject.backendId] || []) : [];
   const change = cache.find(c => c.id === changeId);
   const review = change ? change.reviews.find(r => r.discipline === discName) : null;
@@ -1038,7 +1050,7 @@ function showImpactDetail(discName, changeId) {
   panel.innerHTML = `
     <div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <span style="font-size:1.5rem">${d ? d.icon : '📐'}</span>
+        <span class="disc-abbr" style="background:${discColor(discName)}22;color:${discColor(discName)}">${discAbbr(discName)}</span>
         <div><div style="font-weight:700">${discName}</div><div style="font-size:0.78rem;color:var(--text-dim)">Assigned to review this change</div></div>
       </div>
       ${label ? `<div style="margin-bottom:12px"><span style="font-size:0.78rem;font-weight:600;padding:3px 8px;border-radius:4px;background:${label==='Reviewed'?'var(--green-bg)':label==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${label==='Reviewed'?'var(--green)':label==='Conflict'?'var(--red)':'var(--yellow)'}">${label}</span></div>` : ''}
@@ -1102,7 +1114,7 @@ loaders.reviews = async function() {
       : '';
     return `<div class="review-card" onclick="router.go('change-detail',{id:${r.changeId}})">
       <div><div class="review-card-title">${r.changeTitle}</div><div class="review-card-sub">CE-${r.changeId}</div></div>
-      <div class="review-card-disc"><span style="color:${d?d.color:'var(--primary)'}">${d?d.icon:'📐'}</span> ${r.discipline}</div>
+      <div class="review-card-disc"><span class="disc-dot" style="background:${discColor(r.discipline)}"></span> ${r.discipline}</div>
       <div><span class="review-card-status" style="background:${r.ui==='Reviewed'?'var(--green-bg)':r.ui==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${r.ui==='Reviewed'?'var(--green)':r.ui==='Conflict'?'var(--red)':'var(--yellow)'}">${r.ui}</span></div>
       <div class="review-card-date">${r.changeDate}</div>
       <div class="review-card-action">${action}</div>
@@ -1173,11 +1185,10 @@ loaders.documents = async function() {
   });
 
   document.getElementById('doc-accordion').innerHTML = Object.keys(groups).map(name => {
-    const d = disc(name);
     const docs = groups[name];
     return `<div class="doc-group ${docs.length ? 'open' : ''}">
       <div class="doc-group-header" onclick="this.parentElement.classList.toggle('open')">
-        <span style="color:${d?d.color:'#666'}">${d?d.icon:'📐'}</span>
+        <span class="disc-dot" style="background:${discColor(name)}"></span>
         <span>${name}</span>
         <span class="count">${docs.length}</span>
         <span class="chevron">▶</span>
@@ -1237,7 +1248,7 @@ function showDocDetail(idx) {
     <div class="doc-detail-view">
       <div class="doc-detail-title">${doc.code ? doc.code + ' — ' : ''}${doc.title}</div>
       <div class="doc-detail-meta">${doc.discipline} · Revision ${doc.rev} · Uploaded by ${doc.by} · ${doc.date}</div>
-      <div class="doc-detail-section"><h4>Discipline</h4><p><span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span> ${doc.discipline}</p></div>
+      <div class="doc-detail-section"><h4>Discipline</h4><p><span class="disc-dot" style="background:${discColor(doc.discipline)}"></span> ${doc.discipline}</p></div>
       <div class="doc-detail-section"><h4>Revision History</h4>${revHistory}</div>
       ${doc.notes ? `<div class="doc-detail-section"><h4>Notes</h4><p>${doc.notes}</p></div>` : ''}
       ${fileSection}
@@ -1383,7 +1394,6 @@ loaders.disciplines = async function() {
   const serverDocs = await fetchServerDocuments();
 
   document.getElementById('disciplines-grid').innerHTML = serverDiscs.map(sd => {
-    const d = disc(sd.name);
     const reviews = [];
     projectChanges.forEach(c => c.reviews.filter(r => r.discipline === sd.name).forEach(r => reviews.push(r)));
     const reviewed = reviews.filter(r => r.status === 'reviewed').length;
@@ -1391,7 +1401,7 @@ loaders.disciplines = async function() {
     const conflicts = reviews.filter(r => r.status === 'flagged').length;
     const docs = serverDocs.filter(doc => doc.discipline === sd.name).length;
     return `<div class="disc-card" onclick="router.go('discipline-detail',{name:'${sd.name.replace(/'/g, "\\'")}'})">
-      <div class="disc-icon-wrap" style="background:${d ? d.bg : 'var(--primary-bg)'}">${d ? d.icon : '📐'}</div>
+      <div class="disc-icon-wrap disc-abbr-wrap" style="background:${discColor(sd.name)}22;color:${discColor(sd.name)}">${discAbbr(sd.name)}</div>
       <div class="disc-card-body">
         <div class="disc-card-name">${sd.name}</div>
         <div class="disc-metric-grid">
@@ -1422,7 +1432,7 @@ loaders['discipline-detail'] = async function(data) {
   const docs = serverDocs.filter(doc => doc.discipline === name);
 
   document.getElementById('dd-header').innerHTML = `
-    <div class="disc-icon-wrap" style="background:${d ? d.bg : 'var(--primary-bg)'};font-size:1.5rem">${d ? d.icon : '📐'}</div>
+    <div class="disc-icon-wrap disc-abbr-wrap" style="background:${discColor(name)}22;color:${discColor(name)};font-size:1.2rem">${discAbbr(name)}</div>
     <div class="dd-header-info"><h1>${name}</h1><p>${reviews.length} reviews · ${docs.length} documents</p></div>`;
 
   document.getElementById('dd-main').innerHTML = `

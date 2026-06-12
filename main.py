@@ -26,7 +26,7 @@ from models import (
     User,
     engine,
 )
-from seed import seed_disciplines
+from seed import DEFAULTS as DISCIPLINE_ORDER, seed_disciplines
 
 load_dotenv()
 
@@ -406,7 +406,9 @@ def my_reviews(user: User = Depends(get_current_user), db: Session = Depends(get
 
 @app.get("/disciplines", response_model=list[DisciplineOut])
 def list_disciplines(db: Session = Depends(get_db)):
-    return db.query(Discipline).all()
+    order = {name: i for i, name in enumerate(DISCIPLINE_ORDER)}
+    discs = db.query(Discipline).all()
+    return sorted(discs, key=lambda d: order.get(d.name, len(order)))
 
 
 # ── Messages ────────────────────────────────────────────────────────
