@@ -351,10 +351,21 @@ img { max-width: 100%; display: block; }
 .doc-detail-section { margin-bottom: 16px; }
 .doc-detail-section h4 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 8px; }
 .doc-detail-section p { font-size: 0.88rem; line-height: 1.6; }
-.doc-preview { margin-top: 20px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #fff; }
+.doc-preview { position: relative; margin-top: 20px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #fff; }
 .doc-preview iframe { display: block; width: 100%; height: 70vh; border: none; }
 .doc-preview-img { background: var(--bg); }
 .doc-preview-img img { width: 100%; height: auto; }
+.doc-preview-toolbar { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; opacity: 0; transition: opacity var(--transition); z-index: 5; }
+.doc-preview:hover .doc-preview-toolbar { opacity: 1; }
+.doc-tool-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: rgba(6,20,44,0.85); border: 1px solid var(--border-light); border-radius: 8px; cursor: pointer; transition: all var(--transition); backdrop-filter: blur(4px); }
+.doc-tool-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--text-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.doc-tool-btn:hover { background: var(--primary); border-color: var(--primary); }
+.doc-tool-btn:hover svg { stroke: #fff; }
+.doc-tool-btn.doc-tool-danger:hover { background: var(--red); border-color: var(--red); }
+.doc-file-hint { font-size: 0.75rem; color: var(--text-muted); margin-left: 8px; }
+.doc-rev-current { font-weight: 600; }
+.doc-rev-link { color: var(--primary); cursor: pointer; }
+.doc-rev-link:hover { color: var(--primary-hover); }
 
 /* ── DISCIPLINES ───────────────────────────────────────────────────── */
 .disc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }

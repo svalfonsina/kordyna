@@ -850,6 +850,8 @@ async function fetchServerDocuments() {
     const docs = await res.json();
     return docs.map(d => ({
       code: '',
+      serverId: d.id,
+      disciplineId: d.discipline_id,
       title: d.title,
       discipline: d.discipline,
       rev: d.revision,
@@ -886,7 +888,7 @@ loaders.documents = async function() {
         <span class="chevron">▶</span>
       </div>
       <div class="doc-group-body">
-        ${docs.map(doc => `<div class="doc-item" onclick="showDocDetail(${doc._idx})">
+        ${docs.map(doc => `<div class="doc-item" data-idx="${doc._idx}" onclick="showDocDetail(${doc._idx})">
           ${doc.code ? `<span class="doc-item-code">${doc.code}</span>` : ''}
           <span class="doc-item-name">${doc.title}</span>
           <span class="doc-item-rev">Rev ${doc.rev}</span>
@@ -909,32 +911,133 @@ function showDocDetail(idx) {
   if (!doc) return;
   const d = disc(doc.discipline);
   document.querySelectorAll('.doc-item').forEach(el => el.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+  const item = document.querySelector(`.doc-item[data-idx="${idx}"]`);
+  if (item) item.classList.add('active');
   const linked = doc.code
     ? CHANGES.filter(c => c.affectedDocs.some(ad => ad.includes(doc.code))).map(c => `<span style="color:var(--primary);cursor:pointer" onclick="router.go('change-detail',{id:'${c.id}'})">${c.id}</span>`).join(', ')
     : '';
+
+  // All revisions of this document (same title + discipline), newest first
+  const revisions = [];
+  DOC_CACHE.forEach((d2, i) => {
+    if (d2.real === doc.real && d2.title === doc.title && d2.discipline === doc.discipline) revisions.push({ ...d2, _idx: i });
+  });
+  revisions.sort((a, b) => b.rev - a.rev);
+  const revHistory = revisions.map(r =>
+    `<p class="${r._idx === idx ? 'doc-rev-current' : 'doc-rev-link'}" ${r._idx !== idx ? `onclick="showDocDetail(${r._idx})"` : ''}>
+      Rev ${r.rev} — ${r.date} by ${r.by}${r._idx === idx ? ' (viewing)' : ''}
+    </p>`
+  ).join('');
+
+  const fileSection = doc.fileUrl
+    ? `<div class="doc-detail-section"><h4>File</h4>
+        <p><a onclick="replaceDocFile(${idx})" title="Click to upload a new revision of this file">📄 ${doc.filename}</a>
+        <span class="doc-file-hint">click to replace — uploads a new revision</span></p></div>`
+    : '';
+
   document.getElementById('doc-detail-panel').innerHTML = `
     <div class="doc-detail-view">
       <div class="doc-detail-title">${doc.code ? doc.code + ' — ' : ''}${doc.title}</div>
       <div class="doc-detail-meta">${doc.discipline} · Revision ${doc.rev} · Uploaded by ${doc.by} · ${doc.date}</div>
       <div class="doc-detail-section"><h4>Discipline</h4><p><span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span> ${doc.discipline}</p></div>
-      <div class="doc-detail-section"><h4>Revision History</h4><p>Current revision: ${doc.rev}. Last updated ${doc.date} by ${doc.by}.</p></div>
+      <div class="doc-detail-section"><h4>Revision History</h4>${revHistory}</div>
       ${doc.notes ? `<div class="doc-detail-section"><h4>Notes</h4><p>${doc.notes}</p></div>` : ''}
-      ${doc.fileUrl ? `<div class="doc-detail-section"><h4>File</h4><p><a href="${doc.fileUrl}" target="_blank">📄 ${doc.filename}</a></p></div>` : ''}
+      ${fileSection}
       <div class="doc-detail-section"><h4>Linked Changes</h4><p>${linked || 'None'}</p></div>
-      ${doc.fileUrl ? renderFilePreview(doc) : ''}
+      ${doc.fileUrl ? renderFilePreview(doc, idx) : ''}
     </div>`;
 }
 
-function renderFilePreview(doc) {
+function renderFilePreview(doc, idx) {
   const ext = (doc.filename || '').split('.').pop().toLowerCase();
+  const toolbar = `
+    <div class="doc-preview-toolbar">
+      <button class="doc-tool-btn" onclick="downloadDoc(${idx})" title="Download">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button class="doc-tool-btn" onclick="printDoc(${idx})" title="Print">
+        <svg viewBox="0 0 24 24"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      </button>
+      <button class="doc-tool-btn doc-tool-danger" onclick="deleteDoc(${idx})" title="Delete revision">
+        <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      </button>
+    </div>`;
   if (ext === 'pdf') {
-    return `<div class="doc-preview"><iframe src="${doc.fileUrl}#toolbar=0&view=FitH" title="${doc.filename}"></iframe></div>`;
+    return `<div class="doc-preview">${toolbar}<iframe id="doc-preview-frame" src="${doc.fileUrl}#toolbar=0&view=FitH" title="${doc.filename}"></iframe></div>`;
   }
   if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-    return `<div class="doc-preview doc-preview-img"><img src="${doc.fileUrl}" alt="${doc.filename}"></div>`;
+    return `<div class="doc-preview doc-preview-img">${toolbar}<img src="${doc.fileUrl}" alt="${doc.filename}"></div>`;
   }
   return '';
+}
+
+function replaceDocFile(idx) {
+  const doc = DOC_CACHE[idx];
+  if (!doc || !doc.real) { ui.toast('Sample documents have no file to replace'); return; }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.pdf,.png,.jpg,.jpeg,.tiff,.dwg,.dxf';
+  input.onchange = async () => {
+    if (!input.files.length) return;
+    ui.toast('Uploading new revision...');
+    try {
+      const projectId = await ensureBackendProject();
+      const params = new URLSearchParams({ discipline_id: doc.disciplineId, title: doc.title });
+      const form = new FormData();
+      form.append('file', input.files[0]);
+      const res = await fetch(`/projects/${projectId}/documents?${params}`, {
+        method: 'POST', headers: authHeaders(), body: form
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || `Upload failed (${res.status})`);
+      }
+      const newDoc = await res.json();
+      ui.toast(`"${newDoc.title}" updated — Rev ${newDoc.revision}`);
+      await loaders.documents();
+      const newIdx = DOC_CACHE.findIndex(d2 => d2.real && d2.serverId === newDoc.id);
+      if (newIdx >= 0) showDocDetail(newIdx);
+    } catch (err) {
+      ui.toast(err.message);
+    }
+  };
+  input.click();
+}
+
+async function deleteDoc(idx) {
+  const doc = DOC_CACHE[idx];
+  if (!doc || !doc.real) { ui.toast('Sample documents cannot be deleted'); return; }
+  if (!confirm(`Delete "${doc.title}" Rev ${doc.rev}? This cannot be undone.`)) return;
+  try {
+    const res = await fetch(`/documents/${doc.serverId}`, { method: 'DELETE', headers: authHeaders() });
+    if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
+    ui.toast(`"${doc.title}" Rev ${doc.rev} deleted`);
+    await loaders.documents();
+  } catch (err) {
+    ui.toast(err.message);
+  }
+}
+
+function downloadDoc(idx) {
+  const doc = DOC_CACHE[idx];
+  if (!doc || !doc.fileUrl) return;
+  const a = document.createElement('a');
+  a.href = doc.fileUrl;
+  a.download = doc.filename || 'document';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function printDoc(idx) {
+  const doc = DOC_CACHE[idx];
+  if (!doc || !doc.fileUrl) return;
+  const frame = document.getElementById('doc-preview-frame');
+  if (frame) {
+    try { frame.contentWindow.print(); return; } catch (e) { /* cross-context fallback below */ }
+  }
+  const w = window.open(doc.fileUrl, '_blank');
+  if (w) w.addEventListener('load', () => w.print());
 }
 
 /* ── DISCIPLINES ───────────────────────────────────────────────────── */
