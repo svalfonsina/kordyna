@@ -327,6 +327,8 @@ const auth = {
     await loadRealProjects();
     buildSidebar();
     loadDisciplineSelects();
+    refreshNotifications();
+    if (!this._notifTimer) this._notifTimer = setInterval(refreshNotifications, 60000);
     router.go('workspace');
   },
 
@@ -542,6 +544,71 @@ async function loadDisciplineSelects() {
   });
 }
 
+
+/* ── NOTIFICATIONS ─────────────────────────────────────────────────── */
+
+let notifItems = [];
+
+const NOTIF_ICONS = { review: '⏳', conflict: '⚠️', change: '📐', document: '📄' };
+
+async function refreshNotifications() {
+  try {
+    const res = await fetch('/notifications', { headers: authHeaders() });
+    if (!res.ok) return;
+    notifItems = await res.json();
+    const lastSeen = localStorage.getItem('kordyna_notif_seen') || '';
+    const hasUnread = notifItems.some(n => n.at && n.at > lastSeen);
+    document.getElementById('notif-dot').classList.toggle('hidden', !hasUnread);
+  } catch (e) { /* bell stays quiet on network failure */ }
+}
+
+function toggleNotifications(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('notif-panel');
+  const opening = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  if (!opening) return;
+
+  renderNotifications();
+  // Opening the panel marks everything as seen
+  if (notifItems.length && notifItems[0].at) {
+    localStorage.setItem('kordyna_notif_seen', notifItems[0].at);
+  }
+  document.getElementById('notif-dot').classList.add('hidden');
+
+  const close = ev => {
+    if (!panel.contains(ev.target)) {
+      panel.classList.add('hidden');
+      document.removeEventListener('click', close);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', close), 0);
+}
+
+function renderNotifications() {
+  const lastSeen = localStorage.getItem('kordyna_notif_seen') || '';
+  document.getElementById('notif-list').innerHTML = notifItems.map((n, i) =>
+    `<div class="notif-item ${n.at && n.at > lastSeen ? 'unread' : ''}" onclick="openNotification(${i})">
+      <span class="notif-icon notif-${n.type}">${NOTIF_ICONS[n.type] || '·'}</span>
+      <div class="notif-body">
+        <div class="notif-text">${n.text}</div>
+        <div class="notif-time">${n.at ? shortDate(n.at) : ''}</div>
+      </div>
+    </div>`
+  ).join('') || '<div class="notif-empty">Nothing yet — activity in your projects shows up here.</div>';
+}
+
+function openNotification(i) {
+  const n = notifItems[i];
+  if (!n) return;
+  document.getElementById('notif-panel').classList.add('hidden');
+  const p = PROJECTS.find(x => x.id === n.project_id);
+  if (!p) { ui.toast('Project not available'); return; }
+  currentProject = p;
+  updateSidebarProjectState();
+  if (n.change_id) router.go('change-detail', { id: n.change_id });
+  else router.go('documents');
+}
 
 /* ── PAGE LOADERS ──────────────────────────────────────────────────── */
 

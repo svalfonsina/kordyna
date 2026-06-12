@@ -404,6 +404,69 @@ def my_reviews(user: User = Depends(get_current_user), db: Session = Depends(get
 
 # ── Disciplines ──────────────────────────────────────────────────────
 
+@app.get("/notifications")
+def notifications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    items = []
+
+    if user.discipline_id:
+        pending = (
+            db.query(Review)
+            .filter(Review.discipline_id == user.discipline_id, Review.status == "pending")
+            .order_by(Review.updated_at.desc())
+            .limit(10)
+            .all()
+        )
+        for r in pending:
+            items.append({
+                "type": "review",
+                "text": f'Review requested: "{r.change_event.title}"',
+                "project_id": r.change_event.project_id,
+                "change_id": r.change_event_id,
+                "at": r.change_event.created_at,
+            })
+
+    flagged = (
+        db.query(Review)
+        .filter(Review.status == "flagged")
+        .order_by(Review.updated_at.desc())
+        .limit(10)
+        .all()
+    )
+    for r in flagged:
+        items.append({
+            "type": "conflict",
+            "text": f'{r.discipline.name} flagged a conflict on "{r.change_event.title}"',
+            "project_id": r.change_event.project_id,
+            "change_id": r.change_event_id,
+            "at": r.updated_at,
+        })
+
+    changes = db.query(ChangeEvent).order_by(ChangeEvent.created_at.desc()).limit(10).all()
+    for c in changes:
+        who = c.creator.username if c.creator else "Someone"
+        items.append({
+            "type": "change",
+            "text": f'{who} uploaded "{c.title}" — {c.region_count} change regions',
+            "project_id": c.project_id,
+            "change_id": c.id,
+            "at": c.created_at,
+        })
+
+    docs = db.query(Document).order_by(Document.created_at.desc()).limit(10).all()
+    for d in docs:
+        who = d.uploader.username if d.uploader else "Someone"
+        items.append({
+            "type": "document",
+            "text": f'{who} uploaded {d.title} (Rev {d.revision})',
+            "project_id": d.project_id,
+            "change_id": None,
+            "at": d.created_at,
+        })
+
+    items.sort(key=lambda i: i["at"] or datetime.min, reverse=True)
+    return items[:15]
+
+
 @app.get("/disciplines", response_model=list[DisciplineOut])
 def list_disciplines(db: Session = Depends(get_db)):
     order = {name: i for i, name in enumerate(DISCIPLINE_ORDER)}

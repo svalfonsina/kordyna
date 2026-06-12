@@ -6,7 +6,7 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260612k">
+  <link rel="stylesheet" href="/static/styles.css?v=20260612l">
 </head>
 <body>
 
@@ -153,10 +153,16 @@
         <span>Search...</span>
         <kbd>⌘K</kbd>
       </div>
-      <button class="topbar-icon-btn" id="topbar-notif">
-        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-        <span class="topbar-notif-dot"></span>
-      </button>
+      <div class="notif-wrap">
+        <button class="topbar-icon-btn" id="topbar-notif" onclick="toggleNotifications(event)">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="topbar-notif-dot hidden" id="notif-dot"></span>
+        </button>
+        <div class="notif-panel hidden" id="notif-panel">
+          <div class="notif-panel-header">Notifications</div>
+          <div id="notif-list" class="notif-list"><div class="notif-empty">Loading...</div></div>
+        </div>
+      </div>
       <div class="topbar-avatar" id="topbar-avatar">SV</div>
     </div>
   </div>
@@ -648,6 +654,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260612k"></script>
+  <script src="/static/app.js?v=20260612l"></script>
 </body>
 </html>
