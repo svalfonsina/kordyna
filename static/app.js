@@ -871,8 +871,17 @@ loaders.documents = async function() {
   const serverDocs = await fetchServerDocuments();
   DOC_CACHE = [...serverDocs, ...DOCUMENTS.map(d => ({ ...d, real: false }))];
 
+  // Show only the latest revision of each real document in the list;
+  // older revisions stay reachable via Revision History in the detail.
+  // (Server returns revisions newest-first per title.)
+  const seen = new Set();
   const groups = {};
   DOC_CACHE.forEach((d, i) => {
+    if (d.real) {
+      const key = d.title + '|' + d.discipline;
+      if (seen.has(key)) return;
+      seen.add(key);
+    }
     if (!groups[d.discipline]) groups[d.discipline] = [];
     groups[d.discipline].push({ ...d, _idx: i });
   });
@@ -892,6 +901,9 @@ loaders.documents = async function() {
           ${doc.code ? `<span class="doc-item-code">${doc.code}</span>` : ''}
           <span class="doc-item-name">${doc.title}</span>
           <span class="doc-item-rev">Rev ${doc.rev}</span>
+          ${doc.real ? `<button class="doc-item-del" onclick="event.stopPropagation();deleteDocAll(${doc._idx})" title="Delete document (all revisions)">
+            <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>` : ''}
         </div>`).join('')}
       </div>
     </div>`;
@@ -1002,6 +1014,25 @@ function replaceDocFile(idx) {
     }
   };
   input.click();
+}
+
+async function deleteDocAll(idx) {
+  const doc = DOC_CACHE[idx];
+  if (!doc || !doc.real) { ui.toast('Sample documents cannot be deleted'); return; }
+  const revisions = DOC_CACHE.filter(d => d.real && d.title === doc.title && d.discipline === doc.discipline);
+  const label = revisions.length > 1 ? `all ${revisions.length} revisions of "${doc.title}"` : `"${doc.title}"`;
+  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  try {
+    for (const rev of revisions) {
+      const res = await fetch(`/documents/${rev.serverId}`, { method: 'DELETE', headers: authHeaders() });
+      if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
+    }
+    ui.toast(`"${doc.title}" deleted`);
+    await loaders.documents();
+  } catch (err) {
+    ui.toast(err.message);
+    await loaders.documents();
+  }
 }
 
 async function deleteDoc(idx) {

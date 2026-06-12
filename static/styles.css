@@ -343,6 +343,11 @@ img { max-width: 100%; display: block; }
 .doc-item-code { font-weight: 600; color: var(--text-dim); font-size: 0.78rem; min-width: 40px; }
 .doc-item-name { flex: 1; }
 .doc-item-rev { font-size: 0.72rem; color: var(--text-muted); }
+.doc-item-del { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 5px; opacity: 0; transition: all var(--transition); flex-shrink: 0; }
+.doc-item:hover .doc-item-del { opacity: 1; }
+.doc-item-del svg { width: 13px; height: 13px; fill: none; stroke: var(--text-muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.doc-item-del:hover { background: var(--red-bg); }
+.doc-item-del:hover svg { stroke: var(--red); }
 .doc-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: var(--text-muted); gap: 12px; }
 .doc-detail-empty svg { width: 40px; height: 40px; fill: none; stroke: var(--text-muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .doc-detail-view { padding: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); }
