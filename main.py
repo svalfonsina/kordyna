@@ -51,7 +51,7 @@ def landing():
 @app.get("/app", response_class=HTMLResponse)
 def app_page():
     with open("static/index.html", encoding="utf-8") as f:
-        return f.read()
+        return HTMLResponse(f.read(), headers={"Cache-Control": "no-cache"})
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
