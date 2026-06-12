@@ -204,7 +204,7 @@ const router = {
     if (el) { el.classList.remove('hidden'); }
     this.current = page;
 
-    document.querySelectorAll('.sidebar-link').forEach(l => {
+    document.querySelectorAll('.sidebar-link, .sidebar-sublink').forEach(l => {
       l.classList.toggle('active', l.dataset.page === page);
     });
 
@@ -376,11 +376,11 @@ function updateTopbar(page) {
   const centerEl = document.getElementById('topbar-center');
   const infoEl = document.getElementById('topbar-project-info');
 
-  const workspacePages = ['workspace', 'my-reviews', 'my-projects', 'my-activity'];
+  const workspacePages = ['workspace', 'my-reviews', 'my-projects', 'my-activity', 'ops'];
 
   if (workspacePages.includes(page)) {
     centerEl.innerHTML = '';
-    infoEl.innerHTML = `<span class="topbar-project-name">My Workspace</span>`;
+    infoEl.innerHTML = `<span class="topbar-project-name">${page === 'ops' ? 'Landscape Operations' : 'My Workspace'}</span>`;
   } else if (currentProject) {
     infoEl.innerHTML = `
       <span class="topbar-back-btn" onclick="exitProject()">← Workspace</span>
@@ -588,6 +588,161 @@ loaders['my-activity'] = function() {
     </div>`
   ).join('');
 };
+
+/* ── LANDSCAPE OPERATIONS ──────────────────────────────────────────── */
+
+const OPS_PRIORITIES = [
+  {
+    id: 1, location: 'Lot 14', project: 'Lakeside Mixed Use',
+    issue: 'Needs Water', detail: 'Last watered 6 days ago',
+    due: 'Due today', severity: 'high', action: 'Mark Watered',
+    lastWatered: '6 days ago', lastInspection: '8 days ago', team: 'Maintenance', risk: 'High',
+    notes: 'Plant material showing signs of drought stress. Irrigation line near front bed may be clogged.'
+  },
+  {
+    id: 2, location: 'Nursery Area A', project: 'Oak Ridge',
+    issue: 'Inspection Due', detail: 'Nursery stock check required',
+    due: 'Due today', severity: 'medium', action: 'Complete Inspection',
+    lastWatered: '2 days ago', lastInspection: '14 days ago', team: 'Nursery Crew', risk: 'Medium',
+    notes: 'Quarterly nursery stock inspection due. Verify plant counts and check for pest activity.'
+  },
+  {
+    id: 3, location: 'Irrigation Zone 3', project: 'Lakeside Mixed Use',
+    issue: 'Possible Line Clog', detail: 'Low pressure reported near front beds',
+    due: 'Review today', severity: 'high', action: 'View Issue',
+    lastWatered: '1 day ago', lastInspection: '3 days ago', team: 'Irrigation', risk: 'High',
+    notes: 'Low pressure reported near front beds. Possible clog in the main supply line — needs on-site diagnosis.'
+  }
+];
+
+const OPS_SITES = [
+  { name: 'Lakeside Mixed Use', open: 8, status: 'Needs Attention' },
+  { name: 'Riverfront Townhomes', open: 4, status: 'On Track' },
+  { name: 'Oak Ridge', open: 7, status: 'Needs Attention' },
+  { name: 'Town Center', open: 2, status: 'On Track' }
+];
+
+const OPS_ACTIVITY = [
+  'John Martinez watered Lot 18',
+  'Sara Chen completed Nursery Area B inspection',
+  'Maintenance Crew flagged Lot 14 as Needs Water',
+  'Irrigation issue resolved at Riverfront Entry'
+];
+
+let opsSelectedId = null;
+
+loaders.ops = function() {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('ops-greeting').textContent = `${greeting}, Sara`;
+
+  document.getElementById('ops-stats').innerHTML = `
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--red)">14</div><div class="ops-stat-label">Need Water</div></div>
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--yellow)">3</div><div class="ops-stat-label">Inspections Due</div></div>
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--yellow)">2</div><div class="ops-stat-label">Nursery Issues</div></div>
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--green)">87%</div><div class="ops-stat-label">Landscape Health</div></div>`;
+
+  if (!OPS_PRIORITIES.find(p => p.id === opsSelectedId)) {
+    opsSelectedId = OPS_PRIORITIES.length ? OPS_PRIORITIES[0].id : null;
+  }
+  renderOpsPriorities();
+  renderOpsSites();
+  renderOpsDetail();
+};
+
+function opsSevColor(sev) { return sev === 'high' ? 'var(--red)' : 'var(--yellow)'; }
+function opsSevBg(sev) { return sev === 'high' ? 'var(--red-bg)' : 'var(--yellow-bg)'; }
+
+function renderOpsPriorities() {
+  document.getElementById('ops-priorities').innerHTML = OPS_PRIORITIES.map(p => `
+    <div class="ops-priority ${p.id === opsSelectedId ? 'selected' : ''}" onclick="opsSelect(${p.id})">
+      <div class="ops-priority-main">
+        <div class="ops-priority-top">
+          <span class="ops-sev-dot" style="background:${opsSevColor(p.severity)}"></span>
+          <span class="ops-priority-loc">${p.location}</span>
+          <span class="ops-badge" style="background:${opsSevBg(p.severity)};color:${opsSevColor(p.severity)}">${p.issue}</span>
+        </div>
+        <div class="ops-priority-proj">${p.project}</div>
+        <div class="ops-priority-detail">${p.detail}</div>
+      </div>
+      <div class="ops-priority-side">
+        <div class="ops-priority-due">
+          <div style="color:${opsSevColor(p.severity)};font-weight:700;font-size:0.82rem">${p.due}</div>
+          <div class="ops-priority-next">Next action</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();opsAction(${p.id})">${p.action}</button>
+      </div>
+    </div>`
+  ).join('') || '<div class="empty-state" style="min-height:120px"><p>All clear — no priorities today 🎉</p></div>';
+}
+
+function renderOpsSites() {
+  document.getElementById('ops-sites').innerHTML = OPS_SITES.map(s => `
+    <div class="ops-site-card">
+      <div class="ops-site-name">${s.name}</div>
+      <div class="ops-site-open">${s.open}</div>
+      <div class="ops-site-label">Open items</div>
+      <span class="ops-badge" style="background:${s.status === 'On Track' ? 'var(--green-bg)' : 'var(--yellow-bg)'};color:${s.status === 'On Track' ? 'var(--green)' : 'var(--yellow)'}">${s.status}</span>
+    </div>`
+  ).join('');
+}
+
+function renderOpsDetail() {
+  const p = OPS_PRIORITIES.find(x => x.id === opsSelectedId);
+  const el = document.getElementById('ops-detail');
+  if (!p) {
+    el.innerHTML = '<div class="empty-state" style="min-height:200px"><p>Select a priority to see details</p></div>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="ops-detail-header">
+      <div>
+        <div class="ops-detail-title">${p.location}</div>
+        <div class="ops-detail-proj">${p.project}</div>
+      </div>
+      <span class="ops-badge" style="background:${opsSevBg(p.severity)};color:${opsSevColor(p.severity)}">${p.issue}</span>
+    </div>
+    <div class="ops-detail-grid">
+      <div class="ops-detail-cell"><div class="ops-detail-cell-label">Last Watered</div><div class="ops-detail-cell-val" style="color:${p.severity==='high'?'var(--red)':'var(--text)'}">${p.lastWatered}</div></div>
+      <div class="ops-detail-cell"><div class="ops-detail-cell-label">Last Inspection</div><div class="ops-detail-cell-val">${p.lastInspection}</div></div>
+      <div class="ops-detail-cell"><div class="ops-detail-cell-label">Responsible Team</div><div class="ops-detail-cell-val">${p.team}</div></div>
+      <div class="ops-detail-cell"><div class="ops-detail-cell-label">Risk Level</div><div class="ops-detail-cell-val" style="color:${opsSevColor(p.severity)}">${p.risk}</div></div>
+    </div>
+    <div class="ops-detail-notes">
+      <div class="ops-detail-cell-label">Notes</div>
+      <p>${p.notes}</p>
+    </div>
+    <div class="ops-detail-actions">
+      <button class="ops-btn-green" onclick="opsAction(${p.id})">${p.action}</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="ui.toast('Visit scheduled for ${p.location}')">Schedule Visit</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="ui.toast('Note added to ${p.location}')">Add Note</button>
+    </div>
+    <div class="ops-detail-activity">
+      <h3>Recent Activity</h3>
+      ${OPS_ACTIVITY.slice(0, 3).map((a, i) => `
+        <div class="ops-activity-row">
+          <span class="ops-activity-dot"></span>
+          <div><p>${a}</p><span>${i + 1} day${i === 0 ? '' : 's'} ago</span></div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function opsSelect(id) {
+  opsSelectedId = id;
+  renderOpsPriorities();
+  renderOpsDetail();
+}
+
+function opsAction(id) {
+  const i = OPS_PRIORITIES.findIndex(p => p.id === id);
+  if (i < 0) return;
+  const p = OPS_PRIORITIES[i];
+  ui.toast(`${p.action}: ${p.location} ✓`);
+  OPS_PRIORITIES.splice(i, 1);
+  if (opsSelectedId === id) opsSelectedId = OPS_PRIORITIES.length ? OPS_PRIORITIES[0].id : null;
+  renderOpsPriorities();
+  renderOpsDetail();
+}
 
 /* ── PROJECT OVERVIEW ──────────────────────────────────────────────── */
 

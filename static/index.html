@@ -6,7 +6,7 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260612e">
+  <link rel="stylesheet" href="/static/styles.css?v=20260612f">
 </head>
 <body>
 
@@ -106,6 +106,18 @@
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Confidence
         </a>
+      </div>
+
+      <!-- Discipline -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Discipline</div>
+        <div class="sidebar-disc-card">
+          <div class="sidebar-disc-title">🌿 Landscape Architecture</div>
+          <a class="sidebar-sublink" data-page="ops" onclick="router.go('ops')">Landscape Operations</a>
+          <a class="sidebar-sublink" onclick="ui.toast('Nursery Inventory — coming soon')">Nursery Inventory</a>
+          <a class="sidebar-sublink" onclick="ui.toast('Irrigation Issues — coming soon')">Irrigation Issues</a>
+          <a class="sidebar-sublink" onclick="ui.toast('Maintenance Schedule — coming soon')">Maintenance Schedule</a>
+        </div>
       </div>
 
       <!-- Admin -->
@@ -477,6 +489,44 @@
       </div>
     </div>
 
+    <!-- PAGE: LANDSCAPE OPERATIONS ──────────────────────────────── -->
+    <div id="page-ops" class="page hidden">
+      <div class="page-container ops-container">
+        <div class="ops-eyebrow">Landscape Architecture</div>
+        <h1 class="ops-title" id="ops-greeting">Good morning</h1>
+        <p class="ops-sub">Here are the landscape assets that need attention today.</p>
+
+        <div class="panel ops-stats" id="ops-stats"></div>
+
+        <div class="ops-grid">
+          <div class="ops-left">
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">Today's Priorities</h2>
+                  <p class="ops-panel-desc">Start here. These items are most likely to cost money if missed.</p>
+                </div>
+              </div>
+              <div id="ops-priorities"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2 class="panel-title">My Sites</h2>
+                  <p class="ops-panel-desc">Landscape operations grouped by project.</p>
+                </div>
+                <span class="panel-link" onclick="router.go('my-projects')">View projects</span>
+              </div>
+              <div class="panel-body"><div id="ops-sites" class="ops-sites"></div></div>
+            </div>
+          </div>
+
+          <div class="panel ops-detail" id="ops-detail"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- PAGE: DISCIPLINES ───────────────────────────────────────── -->
     <div id="page-disciplines" class="page hidden">
       <div class="page-container">
@@ -584,6 +634,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260612e"></script>
+  <script src="/static/app.js?v=20260612f"></script>
 </body>
 </html>
