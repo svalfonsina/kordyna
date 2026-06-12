@@ -1226,17 +1226,7 @@ function showDocDetail(idx) {
     ? CHANGES.filter(c => c.affectedDocs.some(ad => ad.includes(doc.code))).map(c => `<span style="color:var(--primary);cursor:pointer" onclick="router.go('change-detail',{id:'${c.id}'})">${c.id}</span>`).join(', ')
     : '';
 
-  // All revisions of this document (same title + discipline), newest first
-  const revisions = [];
-  DOC_CACHE.forEach((d2, i) => {
-    if (d2.real === doc.real && d2.title === doc.title && d2.discipline === doc.discipline) revisions.push({ ...d2, _idx: i });
-  });
-  revisions.sort((a, b) => b.rev - a.rev);
-  const revHistory = revisions.map(r =>
-    `<p class="${r._idx === idx ? 'doc-rev-current' : 'doc-rev-link'}" ${r._idx !== idx ? `onclick="showDocDetail(${r._idx})"` : ''}>
-      Rev ${r.rev} — ${r.date} by ${r.by}${r._idx === idx ? ' (viewing)' : ''}
-    </p>`
-  ).join('');
+  const revHistory = `<p class="doc-rev-current">Rev ${doc.rev} — ${doc.date} by ${doc.by}</p>`;
 
   const fileSection = doc.fileUrl
     ? `<div class="doc-detail-section"><h4>File</h4>
