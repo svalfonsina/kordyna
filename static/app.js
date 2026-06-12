@@ -1151,11 +1151,17 @@ loaders.documents = async function() {
   const serverDocs = await fetchServerDocuments();
   DOC_CACHE = serverDocs;
 
+  // Every discipline is always listed — the whole team's sections stay
+  // visible even before they have uploaded anything.
+  let serverDiscs = [];
+  try { serverDiscs = await loadServerDisciplines(); } catch (e) { serverDiscs = []; }
+  const groups = {};
+  serverDiscs.forEach(sd => { groups[sd.name] = []; });
+
   // Show only the latest revision of each real document in the list;
   // older revisions stay reachable via Revision History in the detail.
   // (Server returns revisions newest-first per title.)
   const seen = new Set();
-  const groups = {};
   DOC_CACHE.forEach((d, i) => {
     if (d.real) {
       const key = d.title + '|' + d.discipline;
@@ -1169,9 +1175,9 @@ loaders.documents = async function() {
   document.getElementById('doc-accordion').innerHTML = Object.keys(groups).map(name => {
     const d = disc(name);
     const docs = groups[name];
-    return `<div class="doc-group open">
+    return `<div class="doc-group ${docs.length ? 'open' : ''}">
       <div class="doc-group-header" onclick="this.parentElement.classList.toggle('open')">
-        <span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span>
+        <span style="color:${d?d.color:'#666'}">${d?d.icon:'📐'}</span>
         <span>${name}</span>
         <span class="count">${docs.length}</span>
         <span class="chevron">▶</span>
@@ -1184,7 +1190,7 @@ loaders.documents = async function() {
           ${doc.real ? `<button class="doc-item-del" onclick="event.stopPropagation();deleteDocAll(${doc._idx})" title="Delete document (all revisions)">
             <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>` : ''}
-        </div>`).join('')}
+        </div>`).join('') || '<div class="doc-group-empty">No documents yet</div>'}
       </div>
     </div>`;
   }).join('');
