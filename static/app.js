@@ -27,26 +27,32 @@ const USERS = [
   { id: 7, name: 'Lisa Wang', initials: 'LW', discipline: 'Plumbing' }
 ];
 
-const PROJECTS = [
-  {
-    id: 1, name: 'Lakeside Mixed Use', client: 'ACME Civil', confidence: 92,
-    changes: 4, pendingReviews: 5, conflicts: 1, docs: 14,
-    disciplines: [1,2,3,4,5,6,7],
-    role: 'Landscape Lead'
-  },
-  {
-    id: 2, name: 'Riverfront Development', client: 'Greenfield Corp', confidence: 84,
-    changes: 6, pendingReviews: 8, conflicts: 2, docs: 22,
-    disciplines: [1,2,3,5,7,9],
-    role: 'Landscape Coordinator'
-  },
-  {
-    id: 3, name: 'Town Center Renovation', client: 'City of Maplewood', confidence: 96,
-    changes: 2, pendingReviews: 1, conflicts: 0, docs: 9,
-    disciplines: [1,2,3,7],
-    role: 'Landscape Lead'
+// Live projects, loaded from the backend after login.
+let PROJECTS = [];
+
+async function loadRealProjects() {
+  try {
+    const res = await fetch('/projects', { headers: authHeaders() });
+    if (!res.ok) { PROJECTS = []; return; }
+    const list = await res.json();
+    PROJECTS = await Promise.all(list.map(async p => {
+      let s = { changes: 0, documents: 0, reviews_pending: 0, reviews_flagged: 0, reviews_total: 0, confidence: 100 };
+      try {
+        const sr = await fetch(`/projects/${p.id}/summary`, { headers: authHeaders() });
+        if (sr.ok) s = await sr.json();
+      } catch (e) { /* summary is cosmetic; keep zeros */ }
+      return {
+        id: p.id, backendId: p.id,
+        name: p.name, client: p.description || '',
+        confidence: s.confidence, changes: s.changes,
+        pendingReviews: s.reviews_pending, conflicts: s.reviews_flagged,
+        docs: s.documents
+      };
+    }));
+  } catch (e) {
+    PROJECTS = [];
   }
-];
+}
 
 const CHANGES = [
   {
@@ -203,6 +209,7 @@ const router = {
     const el = document.getElementById('page-' + page);
     if (el) { el.classList.remove('hidden'); }
     this.current = page;
+    this.lastData = data;
 
     document.querySelectorAll('.sidebar-link, .sidebar-sublink').forEach(l => {
       l.classList.toggle('active', l.dataset.page === page);
@@ -312,11 +319,12 @@ const auth = {
     return false;
   },
 
-  enter() {
+  async enter() {
     document.getElementById('page-auth').classList.add('hidden');
     document.getElementById('sidebar').classList.remove('hidden');
     document.getElementById('topbar').classList.remove('hidden');
     document.getElementById('main').style.display = '';
+    await loadRealProjects();
     buildSidebar();
     loadDisciplineSelects();
     router.go('workspace');
@@ -345,9 +353,71 @@ const auth = {
 /* ── PROJECT CONTEXT ───────────────────────────────────────────────── */
 
 function enterProject(projectId) {
-  currentProject = PROJECTS.find(p => p.id === projectId) || null;
+  const p = PROJECTS.find(x => x.id === projectId);
+  if (!p) { ui.toast('Project not found'); return; }
+  currentProject = p;
   updateSidebarProjectState();
   router.go('overview');
+}
+
+/* Shared cache of a project's change events with their reviews. */
+const projectChangeCache = {};
+
+async function fetchProjectChanges(force = false) {
+  if (!currentProject) return [];
+  const pid = currentProject.backendId;
+  if (!force && projectChangeCache[pid]) return projectChangeCache[pid];
+  try {
+    const res = await fetch(`/projects/${pid}/changes`, { headers: authHeaders() });
+    const list = res.ok ? await res.json() : [];
+    const detailed = await Promise.all(list.map(async c => {
+      try {
+        const dr = await fetch(`/changes/${c.id}`, { headers: authHeaders() });
+        if (dr.ok) { const d = await dr.json(); return { ...c, reviews: d.reviews }; }
+      } catch (e) { /* fall through */ }
+      return { ...c, reviews: [] };
+    }));
+    projectChangeCache[pid] = detailed;
+    return detailed;
+  } catch (e) {
+    return [];
+  }
+}
+
+function changeStatus(c) {
+  const total = c.reviews.length;
+  const flagged = c.reviews.filter(r => r.status === 'flagged').length;
+  const done = c.reviews.filter(r => r.status === 'reviewed').length;
+  if (flagged) return 'Conflict';
+  if (total && done === total) return 'Resolved';
+  if (done > 0) return 'In Review';
+  return 'Open';
+}
+function changeRisk(c) { return c.region_count > 8 ? 'High' : c.region_count > 3 ? 'Medium' : 'Low'; }
+function changeProgress(c) {
+  const total = c.reviews.length;
+  return total ? Math.round(c.reviews.filter(r => r.status === 'reviewed').length / total * 100) : 0;
+}
+function shortDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+async function updateReviewStatus(changeId, disciplineId, status) {
+  try {
+    const res = await fetch(`/changes/${changeId}/reviews/${disciplineId}`, {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Update failed'); }
+    ui.toast(status === 'reviewed' ? 'Review completed' : status === 'flagged' ? 'Conflict flagged' : 'Review reopened');
+    if (currentProject) delete projectChangeCache[currentProject.backendId];
+    await loadRealProjects();
+    buildSidebar();
+    if (loaders[router.current]) loaders[router.current](router.lastData);
+  } catch (err) {
+    ui.toast(err.message);
+  }
 }
 
 function exitProject() {
@@ -406,7 +476,10 @@ function buildSidebar() {
       <span>${p.name}</span>
       <span class="sidebar-project-conf">${p.confidence}%</span>
     </a>`;
-  }).join('');
+  }).join('') + `<a class="sidebar-project-link sidebar-new-project" onclick="ui.showModal('modal-new-project')">
+      <span class="sidebar-project-dot" style="background:var(--border-light)"></span>
+      <span>＋ New Project</span>
+    </a>`;
 }
 
 
@@ -461,7 +534,7 @@ const loaders = {};
 
 /* ── WORKSPACE ─────────────────────────────────────────────────────── */
 
-loaders.workspace = function() {
+loaders.workspace = async function() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -469,36 +542,37 @@ loaders.workspace = function() {
     <div class="ws-greeting-line">Hey Sara 👋</div>
     <div class="ws-greeting-sub">${greeting} — here's what needs your attention</div>`;
 
-  const pendingReviews = MY_REVIEWS.filter(r => r.status === 'pending').length;
-  const conflictReviews = MY_REVIEWS.filter(r => r.status === 'conflict').length;
-  const dueThisWeek = MY_REVIEWS.filter(r => r.status === 'pending').slice(0, 3).length;
+  const pendingReviews = PROJECTS.reduce((n, p) => n + p.pendingReviews, 0);
+  const conflictReviews = PROJECTS.reduce((n, p) => n + p.conflicts, 0);
+  const totalChanges = PROJECTS.reduce((n, p) => n + p.changes, 0);
 
   document.getElementById('ws-action-card').innerHTML = `
     <div class="ws-action-stat"><span class="ws-action-num blue">${pendingReviews}</span><span class="ws-action-label">Reviews Pending</span></div>
     <div class="ws-action-sep"></div>
     <div class="ws-action-stat"><span class="ws-action-num red">${conflictReviews}</span><span class="ws-action-label">Conflicts</span></div>
     <div class="ws-action-sep"></div>
-    <div class="ws-action-stat"><span class="ws-action-num yellow">${dueThisWeek}</span><span class="ws-action-label">Due This Week</span></div>
+    <div class="ws-action-stat"><span class="ws-action-num yellow">${totalChanges}</span><span class="ws-action-label">Change Events</span></div>
     <div class="ws-action-sep"></div>
     <div class="ws-action-stat"><span class="ws-action-num">${PROJECTS.length}</span><span class="ws-action-label">Active Projects</span></div>`;
 
-  const reviewsHtml = MY_REVIEWS.filter(r => r.status !== 'done').slice(0, 5).map(r => {
-    const iconClass = r.status === 'conflict' ? 'conflict' : 'pending';
-    const iconText = r.status === 'conflict' ? '!' : '⏳';
-    const badgeClass = r.status;
-    const badgeText = r.status === 'conflict' ? 'Conflict' : 'Pending';
-    return `<div class="ws-review-item" onclick="enterProject(${r.projectId})">
-      <div class="ws-review-icon ${iconClass}">${iconText}</div>
+  // Inbox: real pending reviews for the user's discipline
+  let myReviews = [];
+  try {
+    const res = await fetch('/my-reviews', { headers: authHeaders() });
+    if (res.ok) myReviews = await res.json();
+  } catch (e) { /* show empty state */ }
+  const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || `Project ${id}`;
+  document.getElementById('ws-reviews').innerHTML = myReviews.slice(0, 6).map(r =>
+    `<div class="ws-review-item" onclick="enterProject(${r.project_id})">
+      <div class="ws-review-icon pending">⏳</div>
       <div class="ws-review-body">
-        <div class="ws-review-title">${r.change} · ${r.title}</div>
-        <div class="ws-review-meta"><span>${r.discipline}</span><span class="dot"></span><span>${r.dueIn}</span></div>
+        <div class="ws-review-title">CE-${r.change_event_id} · ${r.change_title}</div>
+        <div class="ws-review-meta"><span>Awaiting your review</span></div>
       </div>
-      <span class="ws-review-project">${r.project}</span>
-      <span class="ws-review-badge ${badgeClass}">${badgeText}</span>
-      <span class="ws-review-time">${r.time}</span>
-    </div>`;
-  }).join('');
-  document.getElementById('ws-reviews').innerHTML = reviewsHtml || '<div class="empty-state"><p>No pending reviews</p></div>';
+      <span class="ws-review-project">${projName(r.project_id)}</span>
+      <span class="ws-review-badge pending">Pending</span>
+    </div>`
+  ).join('') || '<div class="empty-state" style="min-height:120px"><p>No reviews waiting on you — inbox zero 🎉</p></div>';
 
   document.getElementById('ws-projects').innerHTML = PROJECTS.map(p => {
     const confClass = p.confidence >= 90 ? 'high' : p.confidence >= 80 ? 'mid' : 'low';
@@ -513,7 +587,9 @@ loaders.workspace = function() {
         <span><span class="ws-project-stat-val">${p.conflicts}</span> conflicts</span>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + `<div class="ws-project-card ws-project-new" onclick="ui.showModal('modal-new-project')">
+      <div class="ws-project-new-inner">＋ New Project</div>
+    </div>`;
 
   document.getElementById('ws-activity').innerHTML = ACTIVITY.slice(0, 5).map(a =>
     `<div class="ws-activity-item">
@@ -525,34 +601,33 @@ loaders.workspace = function() {
     </div>`
   ).join('');
 
-  const completed = MY_REVIEWS.filter(r => r.status === 'done').length;
-  const avgTime = '1.2d';
   document.getElementById('ws-accountability').innerHTML = `
-    <div class="ws-acc-card"><div class="ws-acc-val green">${completed}</div><div class="ws-acc-label">Completed</div></div>
-    <div class="ws-acc-card"><div class="ws-acc-val blue">${pendingReviews}</div><div class="ws-acc-label">In Queue</div></div>
-    <div class="ws-acc-card"><div class="ws-acc-val yellow">${avgTime}</div><div class="ws-acc-label">Avg Response</div></div>
-    <div class="ws-acc-card"><div class="ws-acc-val green">96%</div><div class="ws-acc-label">On-Time Rate</div></div>`;
+    <div class="ws-acc-card"><div class="ws-acc-val blue">${myReviews.length}</div><div class="ws-acc-label">In Queue</div></div>
+    <div class="ws-acc-card"><div class="ws-acc-val red">${conflictReviews}</div><div class="ws-acc-label">Conflicts</div></div>
+    <div class="ws-acc-card"><div class="ws-acc-val yellow">${totalChanges}</div><div class="ws-acc-label">Changes</div></div>
+    <div class="ws-acc-card"><div class="ws-acc-val green">${PROJECTS.length}</div><div class="ws-acc-label">Projects</div></div>`;
 };
 
 /* ── MY REVIEWS (full page) ────────────────────────────────────────── */
 
-loaders['my-reviews'] = function() {
-  document.getElementById('my-reviews-list').innerHTML = MY_REVIEWS.map(r => {
-    const iconClass = r.status === 'conflict' ? 'conflict' : r.status === 'done' ? 'done' : 'pending';
-    const iconText = r.status === 'conflict' ? '!' : r.status === 'done' ? '✓' : '⏳';
-    const badgeClass = r.status === 'done' ? 'done' : r.status;
-    const badgeText = r.status === 'conflict' ? 'Conflict' : r.status === 'done' ? 'Completed' : 'Pending';
-    return `<div class="ws-review-item" onclick="enterProject(${r.projectId})">
-      <div class="ws-review-icon ${iconClass}">${iconText}</div>
+loaders['my-reviews'] = async function() {
+  let myReviews = [];
+  try {
+    const res = await fetch('/my-reviews', { headers: authHeaders() });
+    if (res.ok) myReviews = await res.json();
+  } catch (e) { /* show empty state */ }
+  const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || `Project ${id}`;
+  document.getElementById('my-reviews-list').innerHTML = myReviews.map(r =>
+    `<div class="ws-review-item" onclick="enterProject(${r.project_id})">
+      <div class="ws-review-icon pending">⏳</div>
       <div class="ws-review-body">
-        <div class="ws-review-title">${r.change} · ${r.title}</div>
-        <div class="ws-review-meta"><span>${r.discipline}</span><span class="dot"></span><span>${r.dueIn}</span></div>
+        <div class="ws-review-title">CE-${r.change_event_id} · ${r.change_title}</div>
+        <div class="ws-review-meta"><span>Awaiting your review${r.notes ? ' · ' + r.notes : ''}</span></div>
       </div>
-      <span class="ws-review-project">${r.project}</span>
-      <span class="ws-review-badge ${badgeClass}">${badgeText}</span>
-      <span class="ws-review-time">${r.time}</span>
-    </div>`;
-  }).join('');
+      <span class="ws-review-project">${projName(r.project_id)}</span>
+      <span class="ws-review-badge pending">Pending</span>
+    </div>`
+  ).join('') || '<div class="empty-state"><h3>Inbox zero</h3><p>No reviews are waiting on you. New reviews appear here when drawings change in your projects.</p></div>';
 };
 
 /* ── MY PROJECTS (full page) ───────────────────────────────────────── */
@@ -572,7 +647,9 @@ loaders['my-projects'] = function() {
         <span><span class="ws-project-stat-val">${p.docs}</span> docs</span>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + `<div class="ws-project-card ws-project-new" onclick="ui.showModal('modal-new-project')">
+      <div class="ws-project-new-inner">＋ New Project</div>
+    </div>`;
 };
 
 /* ── MY ACTIVITY (full page) ───────────────────────────────────────── */
@@ -746,7 +823,7 @@ function opsAction(id) {
 
 /* ── PROJECT OVERVIEW ──────────────────────────────────────────────── */
 
-loaders.overview = function() {
+loaders.overview = async function() {
   if (!currentProject) { router.go('workspace'); return; }
 
   document.getElementById('overview-title').textContent = currentProject.name;
@@ -756,19 +833,30 @@ loaders.overview = function() {
   document.getElementById('kpi-conflicts').textContent = currentProject.conflicts;
   document.getElementById('kpi-docs').textContent = currentProject.docs;
 
-  const projectChanges = CHANGES.filter(c => c.projectId === currentProject.id);
+  const projectChanges = await fetchProjectChanges();
 
-  document.getElementById('overview-changes').innerHTML = projectChanges.slice(0, 3).map(c =>
-    `<div class="cd-timeline-item" style="cursor:pointer" onclick="router.go('change-detail',{id:'${c.id}'})">
-      <div class="cd-timeline-dot" style="background:${c.status==='Conflict'?'var(--red)':c.status==='Resolved'?'var(--green)':'var(--yellow)'}"></div>
+  document.getElementById('overview-changes').innerHTML = projectChanges.slice(0, 4).map(c => {
+    const st = changeStatus(c);
+    return `<div class="cd-timeline-item" style="cursor:pointer" onclick="router.go('change-detail',{id:${c.id}})">
+      <div class="cd-timeline-dot" style="background:${st==='Conflict'?'var(--red)':st==='Resolved'?'var(--green)':'var(--yellow)'}"></div>
       <div>
-        <div class="cd-timeline-text"><strong>${c.id}</strong> ${c.title}</div>
-        <div class="cd-timeline-time">${c.status} · ${c.date}</div>
+        <div class="cd-timeline-text"><strong>CE-${c.id}</strong> ${c.title}</div>
+        <div class="cd-timeline-time">${st} · ${shortDate(c.created_at)}</div>
       </div>
-    </div>`
-  ).join('') || '<p style="color:var(--text-muted)">No change events</p>';
+    </div>`;
+  }).join('') || '<p style="color:var(--text-muted)">No change events yet — upload old + new drawings to detect changes.</p>';
 
-  document.getElementById('overview-factors').innerHTML = CONFIDENCE.factors.map(f =>
+  const totalReviews = projectChanges.reduce((n, c) => n + c.reviews.length, 0);
+  const doneReviews = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'reviewed').length, 0);
+  const flaggedReviews = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'flagged').length, 0);
+  const completion = totalReviews ? Math.round(doneReviews / totalReviews * 100) : 100;
+  const conflictFree = totalReviews ? Math.round((totalReviews - flaggedReviews) / totalReviews * 100) : 100;
+  const factors = [
+    { name: 'Review Completion', score: completion, color: completion >= 80 ? 'var(--green)' : completion >= 50 ? 'var(--yellow)' : 'var(--red)' },
+    { name: 'Conflict-Free Reviews', score: conflictFree, color: conflictFree >= 90 ? 'var(--green)' : 'var(--red)' },
+    { name: 'Documents on File', score: currentProject.docs > 0 ? 100 : 0, color: currentProject.docs > 0 ? 'var(--green)' : 'var(--yellow)' }
+  ];
+  document.getElementById('overview-factors').innerHTML = factors.map(f =>
     `<div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px">
         <span style="font-size:0.85rem">${f.name}</span>
@@ -779,134 +867,162 @@ loaders.overview = function() {
   ).join('');
 
   const projectReviews = [];
-  projectChanges.forEach(c => c.reviews.forEach(r => projectReviews.push({ ...r, change: c.id, changeTitle: c.title })));
-  document.getElementById('overview-reviews').innerHTML = projectReviews.filter(r => r.status !== 'Reviewed').slice(0, 4).map(r =>
+  projectChanges.forEach(c => c.reviews.forEach(r => projectReviews.push({ ...r, change: c.id })));
+  document.getElementById('overview-reviews').innerHTML = projectReviews.filter(r => r.status !== 'reviewed').slice(0, 5).map(r =>
     `<div class="cd-review-row">
-      <div class="cd-review-disc"><span>${r.discipline}</span><span style="color:var(--text-muted);font-size:0.78rem"> · ${r.change}</span></div>
-      ${reviewStatusBadge(r.status)}
+      <div class="cd-review-disc"><span>${r.discipline}</span><span style="color:var(--text-muted);font-size:0.78rem"> · CE-${r.change}</span></div>
+      ${reviewStatusBadge(r.status === 'flagged' ? 'Conflict' : 'Pending')}
     </div>`
   ).join('') || '<p style="color:var(--text-muted)">All reviews complete</p>';
 
-  document.getElementById('overview-activity').innerHTML = ACTIVITY.slice(0, 4).map(a =>
+  document.getElementById('overview-activity').innerHTML = projectChanges.slice(0, 4).map(c =>
     `<div class="cd-timeline-item">
-      <div class="cd-timeline-dot" style="background:${a.type==='conflict'?'var(--red)':a.type==='upload'?'var(--primary)':'var(--green)'}"></div>
-      <div><div class="cd-timeline-text">${a.text}</div><div class="cd-timeline-time">${a.time}</div></div>
+      <div class="cd-timeline-dot" style="background:var(--primary)"></div>
+      <div><div class="cd-timeline-text"><strong>${c.creator || 'Someone'}</strong> uploaded "${c.title}" — ${c.region_count} regions detected</div><div class="cd-timeline-time">${shortDate(c.created_at)}</div></div>
     </div>`
-  ).join('');
+  ).join('') || '<p style="color:var(--text-muted)">No activity yet</p>';
 };
 
 /* ── CHANGES LIST ──────────────────────────────────────────────────── */
 
-loaders.changes = function() {
-  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
-  document.getElementById('changes-list').innerHTML = projectChanges.map(c =>
-    `<div class="change-row" onclick="router.go('change-detail',{id:'${c.id}'})">
-      <span class="ct-id">${c.id}</span>
+loaders.changes = async function() {
+  if (!currentProject) { router.go('workspace'); return; }
+  const projectChanges = await fetchProjectChanges();
+  document.getElementById('changes-list').innerHTML = projectChanges.map(c => {
+    const st = changeStatus(c);
+    const risk = changeRisk(c);
+    return `<div class="change-row" onclick="router.go('change-detail',{id:${c.id}})">
+      <span class="ct-id">CE-${c.id}</span>
       <span class="ct-title">${c.title}</span>
-      <span class="ct-status">${statusBadge(c.status)}</span>
-      <span>${c.uploadedBy}</span>
-      <span>${c.documents}</span>
-      <span>${c.impacted.length} disciplines</span>
-      <span><div class="ct-progress-bar"><div class="ct-progress-fill" style="width:${c.reviewProgress}%"></div></div></span>
-      <span class="ct-risk risk-${c.risk.toLowerCase()}">${c.risk}</span>
-      <span class="ct-date">${c.date}</span>
+      <span class="ct-status">${statusBadge(st)}</span>
+      <span>${c.creator || '—'}</span>
+      <span>${c.region_count}</span>
+      <span>${c.reviews.length} disciplines</span>
+      <span><div class="ct-progress-bar"><div class="ct-progress-fill" style="width:${changeProgress(c)}%"></div></div></span>
+      <span class="ct-risk risk-${risk.toLowerCase()}">${risk}</span>
+      <span class="ct-date">${shortDate(c.created_at)}</span>
       <span class="ct-actions"><svg viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg></span>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('') || '<div class="empty-state"><h3>No change events</h3><p>Upload an old and new version of a drawing — Kordyna detects what changed and routes reviews to every discipline.</p></div>';
 };
 
 /* ── CHANGE DETAIL ─────────────────────────────────────────────────── */
 
-loaders['change-detail'] = function(data) {
-  const c = CHANGES.find(x => x.id === (data && data.id));
-  if (!c) return;
+loaders['change-detail'] = async function(data) {
+  if (!data || data.id == null) return;
+  let c = null;
+  try {
+    const res = await fetch(`/changes/${data.id}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error('Change not found');
+    c = await res.json();
+  } catch (err) {
+    ui.toast(err.message);
+    router.go('changes');
+    return;
+  }
+  // Merge in list fields (creator) from the cache if present
+  const cached = currentProject && (projectChangeCache[currentProject.backendId] || []).find(x => x.id === c.id);
+  c.creator = cached ? cached.creator : null;
 
-  document.getElementById('cd-id').textContent = c.id;
+  const st = changeStatus(c);
+  const risk = changeRisk(c);
+
+  document.getElementById('cd-id').textContent = `CE-${c.id}`;
   document.getElementById('cd-title').textContent = c.title;
-  document.getElementById('cd-meta').textContent = `Uploaded by ${c.uploadedBy} · ${c.date} · ${c.documents} documents`;
+  document.getElementById('cd-meta').textContent = `Uploaded${c.creator ? ' by ' + c.creator : ''} · ${shortDate(c.created_at)} · ${c.region_count} change regions`;
 
-  const statusClass = c.status === 'Resolved' ? 'badge-resolved' : c.status === 'Conflict' ? 'badge-conflict' : 'badge-review';
-  document.getElementById('cd-status').className = 'cd-status ' + statusClass;
-  document.getElementById('cd-status').textContent = c.status;
-  document.getElementById('cd-status').style.background = c.status === 'Resolved' ? 'var(--green-bg)' : c.status === 'Conflict' ? 'var(--red-bg)' : 'var(--yellow-bg)';
-  document.getElementById('cd-status').style.color = c.status === 'Resolved' ? 'var(--green)' : c.status === 'Conflict' ? 'var(--red)' : 'var(--yellow)';
+  const stEl = document.getElementById('cd-status');
+  stEl.textContent = st;
+  stEl.style.background = st === 'Resolved' ? 'var(--green-bg)' : st === 'Conflict' ? 'var(--red-bg)' : 'var(--yellow-bg)';
+  stEl.style.color = st === 'Resolved' ? 'var(--green)' : st === 'Conflict' ? 'var(--red)' : 'var(--yellow)';
 
-  document.getElementById('cd-summary').innerHTML = `<p style="line-height:1.7;color:var(--text-dim)">${c.summary}</p>`;
+  document.getElementById('cd-summary').innerHTML = `<p style="line-height:1.7;color:var(--text-dim)">Kordyna compared the old and new drawings and detected <strong>${c.region_count} change region${c.region_count === 1 ? '' : 's'}</strong>. Highlighted areas in the diff image below show exactly what moved, was added, or removed. Each discipline reviews the change for impact on their scope.</p>`;
 
-  document.getElementById('cd-documents').innerHTML = c.affectedDocs.map(d =>
-    `<div class="cd-doc-item"><span class="cd-doc-icon">📄</span><span>${d}</span></div>`
-  ).join('');
+  document.getElementById('cd-documents').innerHTML =
+    `<div class="cd-doc-item"><span class="cd-doc-icon">🔍</span><a href="${c.diff_image}" target="_blank">Open full-size diff image</a></div>`;
 
-  document.getElementById('cd-reviews').innerHTML = c.reviews.map(r =>
-    `<div class="cd-review-row"><div class="cd-review-disc">${r.discipline}</div>${reviewStatusBadge(r.status)}</div>`
-  ).join('');
+  document.getElementById('cd-reviews').innerHTML = c.reviews.map(r => {
+    const label = r.status === 'reviewed' ? 'Reviewed' : r.status === 'flagged' ? 'Conflict' : 'Pending';
+    const buttons = r.status === 'reviewed'
+      ? `<button class="btn btn-ghost btn-sm" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'pending')">Reopen</button>`
+      : `<button class="btn btn-primary btn-sm" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>
+         <button class="btn btn-danger btn-sm" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'flagged')">Flag</button>`;
+    return `<div class="cd-review-row">
+      <div class="cd-review-disc">${r.discipline}</div>
+      <div style="display:flex;align-items:center;gap:8px">${reviewStatusBadge(label)}${buttons}</div>
+    </div>`;
+  }).join('') || '<p style="color:var(--text-muted)">No reviews assigned</p>';
 
-  document.getElementById('cd-disciplines').innerHTML = c.impacted.map(name => {
-    const d = disc(name);
-    return `<span class="cd-disc-tag"><span class="cd-disc-dot" style="background:${d ? d.color : '#666'}"></span>${name}</span>`;
+  document.getElementById('cd-disciplines').innerHTML = c.reviews.map(r => {
+    const d = disc(r.discipline);
+    return `<span class="cd-disc-tag"><span class="cd-disc-dot" style="background:${d ? d.color : 'var(--primary)'}"></span>${r.discipline}</span>`;
   }).join('');
 
-  document.getElementById('cd-timeline').innerHTML = c.timeline.map(t =>
-    `<div class="cd-timeline-item"><div class="cd-timeline-dot" style="background:${t.type==='conflict'?'var(--red)':t.type==='upload'?'var(--primary)':'var(--green)'}"></div><div><div class="cd-timeline-text">${t.text}</div><div class="cd-timeline-time">${t.time}</div></div></div>`
-  ).join('');
+  document.getElementById('cd-timeline').innerHTML = `
+    <div class="cd-timeline-item"><div class="cd-timeline-dot" style="background:var(--primary)"></div><div><div class="cd-timeline-text">${c.creator || 'Someone'} uploaded old + new drawings</div><div class="cd-timeline-time">${shortDate(c.created_at)}</div></div></div>
+    <div class="cd-timeline-item"><div class="cd-timeline-dot" style="background:var(--green)"></div><div><div class="cd-timeline-text">System detected ${c.region_count} change regions and assigned ${c.reviews.length} discipline reviews</div><div class="cd-timeline-time">${shortDate(c.created_at)}</div></div></div>` +
+    c.reviews.filter(r => r.status !== 'pending').map(r =>
+      `<div class="cd-timeline-item"><div class="cd-timeline-dot" style="background:${r.status === 'flagged' ? 'var(--red)' : 'var(--green)'}"></div><div><div class="cd-timeline-text">${r.discipline} ${r.status === 'flagged' ? 'flagged a conflict' : 'completed review'}${r.notes ? ' — ' + r.notes : ''}</div><div class="cd-timeline-time">${shortDate(r.updated_at)}</div></div></div>`
+    ).join('');
 
-  document.getElementById('cd-actions').innerHTML = c.reviews.filter(r => r.status !== 'Reviewed').map(r =>
+  document.getElementById('cd-actions').innerHTML = c.reviews.filter(r => r.status === 'pending').map(r =>
     `<div class="cd-action-item"><span class="cd-action-bullet"></span><span>Complete ${r.discipline} review</span></div>`
   ).join('') || '<p style="color:var(--text-muted)">No outstanding actions</p>';
 
-  const confImpact = c.status === 'Resolved' ? '+2%' : c.status === 'Conflict' ? '-5%' : '-2%';
-  const confColor = c.status === 'Resolved' ? 'var(--green)' : 'var(--red)';
+  const done = c.reviews.filter(r => r.status === 'reviewed').length;
   document.getElementById('cd-confidence').innerHTML = `
-    <div class="cd-conf-row"><span>Impact on confidence</span><span style="font-weight:700;color:${confColor}">${confImpact}</span></div>
-    <div class="cd-conf-row"><span>Reviews complete</span><span style="font-weight:700">${c.reviews.filter(r=>r.status==='Reviewed').length}/${c.reviews.length}</span></div>
-    <div class="cd-conf-row"><span>Risk level</span><span class="ct-risk risk-${c.risk.toLowerCase()}" style="font-weight:700">${c.risk}</span></div>`;
+    <div class="cd-conf-row"><span>Reviews complete</span><span style="font-weight:700">${done}/${c.reviews.length}</span></div>
+    <div class="cd-conf-row"><span>Conflicts</span><span style="font-weight:700;color:${c.reviews.some(r=>r.status==='flagged')?'var(--red)':'var(--green)'}">${c.reviews.filter(r=>r.status==='flagged').length}</span></div>
+    <div class="cd-conf-row"><span>Risk level</span><span class="ct-risk risk-${risk.toLowerCase()}" style="font-weight:700">${risk}</span></div>`;
 
-  drawMiniImpactMap(c);
+  // Diff image in place of the sample impact mini-map
+  const canvas = document.querySelector('#page-change-detail .cd-impact-canvas');
+  if (canvas) {
+    canvas.innerHTML = `<img src="${c.diff_image}" alt="Drawing diff" style="width:100%;height:100%;object-fit:contain"
+      onerror="this.outerHTML='<div class=&quot;empty-state&quot; style=&quot;min-height:300px&quot;><p>Diff image no longer available (storage was reset). Re-upload the drawings to regenerate it.</p></div>'">`;
+  }
 };
 
 /* ── IMPACT MAP ────────────────────────────────────────────────────── */
 
-loaders.impact = function() {
+loaders.impact = async function() {
+  if (!currentProject) { router.go('workspace'); return; }
   const sel = document.getElementById('impact-change-select');
-  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
-  sel.innerHTML = projectChanges.map(c => `<option value="${c.id}">${c.id} — ${c.title}</option>`).join('');
+  const projectChanges = await fetchProjectChanges();
+  sel.innerHTML = projectChanges.map(c => `<option value="${c.id}">CE-${c.id} — ${c.title}</option>`).join('')
+    || '<option value="">No change events yet</option>';
   renderImpactMap();
 };
 
 function renderImpactMap() {
-  const changeId = document.getElementById('impact-change-select').value;
-  const change = CHANGES.find(c => c.id === changeId);
-  if (!change) return;
+  const changeId = parseInt(document.getElementById('impact-change-select').value);
+  const cache = currentProject ? (projectChangeCache[currentProject.backendId] || []) : [];
+  const change = cache.find(c => c.id === changeId);
   const svg = document.getElementById('impact-svg');
+  if (!change) { svg.innerHTML = ''; return; }
   const w = svg.parentElement.offsetWidth;
   const h = svg.parentElement.offsetHeight;
   const cx = w / 2, cy = h / 2;
   let html = `<circle cx="${cx}" cy="${cy}" r="36" fill="var(--primary)" opacity="0.9"/>
-    <text x="${cx}" y="${cy-6}" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">${change.id}</text>
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">CE-${change.id}</text>
     <text x="${cx}" y="${cy+10}" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">Source</text>`;
 
-  const allDiscs = DISCIPLINES;
-  const angleStep = (2 * Math.PI) / allDiscs.length;
+  const nodes = change.reviews;
+  const angleStep = (2 * Math.PI) / Math.max(nodes.length, 1);
   const radius = Math.min(w, h) * 0.35;
 
-  allDiscs.forEach((d, i) => {
+  nodes.forEach((r, i) => {
     const angle = angleStep * i - Math.PI / 2;
     const nx = cx + radius * Math.cos(angle);
     const ny = cy + radius * Math.sin(angle);
-    const review = change.reviews.find(r => r.discipline === d.name);
-    const isImpacted = change.impacted.includes(d.name);
-    let nodeColor = 'var(--text-muted)';
-    if (isImpacted && review) {
-      nodeColor = review.status === 'Reviewed' ? 'var(--green)' : review.status === 'Conflict' ? 'var(--red)' : 'var(--yellow)';
-    }
-    if (isImpacted) {
-      html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nodeColor}" stroke-width="2" opacity="0.4"/>`;
-    }
-    html += `<g class="impact-node" onclick="showImpactDetail('${d.name}','${changeId}')">
-      <circle cx="${nx}" cy="${ny}" r="28" fill="${isImpacted ? nodeColor : 'var(--border)'}" opacity="${isImpacted ? 0.2 : 0.3}"/>
-      <circle cx="${nx}" cy="${ny}" r="28" fill="none" stroke="${isImpacted ? nodeColor : 'var(--border)'}" stroke-width="2"/>
-      <text x="${nx}" y="${ny-4}" text-anchor="middle" fill="var(--text)" font-size="14">${d.icon}</text>
-      <text x="${nx}" y="${ny+14}" text-anchor="middle" fill="var(--text-dim)" font-size="8" font-weight="600">${d.abbr}</text>
+    const d = disc(r.discipline);
+    const nodeColor = r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--yellow)';
+    html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nodeColor}" stroke-width="2" opacity="0.4"/>`;
+    html += `<g class="impact-node" onclick="showImpactDetail('${r.discipline.replace(/'/g, "\\'")}',${change.id})">
+      <circle cx="${nx}" cy="${ny}" r="28" fill="${nodeColor}" opacity="0.2"/>
+      <circle cx="${nx}" cy="${ny}" r="28" fill="none" stroke="${nodeColor}" stroke-width="2"/>
+      <text x="${nx}" y="${ny-4}" text-anchor="middle" fill="var(--text)" font-size="14">${d ? d.icon : '📐'}</text>
+      <text x="${nx}" y="${ny+14}" text-anchor="middle" fill="var(--text-dim)" font-size="8" font-weight="600">${r.discipline.slice(0, 6).toUpperCase()}</text>
     </g>`;
   });
   svg.innerHTML = html;
@@ -914,19 +1030,20 @@ function renderImpactMap() {
 
 function showImpactDetail(discName, changeId) {
   const d = disc(discName);
-  const change = CHANGES.find(c => c.id === changeId);
+  const cache = currentProject ? (projectChangeCache[currentProject.backendId] || []) : [];
+  const change = cache.find(c => c.id === changeId);
   const review = change ? change.reviews.find(r => r.discipline === discName) : null;
-  const isImpacted = change ? change.impacted.includes(discName) : false;
+  const label = review ? (review.status === 'reviewed' ? 'Reviewed' : review.status === 'flagged' ? 'Conflict' : 'Pending') : null;
   const panel = document.getElementById('impact-panel');
   panel.innerHTML = `
     <div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <span style="font-size:1.5rem">${d ? d.icon : ''}</span>
-        <div><div style="font-weight:700">${discName}</div><div style="font-size:0.78rem;color:var(--text-dim)">${isImpacted ? 'Impacted by this change' : 'Not impacted'}</div></div>
+        <span style="font-size:1.5rem">${d ? d.icon : '📐'}</span>
+        <div><div style="font-weight:700">${discName}</div><div style="font-size:0.78rem;color:var(--text-dim)">Assigned to review this change</div></div>
       </div>
-      ${review ? `<div style="margin-bottom:12px"><span style="font-size:0.78rem;font-weight:600;padding:3px 8px;border-radius:4px;background:${review.status==='Reviewed'?'var(--green-bg)':review.status==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${review.status==='Reviewed'?'var(--green)':review.status==='Conflict'?'var(--red)':'var(--yellow)'}">${review.status}</span></div>` : ''}
-      ${review && review.by ? `<div style="font-size:0.82rem;color:var(--text-dim)">Reviewer: ${review.by}</div>` : ''}
-      ${review && review.date ? `<div style="font-size:0.82rem;color:var(--text-dim)">Reviewed: ${review.date}</div>` : ''}
+      ${label ? `<div style="margin-bottom:12px"><span style="font-size:0.78rem;font-weight:600;padding:3px 8px;border-radius:4px;background:${label==='Reviewed'?'var(--green-bg)':label==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${label==='Reviewed'?'var(--green)':label==='Conflict'?'var(--red)':'var(--yellow)'}">${label}</span></div>` : ''}
+      ${review && review.notes ? `<div style="font-size:0.82rem;color:var(--text-dim)">Notes: ${review.notes}</div>` : ''}
+      ${review && review.status !== 'reviewed' ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="updateReviewStatus(${changeId}, ${review.discipline_id}, 'reviewed')">Mark Reviewed</button>` : ''}
     </div>`;
 }
 
@@ -963,26 +1080,34 @@ function reviewTab(tab) {
   loaders.reviews();
 }
 
-loaders.reviews = function() {
+loaders.reviews = async function() {
+  if (!currentProject) { router.go('workspace'); return; }
+  const projectChanges = await fetchProjectChanges();
   const allReviews = [];
-  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
-  projectChanges.forEach(c => c.reviews.forEach(r => allReviews.push({ ...r, change: c.id, changeTitle: c.title, changeDate: c.date })));
+  projectChanges.forEach(c => c.reviews.forEach(r => allReviews.push({
+    ...r, changeId: c.id, changeTitle: c.title, changeDate: shortDate(c.created_at),
+    ui: r.status === 'reviewed' ? 'Reviewed' : r.status === 'flagged' ? 'Conflict' : 'Pending'
+  })));
   let filtered = allReviews;
-  if (currentReviewTab === 'mine') filtered = allReviews.filter(r => r.discipline === 'Landscape');
-  if (currentReviewTab === 'pending') filtered = allReviews.filter(r => r.status === 'Pending');
-  if (currentReviewTab === 'conflict') filtered = allReviews.filter(r => r.status === 'Conflict');
-  if (currentReviewTab === 'completed') filtered = allReviews.filter(r => r.status === 'Reviewed');
+  if (currentReviewTab === 'pending') filtered = allReviews.filter(r => r.ui === 'Pending');
+  if (currentReviewTab === 'conflict') filtered = allReviews.filter(r => r.ui === 'Conflict');
+  if (currentReviewTab === 'completed') filtered = allReviews.filter(r => r.ui === 'Reviewed');
 
   document.getElementById('reviews-list').innerHTML = filtered.map(r => {
     const d = disc(r.discipline);
-    return `<div class="review-card">
-      <div><div class="review-card-title">${r.changeTitle}</div><div class="review-card-sub">${r.change}</div></div>
-      <div class="review-card-disc"><span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span> ${r.discipline}</div>
-      <div><span class="review-card-status" style="background:${r.status==='Reviewed'?'var(--green-bg)':r.status==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${r.status==='Reviewed'?'var(--green)':r.status==='Conflict'?'var(--red)':'var(--yellow)'}">${r.status}</span></div>
-      <div class="review-card-date">${r.date || 'Not yet'}</div>
-      <div class="review-card-action">${r.status==='Pending'?'<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();ui.toast(\'Review submitted\')">Review</button>':r.status==='Conflict'?'<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();ui.toast(\'Opening conflict\')">Resolve</button>':''}</div>
+    const action = r.ui === 'Pending'
+      ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>`
+      : r.ui === 'Conflict'
+      ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Resolve</button>`
+      : '';
+    return `<div class="review-card" onclick="router.go('change-detail',{id:${r.changeId}})">
+      <div><div class="review-card-title">${r.changeTitle}</div><div class="review-card-sub">CE-${r.changeId}</div></div>
+      <div class="review-card-disc"><span style="color:${d?d.color:'var(--primary)'}">${d?d.icon:'📐'}</span> ${r.discipline}</div>
+      <div><span class="review-card-status" style="background:${r.ui==='Reviewed'?'var(--green-bg)':r.ui==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${r.ui==='Reviewed'?'var(--green)':r.ui==='Conflict'?'var(--red)':'var(--yellow)'}">${r.ui}</span></div>
+      <div class="review-card-date">${r.changeDate}</div>
+      <div class="review-card-action">${action}</div>
     </div>`;
-  }).join('') || '<div class="empty-state"><p>No reviews match this filter</p></div>';
+  }).join('') || '<div class="empty-state"><h3>No reviews here</h3><p>Reviews are created automatically when a change event is uploaded.</p></div>';
 };
 
 /* ── DOCUMENTS ─────────────────────────────────────────────────────── */
@@ -1024,7 +1149,7 @@ async function fetchServerDocuments() {
 
 loaders.documents = async function() {
   const serverDocs = await fetchServerDocuments();
-  DOC_CACHE = [...serverDocs, ...DOCUMENTS.map(d => ({ ...d, real: false }))];
+  DOC_CACHE = serverDocs;
 
   // Show only the latest revision of each real document in the list;
   // older revisions stay reachable via Revision History in the detail.
@@ -1068,8 +1193,8 @@ loaders.documents = async function() {
 
   const changeSelect = document.getElementById('doc-upload-change');
   if (changeSelect) {
-    const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
-    changeSelect.innerHTML = '<option value="">None</option>' + projectChanges.map(c => `<option value="${c.id}">${c.id} — ${c.title}</option>`).join('');
+    const projectChanges = await fetchProjectChanges();
+    changeSelect.innerHTML = '<option value="">None</option>' + projectChanges.map(c => `<option value="${c.id}">CE-${c.id} — ${c.title}</option>`).join('');
   }
 };
 
@@ -1244,19 +1369,25 @@ function printDoc(idx) {
 
 /* ── DISCIPLINES ───────────────────────────────────────────────────── */
 
-loaders.disciplines = function() {
-  document.getElementById('disciplines-grid').innerHTML = DISCIPLINES.map(d => {
+loaders.disciplines = async function() {
+  if (!currentProject) { router.go('workspace'); return; }
+  let serverDiscs = [];
+  try { serverDiscs = await loadServerDisciplines(); } catch (e) { serverDiscs = []; }
+  const projectChanges = await fetchProjectChanges();
+  const serverDocs = await fetchServerDocuments();
+
+  document.getElementById('disciplines-grid').innerHTML = serverDiscs.map(sd => {
+    const d = disc(sd.name);
     const reviews = [];
-    const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
-    projectChanges.forEach(c => c.reviews.filter(r => r.discipline === d.name).forEach(r => reviews.push(r)));
-    const reviewed = reviews.filter(r => r.status === 'Reviewed').length;
-    const pending = reviews.filter(r => r.status === 'Pending').length;
-    const conflicts = reviews.filter(r => r.status === 'Conflict').length;
-    const docs = DOCUMENTS.filter(doc => doc.discipline === d.name).length;
-    return `<div class="disc-card" onclick="router.go('discipline-detail',{name:'${d.name}'})">
-      <div class="disc-icon-wrap" style="background:${d.bg}">${d.icon}</div>
+    projectChanges.forEach(c => c.reviews.filter(r => r.discipline === sd.name).forEach(r => reviews.push(r)));
+    const reviewed = reviews.filter(r => r.status === 'reviewed').length;
+    const pending = reviews.filter(r => r.status === 'pending').length;
+    const conflicts = reviews.filter(r => r.status === 'flagged').length;
+    const docs = serverDocs.filter(doc => doc.discipline === sd.name).length;
+    return `<div class="disc-card" onclick="router.go('discipline-detail',{name:'${sd.name.replace(/'/g, "\\'")}'})">
+      <div class="disc-icon-wrap" style="background:${d ? d.bg : 'var(--primary-bg)'}">${d ? d.icon : '📐'}</div>
       <div class="disc-card-body">
-        <div class="disc-card-name">${d.name}</div>
+        <div class="disc-card-name">${sd.name}</div>
         <div class="disc-metric-grid">
           <div class="disc-metric"><span class="disc-metric-val" style="color:var(--green)">${reviewed}</span> <span class="disc-metric-label">reviewed</span></div>
           <div class="disc-metric"><span class="disc-metric-val" style="color:var(--yellow)">${pending}</span> <span class="disc-metric-label">pending</span></div>
@@ -1270,27 +1401,33 @@ loaders.disciplines = function() {
 
 /* ── DISCIPLINE DETAIL ─────────────────────────────────────────────── */
 
-loaders['discipline-detail'] = function(data) {
-  const d = disc(data && data.name);
-  if (!d) return;
+loaders['discipline-detail'] = async function(data) {
+  if (!currentProject) { router.go('workspace'); return; }
+  const name = data && data.name;
+  if (!name) return;
+  const d = disc(name);
+  const projectChanges = await fetchProjectChanges();
+  const serverDocs = await fetchServerDocuments();
   const reviews = [];
-  const projectChanges = currentProject ? CHANGES.filter(c => c.projectId === currentProject.id) : CHANGES;
-  projectChanges.forEach(c => c.reviews.filter(r => r.discipline === d.name).forEach(r => reviews.push({ ...r, change: c.id, changeTitle: c.title })));
-  const docs = DOCUMENTS.filter(doc => doc.discipline === d.name);
+  projectChanges.forEach(c => c.reviews.filter(r => r.discipline === name).forEach(r => reviews.push({
+    ...r, changeId: c.id, changeTitle: c.title,
+    ui: r.status === 'reviewed' ? 'Reviewed' : r.status === 'flagged' ? 'Conflict' : 'Pending'
+  })));
+  const docs = serverDocs.filter(doc => doc.discipline === name);
 
   document.getElementById('dd-header').innerHTML = `
-    <div class="disc-icon-wrap" style="background:${d.bg};font-size:1.5rem">${d.icon}</div>
-    <div class="dd-header-info"><h1>${d.name}</h1><p>${reviews.length} reviews · ${docs.length} documents</p></div>`;
+    <div class="disc-icon-wrap" style="background:${d ? d.bg : 'var(--primary-bg)'};font-size:1.5rem">${d ? d.icon : '📐'}</div>
+    <div class="dd-header-info"><h1>${name}</h1><p>${reviews.length} reviews · ${docs.length} documents</p></div>`;
 
   document.getElementById('dd-main').innerHTML = `
     <div class="panel"><div class="panel-header"><h2 class="panel-title">Reviews</h2></div><div class="panel-body">
-      ${reviews.map(r => `<div class="cd-review-row"><div class="cd-review-disc">${r.change} · ${r.changeTitle}</div>${reviewStatusBadge(r.status)}</div>`).join('') || '<p style="color:var(--text-muted)">No reviews</p>'}
+      ${reviews.map(r => `<div class="cd-review-row" style="cursor:pointer" onclick="router.go('change-detail',{id:${r.changeId}})"><div class="cd-review-disc">CE-${r.changeId} · ${r.changeTitle}</div>${reviewStatusBadge(r.ui)}</div>`).join('') || '<p style="color:var(--text-muted)">No reviews</p>'}
     </div></div>
     <div class="panel"><div class="panel-header"><h2 class="panel-title">Documents</h2></div><div class="panel-body">
-      ${docs.map(doc => `<div class="cd-doc-item"><span class="cd-doc-icon">📄</span><span>${doc.code} — ${doc.title}</span><span style="margin-left:auto;font-size:0.78rem;color:var(--text-muted)">Rev ${doc.rev}</span></div>`).join('') || '<p style="color:var(--text-muted)">No documents</p>'}
+      ${docs.map(doc => `<div class="cd-doc-item"><span class="cd-doc-icon">📄</span><span>${doc.title}</span><span style="margin-left:auto;font-size:0.78rem;color:var(--text-muted)">Rev ${doc.rev}</span></div>`).join('') || '<p style="color:var(--text-muted)">No documents</p>'}
     </div></div>`;
 
-  const reviewed = reviews.filter(r => r.status === 'Reviewed').length;
+  const reviewed = reviews.filter(r => r.ui === 'Reviewed').length;
   const total = reviews.length;
   const pct = total ? Math.round(reviewed / total * 100) : 0;
   document.getElementById('dd-side').innerHTML = `
@@ -1298,15 +1435,17 @@ loaders['discipline-detail'] = function(data) {
       <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:0.85rem">Review completion</span><span style="font-weight:700">${pct}%</span></div>
       <div class="ct-progress-bar"><div class="ct-progress-fill" style="width:${pct}%;background:var(--green)"></div></div></div>
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem"><span>Reviewed</span><span style="font-weight:700;color:var(--green)">${reviewed}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem"><span>Pending</span><span style="font-weight:700;color:var(--yellow)">${reviews.filter(r=>r.status==='Pending').length}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:0.85rem"><span>Conflicts</span><span style="font-weight:700;color:var(--red)">${reviews.filter(r=>r.status==='Conflict').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem"><span>Pending</span><span style="font-weight:700;color:var(--yellow)">${reviews.filter(r=>r.ui==='Pending').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:0.85rem"><span>Conflicts</span><span style="font-weight:700;color:var(--red)">${reviews.filter(r=>r.ui==='Conflict').length}</span></div>
     </div></div>`;
 };
 
 /* ── CONFIDENCE ────────────────────────────────────────────────────── */
 
-loaders.confidence = function() {
-  const score = currentProject ? currentProject.confidence : CONFIDENCE.score;
+loaders.confidence = async function() {
+  if (!currentProject) { router.go('workspace'); return; }
+  const projectChanges = await fetchProjectChanges();
+  const score = currentProject.confidence;
   const circ = 2 * Math.PI * 42;
   const offset = circ * (1 - score / 100);
   const color = score >= 90 ? 'var(--green)' : score >= 70 ? 'var(--yellow)' : 'var(--red)';
@@ -1314,16 +1453,32 @@ loaders.confidence = function() {
     <svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="42"/><circle class="ring-fill" cx="50" cy="50" r="42" stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/></svg>
     <div class="conf-score-num">${score}%</div>`;
 
-  document.getElementById('conf-main').innerHTML = CONFIDENCE.factors.map(f =>
+  const total = projectChanges.reduce((n, c) => n + c.reviews.length, 0);
+  const done = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'reviewed').length, 0);
+  const flagged = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'flagged').length, 0);
+  const completion = total ? Math.round(done / total * 100) : 100;
+  const conflictFree = total ? Math.round((total - flagged) / total * 100) : 100;
+  const factors = [
+    { name: 'Review Completion', score: completion, color: completion >= 80 ? 'var(--green)' : completion >= 50 ? 'var(--yellow)' : 'var(--red)' },
+    { name: 'Conflict-Free Reviews', score: conflictFree, color: conflictFree >= 90 ? 'var(--green)' : 'var(--red)' },
+    { name: 'Documents on File', score: currentProject.docs > 0 ? 100 : 0, color: currentProject.docs > 0 ? 'var(--green)' : 'var(--yellow)' }
+  ];
+  document.getElementById('conf-main').innerHTML = factors.map(f =>
     `<div class="conf-factor"><div class="conf-factor-header"><span class="conf-factor-name">${f.name}</span><span class="conf-factor-score" style="color:${f.color}">${f.score}%</span></div>
     <div class="conf-factor-bar"><div class="conf-factor-fill" style="width:${f.score}%;background:${f.color}"></div></div></div>`
   ).join('');
 
+  const recs = [];
+  projectChanges.forEach(c => {
+    c.reviews.filter(r => r.status === 'flagged').forEach(r => recs.push({ urgent: true, text: `Resolve ${r.discipline} conflict on CE-${c.id}`, id: c.id }));
+  });
+  projectChanges.forEach(c => {
+    c.reviews.filter(r => r.status === 'pending').forEach(r => recs.push({ urgent: false, text: `Complete ${r.discipline} review on CE-${c.id}`, id: c.id }));
+  });
   document.getElementById('conf-side').innerHTML = `
     <div class="panel"><div class="panel-header"><h2 class="panel-title">Recommendations</h2></div><div class="panel-body">
-      <div class="cd-action-item"><span class="cd-action-bullet" style="background:var(--red)"></span><span>Resolve geotechnical conflict on CE-039</span></div>
-      <div class="cd-action-item"><span class="cd-action-bullet"></span><span>Complete pending Landscape review on CE-041</span></div>
-      <div class="cd-action-item"><span class="cd-action-bullet"></span><span>Complete Plumbing + Architecture reviews on CE-040</span></div>
+      ${recs.slice(0, 6).map(r => `<div class="cd-action-item" style="cursor:pointer" onclick="router.go('change-detail',{id:${r.id}})"><span class="cd-action-bullet" style="background:${r.urgent ? 'var(--red)' : 'var(--yellow)'}"></span><span>${r.text}</span></div>`).join('')
+        || '<p style="color:var(--text-muted)">Nothing outstanding — confidence is healthy.</p>'}
     </div></div>`;
 };
 
@@ -1333,16 +1488,64 @@ loaders.confidence = function() {
 const actions = {
   async uploadChange(e) {
     e.preventDefault();
-    const title = document.getElementById('change-upload-title').value;
+    const title = document.getElementById('change-upload-title').value.trim();
+    const oldFile = document.getElementById('file-old');
+    const newFile = document.getElementById('file-new');
     const btn = document.getElementById('btn-upload-change');
+    if (!oldFile.files.length || !newFile.files.length) { ui.toast('Choose both an old and a new drawing'); return false; }
     btn.textContent = 'Comparing...';
     btn.disabled = true;
-    setTimeout(() => {
+    try {
+      const projectId = await ensureBackendProject();
+      const form = new FormData();
+      form.append('old_file', oldFile.files[0]);
+      form.append('new_file', newFile.files[0]);
+      const res = await fetch(`/projects/${projectId}/changes?title=${encodeURIComponent(title)}`, {
+        method: 'POST', headers: authHeaders(), body: form
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || `Comparison failed (${res.status})`);
+      }
+      const change = await res.json();
       ui.hideModal('modal-upload-change');
+      e.target.reset();
+      ui.toast(`"${change.title}" — ${change.region_count} change regions detected`);
+      delete projectChangeCache[projectId];
+      await loadRealProjects();
+      buildSidebar();
+      router.go('change-detail', { id: change.id });
+    } catch (err) {
+      ui.toast(err.message);
+    } finally {
       btn.textContent = 'Compare & Upload';
       btn.disabled = false;
-      ui.toast(`Change event "${title}" created`);
-    }, 2000);
+    }
+    return false;
+  },
+
+  async createProject(e) {
+    e.preventDefault();
+    const name = document.getElementById('new-project-name').value.trim();
+    const client = document.getElementById('new-project-client').value.trim();
+    if (!name) return false;
+    try {
+      const res = await fetch('/projects', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description: client || null })
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Could not create project'); }
+      const p = await res.json();
+      ui.hideModal('modal-new-project');
+      e.target.reset();
+      ui.toast(`Project "${p.name}" created`);
+      await loadRealProjects();
+      buildSidebar();
+      enterProject(p.id);
+    } catch (err) {
+      ui.toast(err.message);
+    }
     return false;
   },
 

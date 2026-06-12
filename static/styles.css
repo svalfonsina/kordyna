@@ -204,6 +204,11 @@ img { max-width: 100%; display: block; }
 .ws-project-conf.mid { color: var(--yellow); }
 .ws-project-conf.low { color: var(--red); }
 .ws-project-stats { display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-dim); }
+.ws-project-new { display: flex; align-items: center; justify-content: center; border-style: dashed; min-height: 110px; }
+.ws-project-new-inner { color: var(--text-dim); font-weight: 600; font-size: 0.9rem; }
+.ws-project-new:hover .ws-project-new-inner { color: var(--primary); }
+.sidebar-new-project { color: var(--text-muted); font-size: 0.8rem; }
+.sidebar-new-project:hover { color: var(--primary); }
 .ws-project-stat-val { font-weight: 600; color: var(--text); }
 
 /* Activity feed */

@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import diff_engine
@@ -253,9 +254,46 @@ def list_changes(project_id: int, user: User = Depends(get_current_user), db: Se
             "region_count": e.region_count,
             "created_at": e.created_at,
             "diff_image": f"/changes/{e.id}/diff-image",
+            "creator": e.creator.username if e.creator else None,
+            "reviews_total": len(e.reviews),
+            "reviews_done": sum(1 for r in e.reviews if r.status == "reviewed"),
+            "reviews_flagged": sum(1 for r in e.reviews if r.status == "flagged"),
         }
         for e in events
     ]
+
+
+@app.get("/projects/{project_id}/summary")
+def project_summary(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    change_ids = [cid for (cid,) in db.query(ChangeEvent.id).filter(ChangeEvent.project_id == project_id).all()]
+    pending = flagged = reviewed = 0
+    if change_ids:
+        rows = (
+            db.query(Review.status, func.count(Review.id))
+            .filter(Review.change_event_id.in_(change_ids))
+            .group_by(Review.status)
+            .all()
+        )
+        counts = {status: n for status, n in rows}
+        pending = counts.get("pending", 0)
+        flagged = counts.get("flagged", 0)
+        reviewed = counts.get("reviewed", 0)
+    docs = (
+        db.query(func.count(func.distinct(Document.title)))
+        .filter(Document.project_id == project_id)
+        .scalar()
+        or 0
+    )
+    total = pending + flagged + reviewed
+    confidence = 100 if total == 0 else max(0, round(reviewed / total * 100) - flagged * 5)
+    return {
+        "changes": len(change_ids),
+        "documents": docs,
+        "reviews_pending": pending,
+        "reviews_flagged": flagged,
+        "reviews_total": total,
+        "confidence": confidence,
+    }
 
 
 # ── Single change detail ────────────────────────────────────────────

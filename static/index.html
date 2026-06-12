@@ -6,7 +6,7 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260612f">
+  <link rel="stylesheet" href="/static/styles.css?v=20260612g">
 </head>
 <body>
 
@@ -346,7 +346,7 @@
             <span class="ct-col ct-title">Change</span>
             <span class="ct-col ct-status">Status</span>
             <span class="ct-col ct-by">Uploaded By</span>
-            <span class="ct-col ct-docs">Documents</span>
+            <span class="ct-col ct-docs">Regions</span>
             <span class="ct-col ct-disc">Impacted</span>
             <span class="ct-col ct-progress">Review Progress</span>
             <span class="ct-col ct-risk">Risk</span>
@@ -458,7 +458,6 @@
         </div>
         <div class="review-tabs" id="review-tabs">
           <button class="review-tab active" data-tab="all" onclick="reviewTab('all')">All Reviews</button>
-          <button class="review-tab" data-tab="mine" onclick="reviewTab('mine')">Assigned to Me</button>
           <button class="review-tab" data-tab="pending" onclick="reviewTab('pending')">Pending</button>
           <button class="review-tab" data-tab="conflict" onclick="reviewTab('conflict')">Conflicts</button>
           <button class="review-tab" data-tab="completed" onclick="reviewTab('completed')">Completed</button>
@@ -577,6 +576,21 @@
   </main>
 
   <!-- ══ MODALS ════════════════════════════════════════════════════ -->
+  <div id="modal-new-project" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-new-project')"></div>
+    <div class="modal-content">
+      <h3>New Project</h3>
+      <form onsubmit="return actions.createProject(event)">
+        <div class="field"><label>Project Name</label><input type="text" id="new-project-name" required placeholder="e.g. Cala 1"></div>
+        <div class="field"><label>Client (optional)</label><input type="text" id="new-project-client" placeholder="e.g. ACME Civil"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-new-project')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="modal-upload-change" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-change')"></div>
     <div class="modal-content">
@@ -584,8 +598,8 @@
       <form onsubmit="return actions.uploadChange(event)">
         <div class="field"><label>Title</label><input type="text" id="change-upload-title" required placeholder="e.g. Grading Revision"></div>
         <div class="field-row">
-          <div class="field"><label>Old Drawing</label><div class="file-drop" id="drop-old"><input type="file" id="file-old" accept=".pdf,.png,.jpg,.jpeg,.tiff" required><p>Drop or browse</p></div></div>
-          <div class="field"><label>New Drawing</label><div class="file-drop" id="drop-new"><input type="file" id="file-new" accept=".pdf,.png,.jpg,.jpeg,.tiff" required><p>Drop or browse</p></div></div>
+          <div class="field"><label>Old Drawing</label><div class="file-drop" id="drop-old"><input type="file" id="file-old" accept=".pdf,.png,.jpg,.jpeg,.tiff" required onchange="this.nextElementSibling.textContent = this.files.length ? this.files[0].name : 'Drop or browse'"><p>Drop or browse</p></div></div>
+          <div class="field"><label>New Drawing</label><div class="file-drop" id="drop-new"><input type="file" id="file-new" accept=".pdf,.png,.jpg,.jpeg,.tiff" required onchange="this.nextElementSibling.textContent = this.files.length ? this.files[0].name : 'Drop or browse'"><p>Drop or browse</p></div></div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-change')">Cancel</button>
@@ -634,6 +648,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260612f"></script>
+  <script src="/static/app.js?v=20260612g"></script>
 </body>
 </html>
