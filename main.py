@@ -33,13 +33,21 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 
+# Point UPLOAD_DIR at a persistent volume in production (e.g. /data/uploads
+# on Railway) — the default lands on the ephemeral container disk and is
+# wiped on every redeploy.
+UPLOAD_DIR = os.getenv(
+    "UPLOAD_DIR",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads"),
+)
+
 app = FastAPI(title="Kordyna", version="1.0.0")
 
 Base.metadata.create_all(bind=engine)
 seed_disciplines()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-os.makedirs("uploads", exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -284,6 +292,8 @@ def get_diff_image(change_id: int, db: Session = Depends(get_db)):
     event = db.query(ChangeEvent).filter(ChangeEvent.id == change_id).first()
     if not event or not event.diff_image_path:
         raise HTTPException(status_code=404, detail="Image not found")
+    if not os.path.exists(event.diff_image_path):
+        raise HTTPException(status_code=404, detail="File no longer available on server")
     return FileResponse(event.diff_image_path, media_type="image/png")
 
 
@@ -520,9 +530,8 @@ async def upload_document(
     import uuid
     ext = os.path.splitext(file.filename or "file.pdf")[1].lower()
     stored_name = f"doc_{uuid.uuid4().hex[:12]}{ext}"
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, stored_name)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    file_path = os.path.join(UPLOAD_DIR, stored_name)
 
     content = await file.read()
     with open(file_path, "wb") as f:
@@ -587,6 +596,8 @@ def get_document_file(doc_id: int, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc or not doc.file_path:
         raise HTTPException(status_code=404, detail="Document not found")
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="File no longer available on server")
     ext = os.path.splitext(doc.file_path)[1].lower()
     media_types = {
         ".pdf": "application/pdf",

@@ -958,6 +958,22 @@ function showDocDetail(idx) {
       <div class="doc-detail-section"><h4>Linked Changes</h4><p>${linked || 'None'}</p></div>
       ${doc.fileUrl ? renderFilePreview(doc, idx) : ''}
     </div>`;
+
+  // The DB row can outlive the file (server storage reset) — swap the
+  // preview for a clear message instead of an embedded error page.
+  if (doc.fileUrl) {
+    // 1-byte range GET: the route doesn't accept HEAD (405 even when healthy)
+    fetch(doc.fileUrl, { headers: { 'Range': 'bytes=0-0' } }).then(r => {
+      if (r.body) r.body.cancel();
+      if (r.ok) return;
+      const pv = document.querySelector('.doc-preview');
+      if (pv) pv.outerHTML = `
+        <div class="doc-preview-missing">
+          <p>⚠️ The file for this revision is no longer on the server.</p>
+          <p>Server storage was reset by a redeploy. Click the file name above to upload it again as a new revision.</p>
+        </div>`;
+    }).catch(() => {});
+  }
 }
 
 function renderFilePreview(doc, idx) {

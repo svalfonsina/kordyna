@@ -371,6 +371,7 @@ img { max-width: 100%; display: block; }
 .doc-rev-current { font-weight: 600; }
 .doc-rev-link { color: var(--primary); cursor: pointer; }
 .doc-rev-link:hover { color: var(--primary-hover); }
+.doc-preview-missing { margin-top: 20px; border: 1px dashed var(--border-light); border-radius: var(--radius); padding: 28px; text-align: center; color: var(--text-dim); font-size: 0.88rem; line-height: 1.6; }
 
 /* ── DISCIPLINES ───────────────────────────────────────────────────── */
 .disc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }

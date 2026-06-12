@@ -86,7 +86,7 @@ def compare_drawings(
         })
 
     overlay_filename = f"diff_{uuid.uuid4().hex[:12]}.png"
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+    upload_dir = os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads"))
     os.makedirs(upload_dir, exist_ok=True)
     overlay_path = os.path.join(upload_dir, overlay_filename)
     cv2.imwrite(overlay_path, overlay)
