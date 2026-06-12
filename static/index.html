@@ -6,7 +6,7 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260612l">
+  <link rel="stylesheet" href="/static/styles.css?v=20260612m">
 </head>
 <body>
 
@@ -163,7 +163,27 @@
           <div id="notif-list" class="notif-list"><div class="notif-empty">Loading...</div></div>
         </div>
       </div>
-      <div class="topbar-avatar" id="topbar-avatar">SV</div>
+      <div class="profile-wrap">
+        <div class="topbar-avatar" id="topbar-avatar" onclick="toggleProfileMenu(event)">SV</div>
+        <div class="profile-panel hidden" id="profile-panel">
+          <div class="profile-panel-header">
+            <div class="profile-panel-avatar" id="profile-avatar">SV</div>
+            <div>
+              <div class="profile-panel-name" id="profile-name">—</div>
+              <div class="profile-panel-role" id="profile-role">—</div>
+            </div>
+          </div>
+          <div class="profile-panel-menu">
+            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">My Profile</button>
+            <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Subscription management coming soon')">Subscription</button>
+            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">Preferences</button>
+            <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Support: hello@kordyna.com')">Help &amp; Support</button>
+          </div>
+          <div class="profile-panel-footer">
+            <button class="profile-menu-item profile-logout" onclick="closeProfileMenu();auth.logout()">Log Out</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -654,6 +674,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260612l"></script>
+  <script src="/static/app.js?v=20260612m"></script>
 </body>
 </html>

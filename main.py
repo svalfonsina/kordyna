@@ -404,6 +404,16 @@ def my_reviews(user: User = Depends(get_current_user), db: Session = Depends(get
 
 # ── Disciplines ──────────────────────────────────────────────────────
 
+@app.get("/me")
+def me(user: User = Depends(get_current_user)):
+    return {
+        "id": user.id,
+        "username": user.username,
+        "discipline": user.discipline.name if user.discipline else None,
+        "created_at": user.created_at,
+    }
+
+
 @app.get("/notifications")
 def notifications(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     items = []

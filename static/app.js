@@ -327,6 +327,7 @@ const auth = {
     await loadRealProjects();
     buildSidebar();
     loadDisciplineSelects();
+    loadMe();
     refreshNotifications();
     if (!this._notifTimer) this._notifTimer = setInterval(refreshNotifications, 60000);
     router.go('workspace');
@@ -544,6 +545,55 @@ async function loadDisciplineSelects() {
   });
 }
 
+
+/* ── CURRENT USER & PROFILE MENU ───────────────────────────────────── */
+
+let currentUser = null;
+
+function userInitials(name) {
+  const parts = (name || '').split(/[\s._-]+/).filter(Boolean);
+  const raw = parts.length > 1 ? parts[0][0] + parts[1][0] : (name || '??').slice(0, 2);
+  return raw.toUpperCase();
+}
+
+async function loadMe() {
+  try {
+    const res = await fetch('/me', { headers: authHeaders() });
+    if (!res.ok) return;
+    currentUser = await res.json();
+    const initials = userInitials(currentUser.username);
+    const role = currentUser.discipline || 'No discipline set';
+    document.getElementById('topbar-avatar').textContent = initials;
+    document.getElementById('profile-avatar').textContent = initials;
+    document.getElementById('profile-name').textContent = currentUser.username;
+    document.getElementById('profile-role').textContent = role;
+    const sbAvatar = document.getElementById('sidebar-avatar');
+    const sbName = document.getElementById('sidebar-user-name');
+    const sbRole = document.getElementById('sidebar-user-role');
+    if (sbAvatar) sbAvatar.textContent = initials;
+    if (sbName) sbName.textContent = currentUser.username;
+    if (sbRole) sbRole.textContent = role;
+  } catch (e) { /* header keeps defaults */ }
+}
+
+function toggleProfileMenu(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('profile-panel');
+  const opening = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  if (!opening) return;
+  const close = ev => {
+    if (!panel.contains(ev.target)) {
+      panel.classList.add('hidden');
+      document.removeEventListener('click', close);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', close), 0);
+}
+
+function closeProfileMenu() {
+  document.getElementById('profile-panel').classList.add('hidden');
+}
 
 /* ── NOTIFICATIONS ─────────────────────────────────────────────────── */
 
