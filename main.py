@@ -599,6 +599,7 @@ def get_document_file(doc_id: int, db: Session = Depends(get_db)):
         doc.file_path,
         media_type=media_types.get(ext, "application/octet-stream"),
         filename=doc.filename,
+        content_disposition_type="inline",
     )
 
 

@@ -922,7 +922,19 @@ function showDocDetail(idx) {
       ${doc.notes ? `<div class="doc-detail-section"><h4>Notes</h4><p>${doc.notes}</p></div>` : ''}
       ${doc.fileUrl ? `<div class="doc-detail-section"><h4>File</h4><p><a href="${doc.fileUrl}" target="_blank">📄 ${doc.filename}</a></p></div>` : ''}
       <div class="doc-detail-section"><h4>Linked Changes</h4><p>${linked || 'None'}</p></div>
+      ${doc.fileUrl ? renderFilePreview(doc) : ''}
     </div>`;
+}
+
+function renderFilePreview(doc) {
+  const ext = (doc.filename || '').split('.').pop().toLowerCase();
+  if (ext === 'pdf') {
+    return `<div class="doc-preview"><iframe src="${doc.fileUrl}#toolbar=0&view=FitH" title="${doc.filename}"></iframe></div>`;
+  }
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+    return `<div class="doc-preview doc-preview-img"><img src="${doc.fileUrl}" alt="${doc.filename}"></div>`;
+  }
+  return '';
 }
 
 /* ── DISCIPLINES ───────────────────────────────────────────────────── */
