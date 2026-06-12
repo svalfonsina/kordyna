@@ -216,6 +216,47 @@ const router = {
 };
 
 
+/* ── API ───────────────────────────────────────────────────────────── */
+
+function authHeaders() {
+  return auth.token ? { 'Authorization': 'Bearer ' + auth.token } : {};
+}
+
+// Sample projects are frontend-only; create/find the matching backend
+// project on first use so uploads have a real project_id to attach to.
+async function ensureBackendProject() {
+  if (!currentProject) throw new Error('No project selected');
+  if (currentProject.backendId) return currentProject.backendId;
+  const res = await fetch('/projects', { headers: authHeaders() });
+  if (res.status === 401) { auth.logout(); throw new Error('Session expired — please sign in again'); }
+  if (res.ok) {
+    const list = await res.json();
+    const match = list.find(p => p.name === currentProject.name);
+    if (match) { currentProject.backendId = match.id; return match.id; }
+  }
+  const created = await fetch('/projects', {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: currentProject.name, description: currentProject.client })
+  });
+  if (!created.ok) throw new Error('Could not access project on server');
+  const p = await created.json();
+  currentProject.backendId = p.id;
+  return p.id;
+}
+
+// Backend discipline IDs (from /disciplines) may differ from the sample
+// DISCIPLINES array, so the upload select is populated from the server.
+let SERVER_DISCIPLINES = null;
+async function loadServerDisciplines() {
+  if (SERVER_DISCIPLINES) return SERVER_DISCIPLINES;
+  const res = await fetch('/disciplines');
+  if (!res.ok) throw new Error('Could not load disciplines');
+  SERVER_DISCIPLINES = await res.json();
+  return SERVER_DISCIPLINES;
+}
+
+
 /* ── AUTH ───────────────────────────────────────────────────────────── */
 
 const auth = {
@@ -277,6 +318,7 @@ const auth = {
     document.getElementById('topbar').classList.remove('hidden');
     document.getElementById('main').style.display = '';
     buildSidebar();
+    loadDisciplineSelects();
     router.go('workspace');
   },
 
@@ -392,11 +434,18 @@ function reviewStatusBadge(s) {
   return `<span class="cd-review-status ${map[s]}" style="background:${s==='Reviewed'?'var(--green-bg)':s==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'}; color:${s==='Reviewed'?'var(--green)':s==='Conflict'?'var(--red)':'var(--yellow)'}">${s}</span>`;
 }
 
-function loadDisciplineSelects() {
+async function loadDisciplineSelects() {
+  let list;
+  try {
+    list = await loadServerDisciplines();
+  } catch (e) {
+    list = DISCIPLINES;
+  }
   const selects = [document.getElementById('reg-discipline'), document.getElementById('doc-upload-discipline')];
   selects.forEach(sel => {
     if (!sel) return;
-    DISCIPLINES.forEach(d => {
+    Array.from(sel.options).forEach(o => { if (o.value !== '') o.remove(); });
+    list.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id;
       opt.textContent = d.name;
@@ -783,11 +832,47 @@ loaders.reviews = function() {
 
 /* ── DOCUMENTS ─────────────────────────────────────────────────────── */
 
-loaders.documents = function() {
+let DOC_CACHE = [];
+
+async function fetchServerDocuments() {
+  if (!auth.token || !currentProject) return [];
+  try {
+    // Find (don't create) the backend project for the current sample project.
+    if (!currentProject.backendId) {
+      const res = await fetch('/projects', { headers: authHeaders() });
+      if (!res.ok) return [];
+      const match = (await res.json()).find(p => p.name === currentProject.name);
+      if (!match) return [];
+      currentProject.backendId = match.id;
+    }
+    const res = await fetch(`/projects/${currentProject.backendId}/documents`, { headers: authHeaders() });
+    if (!res.ok) return [];
+    const docs = await res.json();
+    return docs.map(d => ({
+      code: '',
+      title: d.title,
+      discipline: d.discipline,
+      rev: d.revision,
+      by: d.uploaded_by,
+      date: new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      notes: d.notes,
+      fileUrl: `/documents/${d.id}/file`,
+      filename: d.filename,
+      real: true
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
+loaders.documents = async function() {
+  const serverDocs = await fetchServerDocuments();
+  DOC_CACHE = [...serverDocs, ...DOCUMENTS.map(d => ({ ...d, real: false }))];
+
   const groups = {};
-  DOCUMENTS.forEach(d => {
+  DOC_CACHE.forEach((d, i) => {
     if (!groups[d.discipline]) groups[d.discipline] = [];
-    groups[d.discipline].push(d);
+    groups[d.discipline].push({ ...d, _idx: i });
   });
 
   document.getElementById('doc-accordion').innerHTML = Object.keys(groups).map(name => {
@@ -801,8 +886,8 @@ loaders.documents = function() {
         <span class="chevron">▶</span>
       </div>
       <div class="doc-group-body">
-        ${docs.map(doc => `<div class="doc-item" onclick="showDocDetail(${doc.id})">
-          <span class="doc-item-code">${doc.code}</span>
+        ${docs.map(doc => `<div class="doc-item" onclick="showDocDetail(${doc._idx})">
+          ${doc.code ? `<span class="doc-item-code">${doc.code}</span>` : ''}
           <span class="doc-item-name">${doc.title}</span>
           <span class="doc-item-rev">Rev ${doc.rev}</span>
         </div>`).join('')}
@@ -819,19 +904,24 @@ loaders.documents = function() {
   }
 };
 
-function showDocDetail(id) {
-  const doc = DOCUMENTS.find(d => d.id === id);
+function showDocDetail(idx) {
+  const doc = DOC_CACHE[idx];
   if (!doc) return;
   const d = disc(doc.discipline);
   document.querySelectorAll('.doc-item').forEach(el => el.classList.remove('active'));
   event.currentTarget.classList.add('active');
+  const linked = doc.code
+    ? CHANGES.filter(c => c.affectedDocs.some(ad => ad.includes(doc.code))).map(c => `<span style="color:var(--primary);cursor:pointer" onclick="router.go('change-detail',{id:'${c.id}'})">${c.id}</span>`).join(', ')
+    : '';
   document.getElementById('doc-detail-panel').innerHTML = `
     <div class="doc-detail-view">
-      <div class="doc-detail-title">${doc.code} — ${doc.title}</div>
+      <div class="doc-detail-title">${doc.code ? doc.code + ' — ' : ''}${doc.title}</div>
       <div class="doc-detail-meta">${doc.discipline} · Revision ${doc.rev} · Uploaded by ${doc.by} · ${doc.date}</div>
       <div class="doc-detail-section"><h4>Discipline</h4><p><span style="color:${d?d.color:'#666'}">${d?d.icon:''}</span> ${doc.discipline}</p></div>
       <div class="doc-detail-section"><h4>Revision History</h4><p>Current revision: ${doc.rev}. Last updated ${doc.date} by ${doc.by}.</p></div>
-      <div class="doc-detail-section"><h4>Linked Changes</h4><p>${CHANGES.filter(c=>c.affectedDocs.some(ad=>ad.includes(doc.code))).map(c=>`<span style="color:var(--primary);cursor:pointer" onclick="router.go('change-detail',{id:'${c.id}'})">${c.id}</span>`).join(', ')||'None'}</p></div>
+      ${doc.notes ? `<div class="doc-detail-section"><h4>Notes</h4><p>${doc.notes}</p></div>` : ''}
+      ${doc.fileUrl ? `<div class="doc-detail-section"><h4>File</h4><p><a href="${doc.fileUrl}" target="_blank">📄 ${doc.filename}</a></p></div>` : ''}
+      <div class="doc-detail-section"><h4>Linked Changes</h4><p>${linked || 'None'}</p></div>
     </div>`;
 }
 
@@ -941,9 +1031,44 @@ const actions = {
 
   async uploadDocument(e) {
     e.preventDefault();
-    const title = document.getElementById('doc-upload-title').value;
-    ui.hideModal('modal-upload-doc');
-    ui.toast(`Document "${title}" uploaded`);
+    const titleInput = document.getElementById('doc-upload-title').value.trim();
+    const code = document.getElementById('doc-upload-code').value.trim();
+    const disciplineId = document.getElementById('doc-upload-discipline').value;
+    const notes = document.getElementById('doc-upload-notes').value.trim();
+    const fileInput = document.getElementById('file-doc');
+    const btn = document.getElementById('btn-upload-doc');
+
+    if (!fileInput.files.length) { ui.toast('Please choose a file'); return false; }
+    const title = code ? `${code} — ${titleInput}` : titleInput;
+
+    btn.textContent = 'Uploading...';
+    btn.disabled = true;
+    try {
+      const projectId = await ensureBackendProject();
+      const params = new URLSearchParams({ discipline_id: disciplineId, title });
+      if (notes) params.set('notes', notes);
+      const form = new FormData();
+      form.append('file', fileInput.files[0]);
+      const res = await fetch(`/projects/${projectId}/documents?${params}`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: form
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || `Upload failed (${res.status})`);
+      }
+      const doc = await res.json();
+      ui.hideModal('modal-upload-doc');
+      e.target.reset();
+      ui.toast(`"${doc.title}" uploaded — Rev ${doc.revision}`);
+      if (router.current === 'documents') loaders.documents();
+    } catch (err) {
+      ui.toast(err.message);
+    } finally {
+      btn.textContent = 'Upload';
+      btn.disabled = false;
+    }
     return false;
   },
 

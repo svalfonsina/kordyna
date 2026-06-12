@@ -554,7 +554,7 @@
         <div class="field"><label>Document Code</label><input type="text" id="doc-upload-code" placeholder="e.g. C4.1"></div>
         <div class="field"><label>Discipline</label><select id="doc-upload-discipline" required></select></div>
         <div class="field"><label>Link to Change Event (optional)</label><select id="doc-upload-change"><option value="">None</option></select></div>
-        <div class="field"><label>File</label><div class="file-drop" id="drop-doc"><input type="file" id="file-doc" accept=".pdf,.png,.jpg,.jpeg,.tiff,.dwg,.dxf" required><p>Drop or browse</p></div></div>
+        <div class="field"><label>File</label><div class="file-drop" id="drop-doc"><input type="file" id="file-doc" accept=".pdf,.png,.jpg,.jpeg,.tiff,.dwg,.dxf" required onchange="this.nextElementSibling.textContent = this.files.length ? this.files[0].name : 'Drop or browse'"><p>Drop or browse</p></div></div>
         <div class="field"><label>Notes (optional)</label><textarea id="doc-upload-notes" rows="2" placeholder="Revision notes..."></textarea></div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-doc')">Cancel</button>
