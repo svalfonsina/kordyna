@@ -441,40 +441,26 @@ function exitProject() {
   router.go('workspace');
 }
 
-async function renameCurrentProject() {
+function renameCurrentProject() {
   if (!currentProject) return;
-  const name = prompt('Rename project', currentProject.name);
-  if (name == null) return;
-  const trimmed = name.trim();
-  if (!trimmed || trimmed === currentProject.name) return;
-  try {
-    const res = await fetch(`/projects/${currentProject.backendId}`, {
-      method: 'PUT',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: trimmed, description: currentProject.client || null })
-    });
-    if (handleSessionExpired(res)) return;
-    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Rename failed'); }
-    currentProject.name = trimmed;
-    await loadRealProjects();
-    buildSidebar();
-    updateSidebarProjectState();
-    currentProject = PROJECTS.find(p => p.backendId === currentProject.backendId) || currentProject;
-    document.getElementById('overview-title').textContent = currentProject.name;
-    updateTopbar('overview');
-    ui.toast('Project renamed');
-  } catch (err) {
-    ui.toast(err.message);
-  }
+  document.getElementById('rename-project-name').value = currentProject.name;
+  ui.showModal('modal-rename-project');
 }
 
-async function deleteCurrentProject() {
+function deleteCurrentProject() {
   if (!currentProject) return;
-  if (!confirm(`Delete "${currentProject.name}"? This permanently removes the project and all its changes, reviews, and documents. This cannot be undone.`)) return;
+  document.getElementById('delete-project-text').textContent =
+    `Permanently delete "${currentProject.name}"? This removes the project and all its change events, reviews, and documents. This cannot be undone.`;
+  ui.showModal('modal-delete-project');
+}
+
+async function confirmDeleteProject() {
+  if (!currentProject) return;
   try {
     const res = await fetch(`/projects/${currentProject.backendId}`, { method: 'DELETE', headers: authHeaders() });
     if (handleSessionExpired(res)) return;
     if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
+    ui.hideModal('modal-delete-project');
     ui.toast('Project deleted');
     await loadRealProjects();
     buildSidebar();
@@ -1826,6 +1812,35 @@ const actions = {
     } finally {
       btn.textContent = 'Save Changes';
       btn.disabled = false;
+    }
+    return false;
+  },
+
+  async renameProject(e) {
+    e.preventDefault();
+    if (!currentProject) return false;
+    const trimmed = document.getElementById('rename-project-name').value.trim();
+    if (!trimmed) return false;
+    if (trimmed === currentProject.name) { ui.hideModal('modal-rename-project'); return false; }
+    try {
+      const res = await fetch(`/projects/${currentProject.backendId}`, {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed, description: currentProject.client || null })
+      });
+      if (handleSessionExpired(res)) return false;
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Rename failed'); }
+      currentProject.name = trimmed;
+      await loadRealProjects();
+      buildSidebar();
+      updateSidebarProjectState();
+      currentProject = PROJECTS.find(p => p.backendId === currentProject.backendId) || currentProject;
+      document.getElementById('overview-title').textContent = currentProject.name;
+      updateTopbar('overview');
+      ui.hideModal('modal-rename-project');
+      ui.toast('Project renamed');
+    } catch (err) {
+      ui.toast(err.message);
     }
     return false;
   },

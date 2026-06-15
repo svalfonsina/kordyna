@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260615i">
+  <link rel="stylesheet" href="/static/styles.css?v=20260615j">
 </head>
 <body>
 
@@ -656,6 +656,32 @@
     </div>
   </div>
 
+  <div id="modal-rename-project" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-rename-project')"></div>
+    <div class="modal-content">
+      <h3>Rename Project</h3>
+      <form onsubmit="return actions.renameProject(event)">
+        <div class="field"><label>Project Name</label><input type="text" id="rename-project-name" required></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-rename-project')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-delete-project" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-delete-project')"></div>
+    <div class="modal-content">
+      <h3>Delete Project</h3>
+      <p class="modal-text" id="delete-project-text"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-delete-project')">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="confirmDeleteProject()">Delete Project</button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-upload-change" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-change')"></div>
     <div class="modal-content">
@@ -713,6 +739,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260615i"></script>
+  <script src="/static/app.js?v=20260615j"></script>
 </body>
 </html>

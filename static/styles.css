@@ -568,6 +568,7 @@ img { max-width: 100%; display: block; }
 .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
 .modal-content { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; max-width: 520px; width: 90%; max-height: 85vh; overflow-y: auto; }
 .modal-content h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+.modal-text { font-size: 0.9rem; line-height: 1.6; color: var(--text-dim); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .file-drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px; text-align: center; cursor: pointer; transition: border-color var(--transition); position: relative; }
 .file-drop:hover { border-color: var(--primary); }
