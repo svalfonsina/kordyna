@@ -12,7 +12,7 @@ const DISCIPLINES = [
   { id: 4, name: 'Mechanical', abbr: 'MECH', icon: '⚙️', color: '#FF8C42', bg: 'rgba(255,140,66,0.15)' },
   { id: 5, name: 'Electrical', abbr: 'ELEC', icon: '⚡', color: '#FFA600', bg: 'rgba(255,166,0,0.15)' },
   { id: 6, name: 'Plumbing', abbr: 'PLMB', icon: '🔧', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)' },
-  { id: 7, name: 'Landscape', abbr: 'LAND', icon: '🌿', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+  { id: 7, name: 'Landscape Architecture', abbr: 'LA', icon: '🌿', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
   { id: 8, name: 'Fire Protection', abbr: 'FP', icon: '🔥', color: '#EF4565', bg: 'rgba(239,69,101,0.15)' },
   { id: 9, name: 'Geotechnical', abbr: 'GEO', icon: '🪨', color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' }
 ];
@@ -505,7 +505,7 @@ function disc(name) { return DISCIPLINES.find(d => d.name === name); }
 
 const DISC_COLORS = {
   'Architecture': '#2E5BFF',
-  'Landscape': '#10B981',
+  'Landscape Architecture': '#10B981',
   'Civil Engineering': '#0CCE6B',
   'Mechanical': '#FF8C42',
   'Structural': '#8B5CF6',

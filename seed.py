@@ -4,7 +4,7 @@ from models import Discipline, Document, Review, SessionLocal, User
 # Canonical discipline list, in display order.
 DEFAULTS = [
     "Architecture",
-    "Landscape",
+    "Landscape Architecture",
     "Civil Engineering",
     "Mechanical",
     "Structural",
@@ -16,6 +16,7 @@ DEFAULTS = [
 RENAMES = {
     "Civil": "Civil Engineering",
     "MEP Engineering": "Mechanical",
+    "Landscape": "Landscape Architecture",
 }
 
 
