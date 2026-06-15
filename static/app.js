@@ -738,12 +738,11 @@ const loaders = {};
 /* ── WORKSPACE ─────────────────────────────────────────────────────── */
 
 loaders.workspace = async function() {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = ((currentUser && (currentUser.full_name || currentUser.username)) || 'Sara').trim().split(/\s+/)[0];
 
   document.getElementById('ws-greeting').innerHTML = `
-    <div class="ws-greeting-line">Hey Sara 👋</div>
-    <div class="ws-greeting-sub">${greeting} — here's what needs your attention</div>`;
+    <div class="ws-greeting-line">Hey ${firstName}</div>
+    <div class="ws-greeting-sub">This is what needs attention today.</div>`;
 
   const pendingReviews = PROJECTS.reduce((n, p) => n + p.pendingReviews, 0);
   const conflictReviews = PROJECTS.reduce((n, p) => n + p.conflicts, 0);
