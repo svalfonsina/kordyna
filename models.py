@@ -36,6 +36,7 @@ class User(Base):
     email = Column(String(200), nullable=True)
     phone = Column(String(50), nullable=True)
     company = Column(String(200), nullable=True)
+    avatar_path = Column(String(500), nullable=True)
 
     discipline = relationship("Discipline", back_populates="users")
 

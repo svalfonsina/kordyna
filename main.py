@@ -57,6 +57,7 @@ def ensure_user_columns() -> None:
         "email": "VARCHAR(200)",
         "phone": "VARCHAR(50)",
         "company": "VARCHAR(200)",
+        "avatar_path": "VARCHAR(500)",
     }
     with engine.begin() as conn:
         for name, ddl in additions.items():
@@ -434,6 +435,7 @@ def serialize_me(user: User) -> dict:
         "email": user.email,
         "phone": user.phone,
         "company": user.company,
+        "avatar_url": f"/users/{user.id}/avatar" if user.avatar_path else None,
         "created_at": user.created_at,
     }
 
@@ -464,6 +466,53 @@ def update_me(body: ProfileUpdate, user: User = Depends(get_current_user), db: S
     db.commit()
     db.refresh(user)
     return serialize_me(user)
+
+
+@app.post("/me/avatar")
+async def upload_avatar(file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ext = os.path.splitext(file.filename or "avatar.png")[1].lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+        raise HTTPException(status_code=400, detail="Please choose a PNG, JPG, WEBP, or GIF image")
+    import uuid
+    stored_name = f"avatar_{uuid.uuid4().hex[:12]}{ext}"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    path = os.path.join(UPLOAD_DIR, stored_name)
+    content = await file.read()
+    with open(path, "wb") as f:
+        f.write(content)
+    # remove the previous avatar file if any
+    if user.avatar_path and os.path.exists(user.avatar_path):
+        try:
+            os.remove(user.avatar_path)
+        except OSError:
+            pass
+    user.avatar_path = path
+    db.commit()
+    db.refresh(user)
+    return serialize_me(user)
+
+
+@app.delete("/me/avatar")
+def remove_avatar(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.avatar_path and os.path.exists(user.avatar_path):
+        try:
+            os.remove(user.avatar_path)
+        except OSError:
+            pass
+    user.avatar_path = None
+    db.commit()
+    db.refresh(user)
+    return serialize_me(user)
+
+
+@app.get("/users/{user_id}/avatar")
+def get_avatar(user_id: int, db: Session = Depends(get_db)):
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u or not u.avatar_path or not os.path.exists(u.avatar_path):
+        raise HTTPException(status_code=404, detail="No avatar")
+    ext = os.path.splitext(u.avatar_path)[1].lower()
+    media = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
+    return FileResponse(u.avatar_path, media_type=media.get(ext, "application/octet-stream"), content_disposition_type="inline")
 
 
 @app.get("/notifications")

@@ -557,25 +557,79 @@ function userInitials(name) {
   return raw.toUpperCase();
 }
 
+let avatarVersion = '';
+
+// Render a circular avatar element as either the uploaded photo or initials.
+function applyAvatarEl(el, user, initials) {
+  if (!el) return;
+  if (user && user.avatar_url) {
+    el.textContent = '';
+    el.style.backgroundImage = `url("${user.avatar_url}${avatarVersion ? '?t=' + avatarVersion : ''}")`;
+    el.classList.add('has-photo');
+  } else {
+    el.style.backgroundImage = '';
+    el.textContent = initials;
+    el.classList.remove('has-photo');
+  }
+}
+
+function applyIdentity() {
+  if (!currentUser) return;
+  const displayName = currentUser.full_name || currentUser.username;
+  const initials = userInitials(displayName);
+  const role = currentUser.discipline || 'No discipline set';
+  applyAvatarEl(document.getElementById('topbar-avatar'), currentUser, initials);
+  applyAvatarEl(document.getElementById('profile-avatar'), currentUser, initials);
+  applyAvatarEl(document.getElementById('sidebar-avatar'), currentUser, initials);
+  document.getElementById('profile-name').textContent = displayName;
+  document.getElementById('profile-role').textContent = role;
+  const emailLine = document.getElementById('profile-email-line');
+  if (emailLine) emailLine.textContent = currentUser.email || '';
+  const sbName = document.getElementById('sidebar-user-name');
+  const sbRole = document.getElementById('sidebar-user-role');
+  if (sbName) sbName.textContent = displayName;
+  if (sbRole) sbRole.textContent = role;
+}
+
 async function loadMe() {
   try {
     const res = await fetch('/me', { headers: authHeaders() });
     if (!res.ok) return;
     currentUser = await res.json();
-    const displayName = currentUser.full_name || currentUser.username;
-    const initials = userInitials(displayName);
-    const role = currentUser.discipline || 'No discipline set';
-    document.getElementById('topbar-avatar').textContent = initials;
-    document.getElementById('profile-avatar').textContent = initials;
-    document.getElementById('profile-name').textContent = displayName;
-    document.getElementById('profile-role').textContent = role;
-    const sbAvatar = document.getElementById('sidebar-avatar');
-    const sbName = document.getElementById('sidebar-user-name');
-    const sbRole = document.getElementById('sidebar-user-role');
-    if (sbAvatar) sbAvatar.textContent = initials;
-    if (sbName) sbName.textContent = displayName;
-    if (sbRole) sbRole.textContent = role;
+    applyIdentity();
   } catch (e) { /* header keeps defaults */ }
+}
+
+async function uploadAvatar(input) {
+  if (!input.files.length) return;
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  try {
+    const res = await fetch('/me/avatar', { method: 'POST', headers: authHeaders(), body: form });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Upload failed'); }
+    currentUser = await res.json();
+    avatarVersion = String(Date.now());
+    applyIdentity();
+    if (router.current === 'settings') loaders.settings();
+    ui.toast('Photo updated');
+  } catch (err) {
+    ui.toast(err.message);
+  }
+  input.value = '';
+}
+
+async function removeAvatar() {
+  try {
+    const res = await fetch('/me/avatar', { method: 'DELETE', headers: authHeaders() });
+    if (!res.ok) throw new Error('Could not remove photo');
+    currentUser = await res.json();
+    avatarVersion = String(Date.now());
+    applyIdentity();
+    if (router.current === 'settings') loaders.settings();
+    ui.toast('Photo removed');
+  } catch (err) {
+    ui.toast(err.message);
+  }
 }
 
 function toggleProfileMenu(e) {
@@ -978,6 +1032,13 @@ loaders.settings = async function() {
   document.getElementById('profile-company').value = me.company || '';
   document.getElementById('profile-username').value = me.username || '';
   sel.value = me.discipline_id != null ? String(me.discipline_id) : '';
+
+  // Avatar block: photo or initials, name and role beside it
+  const displayName = me.full_name || me.username;
+  applyAvatarEl(document.getElementById('avatar-edit-circle'), me, userInitials(displayName));
+  document.getElementById('avatar-edit-name').textContent = displayName;
+  document.getElementById('avatar-edit-role').textContent = me.discipline || 'No discipline set';
+  document.getElementById('avatar-remove-btn').classList.toggle('hidden', !me.avatar_url);
 };
 
 /* ── PROJECT OVERVIEW ──────────────────────────────────────────────── */
@@ -1695,7 +1756,12 @@ const actions = {
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Could not save'); }
       currentUser = await res.json();
-      loadMe();           // refresh avatar + sidebar identity (new discipline/name)
+      applyIdentity();    // refresh avatar + sidebar identity (new discipline/name)
+      const dn = currentUser.full_name || currentUser.username;
+      const aen = document.getElementById('avatar-edit-name');
+      const aer = document.getElementById('avatar-edit-role');
+      if (aen) aen.textContent = dn;
+      if (aer) aer.textContent = currentUser.discipline || 'No discipline set';
       ui.toast('Profile saved');
     } catch (err) {
       ui.toast(err.message);

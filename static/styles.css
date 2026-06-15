@@ -144,14 +144,29 @@ img { max-width: 100%; display: block; }
 .profile-panel { position: absolute; top: 44px; right: 0; width: 280px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: 0 16px 48px rgba(0,0,0,0.45); z-index: 150; overflow: hidden; }
 .profile-panel-header { display: flex; align-items: center; gap: 12px; padding: 18px 16px; border-bottom: 1px solid var(--border); }
 .profile-panel-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; flex-shrink: 0; }
+.profile-panel-id { min-width: 0; }
 .profile-panel-name { font-weight: 800; font-size: 0.92rem; }
 .profile-panel-role { font-size: 0.78rem; color: var(--text-dim); }
+.profile-panel-email { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profile-panel-menu { padding: 8px; }
-.profile-menu-item { display: block; width: 100%; text-align: left; padding: 10px 14px; border-radius: 9px; font-size: 0.85rem; font-weight: 600; color: var(--text); transition: background var(--transition); }
+.profile-menu-item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 14px; border-radius: 9px; font-size: 0.85rem; font-weight: 600; color: var(--text); transition: background var(--transition); }
+.profile-menu-item svg { width: 17px; height: 17px; fill: none; stroke: var(--text-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 .profile-menu-item:hover { background: rgba(255,255,255,0.05); }
 .profile-panel-footer { border-top: 1px solid var(--border); padding: 8px; }
 .profile-logout { color: var(--red); }
+.profile-logout svg { stroke: var(--red); }
 .profile-logout:hover { background: var(--red-bg); }
+
+/* Avatar photos (override solid-color initials background) */
+.topbar-avatar.has-photo, .sidebar-avatar.has-photo, .profile-panel-avatar.has-photo,
+.avatar-edit-circle.has-photo { background-color: transparent; background-size: cover; background-position: center; background-repeat: no-repeat; }
+
+/* My Profile avatar editor */
+.avatar-edit { display: flex; align-items: center; gap: 18px; padding-bottom: 20px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.avatar-edit-circle { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; flex-shrink: 0; }
+.avatar-edit-name { font-size: 1.05rem; font-weight: 800; }
+.avatar-edit-role { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 8px; }
+.avatar-edit-actions { display: flex; gap: 8px; }
 .topbar-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; cursor: pointer; }
 
 /* ── MAIN LAYOUT ───────────────────────────────────────────────────── */

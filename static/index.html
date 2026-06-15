@@ -6,7 +6,7 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260615c">
+  <link rel="stylesheet" href="/static/styles.css?v=20260615d">
 </head>
 <body>
 
@@ -168,19 +168,25 @@
         <div class="profile-panel hidden" id="profile-panel">
           <div class="profile-panel-header">
             <div class="profile-panel-avatar" id="profile-avatar">SV</div>
-            <div>
+            <div class="profile-panel-id">
               <div class="profile-panel-name" id="profile-name">—</div>
               <div class="profile-panel-role" id="profile-role">—</div>
+              <div class="profile-panel-email" id="profile-email-line"></div>
             </div>
           </div>
           <div class="profile-panel-menu">
-            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">My Profile</button>
-            <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Subscription management coming soon')">Subscription</button>
-            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">Preferences</button>
-            <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Support: hello@kordyna.com')">Help &amp; Support</button>
+            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>My Profile</button>
+            <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Subscription management coming soon')">
+              <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Subscription</button>
+            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Preferences</button>
+            <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Support: hello@kordyna.com')">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Help &amp; Support</button>
           </div>
           <div class="profile-panel-footer">
-            <button class="profile-menu-item profile-logout" onclick="closeProfileMenu();auth.logout()">Log Out</button>
+            <button class="profile-menu-item profile-logout" onclick="closeProfileMenu();auth.logout()">
+              <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Log Out</button>
           </div>
         </div>
       </div>
@@ -597,6 +603,18 @@
         <div class="page-top"><div><h1 class="page-title">My Profile</h1><p class="page-desc">Manage your account details</p></div></div>
         <div class="panel">
           <div class="panel-body">
+            <div class="avatar-edit">
+              <div class="avatar-edit-circle" id="avatar-edit-circle">SV</div>
+              <div class="avatar-edit-info">
+                <div class="avatar-edit-name" id="avatar-edit-name">—</div>
+                <div class="avatar-edit-role" id="avatar-edit-role"></div>
+                <div class="avatar-edit-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('avatar-file').click()">Upload Photo</button>
+                  <button type="button" class="btn btn-ghost btn-sm hidden" id="avatar-remove-btn" onclick="removeAvatar()">Remove</button>
+                  <input type="file" id="avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="uploadAvatar(this)">
+                </div>
+              </div>
+            </div>
             <form onsubmit="return actions.saveProfile(event)">
               <div class="field"><label>Full Name</label><input type="text" id="profile-full-name" placeholder="e.g. Sara Valfonsina"></div>
               <div class="field"><label>Discipline</label><select id="profile-discipline"><option value="">Select a discipline</option></select></div>
@@ -690,6 +708,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260615c"></script>
+  <script src="/static/app.js?v=20260615d"></script>
 </body>
 </html>
