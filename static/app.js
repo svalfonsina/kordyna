@@ -450,10 +450,11 @@ function updateTopbar(page) {
   const infoEl = document.getElementById('topbar-project-info');
 
   const workspacePages = ['workspace', 'my-reviews', 'my-projects', 'my-activity', 'ops'];
+  const titles = { ops: 'Landscape Operations', settings: 'My Profile' };
 
-  if (workspacePages.includes(page)) {
+  if (workspacePages.includes(page) || page === 'settings') {
     centerEl.innerHTML = '';
-    infoEl.innerHTML = `<span class="topbar-project-name">${page === 'ops' ? 'Landscape Operations' : 'My Workspace'}</span>`;
+    infoEl.innerHTML = `<span class="topbar-project-name">${titles[page] || 'My Workspace'}</span>`;
   } else if (currentProject) {
     infoEl.innerHTML = `
       <span class="topbar-back-btn" onclick="exitProject()">← Workspace</span>
@@ -561,17 +562,18 @@ async function loadMe() {
     const res = await fetch('/me', { headers: authHeaders() });
     if (!res.ok) return;
     currentUser = await res.json();
-    const initials = userInitials(currentUser.username);
+    const displayName = currentUser.full_name || currentUser.username;
+    const initials = userInitials(displayName);
     const role = currentUser.discipline || 'No discipline set';
     document.getElementById('topbar-avatar').textContent = initials;
     document.getElementById('profile-avatar').textContent = initials;
-    document.getElementById('profile-name').textContent = currentUser.username;
+    document.getElementById('profile-name').textContent = displayName;
     document.getElementById('profile-role').textContent = role;
     const sbAvatar = document.getElementById('sidebar-avatar');
     const sbName = document.getElementById('sidebar-user-name');
     const sbRole = document.getElementById('sidebar-user-role');
     if (sbAvatar) sbAvatar.textContent = initials;
-    if (sbName) sbName.textContent = currentUser.username;
+    if (sbName) sbName.textContent = displayName;
     if (sbRole) sbRole.textContent = role;
   } catch (e) { /* header keeps defaults */ }
 }
@@ -952,6 +954,31 @@ function opsAction(id) {
   renderOpsPriorities();
   renderOpsDetail();
 }
+
+/* ── SETTINGS / MY PROFILE ─────────────────────────────────────────── */
+
+loaders.settings = async function() {
+  // Discipline dropdown from the established disciplines
+  let discs = [];
+  try { discs = await loadServerDisciplines(); } catch (e) { discs = []; }
+  const sel = document.getElementById('profile-discipline');
+  sel.innerHTML = '<option value="">Select a discipline</option>' +
+    discs.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+
+  // Current values
+  let me = currentUser;
+  try {
+    const res = await fetch('/me', { headers: authHeaders() });
+    if (res.ok) { me = await res.json(); currentUser = me; }
+  } catch (e) { /* fall back to cached currentUser */ }
+  if (!me) return;
+  document.getElementById('profile-full-name').value = me.full_name || '';
+  document.getElementById('profile-email').value = me.email || '';
+  document.getElementById('profile-phone').value = me.phone || '';
+  document.getElementById('profile-company').value = me.company || '';
+  document.getElementById('profile-username').value = me.username || '';
+  sel.value = me.discipline_id != null ? String(me.discipline_id) : '';
+};
 
 /* ── PROJECT OVERVIEW ──────────────────────────────────────────────── */
 
@@ -1642,6 +1669,38 @@ const actions = {
       ui.toast(err.message);
     } finally {
       btn.textContent = 'Compare & Upload';
+      btn.disabled = false;
+    }
+    return false;
+  },
+
+  async saveProfile(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-profile');
+    const discVal = document.getElementById('profile-discipline').value;
+    const payload = {
+      full_name: document.getElementById('profile-full-name').value,
+      email: document.getElementById('profile-email').value,
+      phone: document.getElementById('profile-phone').value,
+      company: document.getElementById('profile-company').value,
+      discipline_id: discVal ? parseInt(discVal) : null
+    };
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/me', {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Could not save'); }
+      currentUser = await res.json();
+      loadMe();           // refresh avatar + sidebar identity (new discipline/name)
+      ui.toast('Profile saved');
+    } catch (err) {
+      ui.toast(err.message);
+    } finally {
+      btn.textContent = 'Save Changes';
       btn.disabled = false;
     }
     return false;

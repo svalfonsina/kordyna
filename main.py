@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
 
 import diff_engine
@@ -45,6 +45,26 @@ UPLOAD_DIR = os.getenv(
 app = FastAPI(title="Kordyna", version="1.0.0")
 
 Base.metadata.create_all(bind=engine)
+
+
+def ensure_user_columns() -> None:
+    """create_all() never alters existing tables, so add profile columns
+    to the users table on databases that predate them (SQLite + Postgres
+    both support ALTER TABLE ADD COLUMN)."""
+    existing = {c["name"] for c in inspect(engine).get_columns("users")}
+    additions = {
+        "full_name": "VARCHAR(200)",
+        "email": "VARCHAR(200)",
+        "phone": "VARCHAR(50)",
+        "company": "VARCHAR(200)",
+    }
+    with engine.begin() as conn:
+        for name, ddl in additions.items():
+            if name not in existing:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {ddl}"))
+
+
+ensure_user_columns()
 seed_disciplines()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -404,14 +424,46 @@ def my_reviews(user: User = Depends(get_current_user), db: Session = Depends(get
 
 # ── Disciplines ──────────────────────────────────────────────────────
 
-@app.get("/me")
-def me(user: User = Depends(get_current_user)):
+def serialize_me(user: User) -> dict:
     return {
         "id": user.id,
         "username": user.username,
         "discipline": user.discipline.name if user.discipline else None,
+        "discipline_id": user.discipline_id,
+        "full_name": user.full_name,
+        "email": user.email,
+        "phone": user.phone,
+        "company": user.company,
         "created_at": user.created_at,
     }
+
+
+class ProfileUpdate(BaseModel):
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    company: str | None = None
+    discipline_id: int | None = None
+
+
+@app.get("/me")
+def me(user: User = Depends(get_current_user)):
+    return serialize_me(user)
+
+
+@app.put("/me")
+def update_me(body: ProfileUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if body.discipline_id is not None:
+        if not db.query(Discipline).filter(Discipline.id == body.discipline_id).first():
+            raise HTTPException(status_code=400, detail="Unknown discipline")
+        user.discipline_id = body.discipline_id
+    user.full_name = (body.full_name or "").strip() or None
+    user.email = (body.email or "").strip() or None
+    user.phone = (body.phone or "").strip() or None
+    user.company = (body.company or "").strip() or None
+    db.commit()
+    db.refresh(user)
+    return serialize_me(user)
 
 
 @app.get("/notifications")

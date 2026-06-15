@@ -6,7 +6,7 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260615a">
+  <link rel="stylesheet" href="/static/styles.css?v=20260615c">
 </head>
 <body>
 
@@ -593,9 +593,25 @@
 
     <!-- PAGE: SETTINGS ──────────────────────────────────────────── -->
     <div id="page-settings" class="page hidden">
-      <div class="page-container">
-        <div class="page-top"><div><h1 class="page-title">Settings</h1><p class="page-desc">Account and workspace configuration</p></div></div>
-        <div class="empty-state"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><h3>Coming Soon</h3><p>Manage your account, notification preferences, and workspace settings.</p></div>
+      <div class="page-container" style="max-width:680px">
+        <div class="page-top"><div><h1 class="page-title">My Profile</h1><p class="page-desc">Manage your account details</p></div></div>
+        <div class="panel">
+          <div class="panel-body">
+            <form onsubmit="return actions.saveProfile(event)">
+              <div class="field"><label>Full Name</label><input type="text" id="profile-full-name" placeholder="e.g. Sara Valfonsina"></div>
+              <div class="field"><label>Discipline</label><select id="profile-discipline"><option value="">Select a discipline</option></select></div>
+              <div class="field-row">
+                <div class="field"><label>Email</label><input type="email" id="profile-email" placeholder="you@company.com"></div>
+                <div class="field"><label>Phone Number</label><input type="tel" id="profile-phone" placeholder="(555) 123-4567"></div>
+              </div>
+              <div class="field"><label>Company</label><input type="text" id="profile-company" placeholder="e.g. Vega Landscape"></div>
+              <div class="field"><label>Username</label><input type="text" id="profile-username" disabled></div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+                <button type="submit" class="btn btn-primary" id="btn-save-profile">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -674,6 +690,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260615a"></script>
+  <script src="/static/app.js?v=20260615c"></script>
 </body>
 </html>

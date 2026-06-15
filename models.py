@@ -32,6 +32,10 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     discipline_id = Column(Integer, ForeignKey("disciplines.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    full_name = Column(String(200), nullable=True)
+    email = Column(String(200), nullable=True)
+    phone = Column(String(50), nullable=True)
+    company = Column(String(200), nullable=True)
 
     discipline = relationship("Discipline", back_populates="users")
 
