@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260615h">
+  <link rel="stylesheet" href="/static/styles.css?v=20260615i">
 </head>
 <body>
 
@@ -293,6 +293,10 @@
           <div>
             <div class="overview-project-label">Project Overview</div>
             <h1 class="overview-title" id="overview-title">Lakeside Mixed Use</h1>
+          </div>
+          <div class="overview-actions">
+            <button class="btn btn-ghost btn-sm" onclick="renameCurrentProject()">Rename</button>
+            <button class="btn btn-ghost btn-sm overview-delete-btn" onclick="deleteCurrentProject()">Delete</button>
           </div>
         </div>
 
@@ -709,6 +713,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260615h"></script>
+  <script src="/static/app.js?v=20260615i"></script>
 </body>
 </html>

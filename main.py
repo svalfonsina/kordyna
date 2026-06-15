@@ -201,6 +201,58 @@ def get_project(project_id: int, user: User = Depends(get_current_user), db: Ses
     return project
 
 
+class ProjectUpdate(BaseModel):
+    name: str
+    description: str | None = None
+
+
+@app.put("/projects/{project_id}", response_model=ProjectOut)
+def update_project(project_id: int, body: ProjectUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    project.name = name
+    if body.description is not None:
+        project.description = body.description.strip() or None
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+@app.delete("/projects/{project_id}", status_code=204)
+def delete_project(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Remove dependent rows and any files they own, so no orphans remain.
+    changes = db.query(ChangeEvent).filter(ChangeEvent.project_id == project_id).all()
+    for c in changes:
+        if c.diff_image_path and os.path.exists(c.diff_image_path):
+            try:
+                os.remove(c.diff_image_path)
+            except OSError:
+                pass
+        db.query(Review).filter(Review.change_event_id == c.id).delete()
+        db.delete(c)
+
+    for d in db.query(Document).filter(Document.project_id == project_id).all():
+        if d.file_path and os.path.exists(d.file_path):
+            try:
+                os.remove(d.file_path)
+            except OSError:
+                pass
+        db.delete(d)
+
+    db.query(ProjectMember).filter(ProjectMember.project_id == project_id).delete()
+    db.query(Message).filter(Message.project_id == project_id).delete()
+    db.delete(project)
+    db.commit()
+
+
 @app.post("/projects/{project_id}/members", status_code=201)
 def add_member(project_id: int, body: MemberAdd, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
