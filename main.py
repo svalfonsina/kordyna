@@ -32,7 +32,7 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days
 
 # Point UPLOAD_DIR at a persistent volume in production (e.g. /data/uploads
 # on Railway) — the default lands on the ephemeral container disk and is

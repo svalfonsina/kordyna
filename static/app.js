@@ -264,6 +264,18 @@ async function loadServerDisciplines() {
 }
 
 
+// Returns true and bounces to login if the response is an expired/invalid
+// session (401). Callers should stop and return when this is true.
+function handleSessionExpired(res) {
+  if (res && res.status === 401) {
+    ui.toast('Your session expired — please sign in again');
+    setTimeout(() => auth.logout(), 1400);
+    return true;
+  }
+  return false;
+}
+
+
 /* ── AUTH ───────────────────────────────────────────────────────────── */
 
 const auth = {
@@ -594,6 +606,7 @@ function applyIdentity() {
 async function loadMe() {
   try {
     const res = await fetch('/me', { headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
     if (!res.ok) return;
     currentUser = await res.json();
     applyIdentity();
@@ -606,6 +619,7 @@ async function uploadAvatar(input) {
   form.append('file', input.files[0]);
   try {
     const res = await fetch('/me/avatar', { method: 'POST', headers: authHeaders(), body: form });
+    if (handleSessionExpired(res)) { input.value = ''; return; }
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Upload failed'); }
     currentUser = await res.json();
     avatarVersion = String(Date.now());
@@ -621,6 +635,7 @@ async function uploadAvatar(input) {
 async function removeAvatar() {
   try {
     const res = await fetch('/me/avatar', { method: 'DELETE', headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
     if (!res.ok) throw new Error('Could not remove photo');
     currentUser = await res.json();
     avatarVersion = String(Date.now());
@@ -1754,6 +1769,7 @@ const actions = {
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      if (handleSessionExpired(res)) return false;
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Could not save'); }
       currentUser = await res.json();
       applyIdentity();    // refresh avatar + sidebar identity (new discipline/name)
