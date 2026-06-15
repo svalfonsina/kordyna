@@ -48,6 +48,14 @@ textarea { resize: vertical; }
 img { max-width: 100%; display: block; }
 .hidden { display: none !important; }
 
+/* ── SCROLLBARS (brand-tinted, seamless on the dark UI) ─────────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--border-light) transparent; }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: var(--border-light); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--primary); }
+::-webkit-scrollbar-corner { background: transparent; }
+
 /* ── AUTH ───────────────────────────────────────────────────────────── */
 .auth-page { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
 .auth-hero { background: linear-gradient(160deg, #081A36 0%, #0A2040 100%); display: flex; align-items: center; justify-content: center; padding: 60px; }
