@@ -10,6 +10,7 @@ DEFAULTS = [
     "Structural",
     "Survey",
     "Contractor",
+    "Realtor",
 ]
 
 # Old name -> new name (applied before adding/removing).

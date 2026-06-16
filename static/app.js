@@ -564,7 +564,8 @@ const DISC_COLORS = {
   'Mechanical': '#FF8C42',
   'Structural': '#8B5CF6',
   'Survey': '#FFA600',
-  'Contractor': '#06B6D4'
+  'Contractor': '#06B6D4',
+  'Realtor': '#EC4899'
 };
 function discColor(name) { return DISC_COLORS[name] || '#5A6A80'; }
 function discAbbr(name) {
