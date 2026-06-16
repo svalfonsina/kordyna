@@ -24,6 +24,33 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    company = relationship("Company")
+
+
+class TeamMembership(Base):
+    __tablename__ = "team_memberships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -37,8 +64,11 @@ class User(Base):
     phone = Column(String(50), nullable=True)
     company = Column(String(200), nullable=True)
     avatar_path = Column(String(500), nullable=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    role = Column(String(40), nullable=True)  # company_admin, project_manager, discipline_lead, contributor, viewer
 
     discipline = relationship("Discipline", back_populates="users")
+    company_ref = relationship("Company")
 
 
 class Discipline(Base):
@@ -58,6 +88,7 @@ class Project(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User")

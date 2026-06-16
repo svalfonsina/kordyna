@@ -639,6 +639,11 @@ function applyIdentity() {
   document.getElementById('profile-role').textContent = role;
   const emailLine = document.getElementById('profile-email-line');
   if (emailLine) emailLine.textContent = currentUser.email || '';
+  const companyLine = document.getElementById('profile-company-line');
+  if (companyLine) {
+    const roleLabel = currentUser.role ? currentUser.role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
+    companyLine.textContent = currentUser.company_name ? `${currentUser.company_name}${roleLabel ? ' · ' + roleLabel : ''}` : '';
+  }
   const sbName = document.getElementById('sidebar-user-name');
   const sbRole = document.getElementById('sidebar-user-role');
   if (sbName) sbName.textContent = displayName;

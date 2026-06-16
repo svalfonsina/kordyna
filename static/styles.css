@@ -157,6 +157,7 @@ img { max-width: 100%; display: block; }
 .profile-panel-name { font-weight: 800; font-size: 0.92rem; }
 .profile-panel-role { font-size: 0.78rem; color: var(--text-dim); }
 .profile-panel-email { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-panel-company { font-size: 0.72rem; color: var(--primary); font-weight: 600; margin-top: 4px; }
 .profile-panel-menu { padding: 8px; }
 .profile-menu-item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 14px; border-radius: 9px; font-size: 0.85rem; font-weight: 600; color: var(--text); transition: background var(--transition); }
 .profile-menu-item svg { width: 17px; height: 17px; fill: none; stroke: var(--text-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }

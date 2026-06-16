@@ -16,6 +16,7 @@ import diff_engine
 from models import (
     Base,
     ChangeEvent,
+    Company,
     Discipline,
     Document,
     Message,
@@ -23,6 +24,8 @@ from models import (
     ProjectMember,
     Review,
     SessionLocal,
+    Team,
+    TeamMembership,
     User,
     engine,
 )
@@ -47,25 +50,59 @@ app = FastAPI(title="Kordyna", version="1.0.0")
 Base.metadata.create_all(bind=engine)
 
 
-def ensure_user_columns() -> None:
-    """create_all() never alters existing tables, so add profile columns
-    to the users table on databases that predate them (SQLite + Postgres
-    both support ALTER TABLE ADD COLUMN)."""
-    existing = {c["name"] for c in inspect(engine).get_columns("users")}
-    additions = {
+def _add_missing_columns(table: str, cols: dict) -> None:
+    """create_all() never alters existing tables, so add new columns
+    in place (SQLite + Postgres both support ALTER TABLE ADD COLUMN)."""
+    existing = {c["name"] for c in inspect(engine).get_columns(table)}
+    with engine.begin() as conn:
+        for name, ddl in cols.items():
+            if name not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+
+
+def run_migrations() -> None:
+    _add_missing_columns("users", {
         "full_name": "VARCHAR(200)",
         "email": "VARCHAR(200)",
         "phone": "VARCHAR(50)",
         "company": "VARCHAR(200)",
         "avatar_path": "VARCHAR(500)",
-    }
-    with engine.begin() as conn:
-        for name, ddl in additions.items():
-            if name not in existing:
-                conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {ddl}"))
+        "company_id": "INTEGER",
+        "role": "VARCHAR(40)",
+    })
+    _add_missing_columns("projects", {"company_id": "INTEGER"})
 
 
-ensure_user_columns()
+def ensure_default_company() -> None:
+    """One shared company: every user and project belongs to it, so the
+    whole team collaborates in the same workspace."""
+    db = SessionLocal()
+    try:
+        company = db.query(Company).order_by(Company.id).first()
+        if not company:
+            company = Company(name=os.getenv("COMPANY_NAME", "Kordyna"))
+            db.add(company)
+            db.commit()
+            db.refresh(company)
+        # Backfill any users/projects that predate companies.
+        for u in db.query(User).filter(User.company_id.is_(None)).all():
+            u.company_id = company.id
+            if not u.role:
+                u.role = "contributor"
+        for p in db.query(Project).filter(Project.company_id.is_(None)).all():
+            p.company_id = company.id
+        # Make the earliest account the company admin if none is set yet.
+        if not db.query(User).filter(User.role == "company_admin").first():
+            first = db.query(User).order_by(User.id).first()
+            if first:
+                first.role = "company_admin"
+        db.commit()
+    finally:
+        db.close()
+
+
+run_migrations()
+ensure_default_company()
 seed_disciplines()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -158,10 +195,14 @@ class DisciplineOut(BaseModel):
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == body.username).first():
         raise HTTPException(status_code=400, detail="Username taken")
+    # One shared company: new accounts join it and collaborate immediately.
+    company = db.query(Company).order_by(Company.id).first()
     user = User(
         username=body.username,
         hashed_password=pwd_context.hash(body.password),
         discipline_id=body.discipline_id,
+        company_id=company.id if company else None,
+        role="contributor",
     )
     db.add(user)
     db.commit()
@@ -181,7 +222,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 
 @app.post("/projects", response_model=ProjectOut, status_code=201)
 def create_project(body: ProjectCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    project = Project(name=body.name, description=body.description, owner_id=user.id)
+    project = Project(name=body.name, description=body.description, owner_id=user.id, company_id=user.company_id)
     db.add(project)
     db.commit()
     db.refresh(project)
@@ -190,8 +231,13 @@ def create_project(body: ProjectCreate, user: User = Depends(get_current_user), 
 
 @app.get("/projects", response_model=list[ProjectOut])
 def list_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Each user sees only their own projects, so a new account starts fresh.
-    return db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at).all()
+    # Projects are shared across the company so the whole team collaborates.
+    return (
+        db.query(Project)
+        .filter(Project.company_id == user.company_id)
+        .order_by(Project.created_at)
+        .all()
+    )
 
 
 @app.get("/projects/{project_id}", response_model=ProjectOut)
@@ -488,6 +534,8 @@ def serialize_me(user: User) -> dict:
         "email": user.email,
         "phone": user.phone,
         "company": user.company,
+        "company_name": user.company_ref.name if user.company_ref else None,
+        "role": user.role,
         "avatar_url": f"/users/{user.id}/avatar" if user.avatar_path else None,
         "created_at": user.created_at,
     }
