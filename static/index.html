@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260615j">
+  <link rel="stylesheet" href="/static/styles.css?v=20260616a">
 </head>
 <body>
 
@@ -682,6 +682,18 @@
     </div>
   </div>
 
+  <div id="modal-confirm" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.confirmCancel()"></div>
+    <div class="modal-content">
+      <h3 id="confirm-title">Are you sure?</h3>
+      <p class="modal-text" id="confirm-text"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="ui.confirmCancel()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-ok-btn" onclick="ui.confirmOk()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-upload-change" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-change')"></div>
     <div class="modal-content">
@@ -739,6 +751,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260615j"></script>
+  <script src="/static/app.js?v=20260616a"></script>
 </body>
 </html>

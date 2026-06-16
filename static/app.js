@@ -339,7 +339,7 @@ const auth = {
     await loadRealProjects();
     buildSidebar();
     loadDisciplineSelects();
-    loadMe();
+    await loadMe();
     refreshNotifications();
     if (!this._notifTimer) this._notifTimer = setInterval(refreshNotifications, 60000);
     router.go('workspace');
@@ -539,7 +539,20 @@ const ui = {
     t.classList.remove('hidden');
     t.classList.add('show');
     setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.classList.add('hidden'), 300); }, 3000);
-  }
+  },
+  // Styled replacement for window.confirm(); resolves true/false.
+  _confirmResolve: null,
+  confirm({ title = 'Are you sure?', message = '', confirmLabel = 'Confirm', danger = true } = {}) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-text').textContent = message;
+    const btn = document.getElementById('confirm-ok-btn');
+    btn.textContent = confirmLabel;
+    btn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+    this.showModal('modal-confirm');
+    return new Promise(resolve => { this._confirmResolve = resolve; });
+  },
+  confirmOk() { this.hideModal('modal-confirm'); const r = this._confirmResolve; this._confirmResolve = null; if (r) r(true); },
+  confirmCancel() { this.hideModal('modal-confirm'); const r = this._confirmResolve; this._confirmResolve = null; if (r) r(false); }
 };
 
 function disc(name) { return DISCIPLINES.find(d => d.name === name); }
@@ -767,7 +780,7 @@ const loaders = {};
 /* ── WORKSPACE ─────────────────────────────────────────────────────── */
 
 loaders.workspace = async function() {
-  const firstName = ((currentUser && (currentUser.full_name || currentUser.username)) || 'Sara').trim().split(/\s+/)[0];
+  const firstName = ((currentUser && (currentUser.full_name || currentUser.username)) || 'there').trim().split(/\s+/)[0];
 
   document.getElementById('ws-greeting').innerHTML = `
     <div class="ws-greeting-line">Hey ${firstName}</div>
@@ -1572,7 +1585,7 @@ async function deleteDocAll(idx) {
   if (!doc || !doc.real) { ui.toast('Sample documents cannot be deleted'); return; }
   const revisions = DOC_CACHE.filter(d => d.real && d.title === doc.title && d.discipline === doc.discipline);
   const label = revisions.length > 1 ? `all ${revisions.length} revisions of "${doc.title}"` : `"${doc.title}"`;
-  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  if (!(await ui.confirm({ title: 'Delete document', message: `Delete ${label}? This cannot be undone.`, confirmLabel: 'Delete' }))) return;
   try {
     for (const rev of revisions) {
       const res = await fetch(`/documents/${rev.serverId}`, { method: 'DELETE', headers: authHeaders() });
@@ -1589,7 +1602,7 @@ async function deleteDocAll(idx) {
 async function deleteDoc(idx) {
   const doc = DOC_CACHE[idx];
   if (!doc || !doc.real) { ui.toast('Sample documents cannot be deleted'); return; }
-  if (!confirm(`Delete "${doc.title}" Rev ${doc.rev}? This cannot be undone.`)) return;
+  if (!(await ui.confirm({ title: 'Delete revision', message: `Delete "${doc.title}" Rev ${doc.rev}? This cannot be undone.`, confirmLabel: 'Delete' }))) return;
   try {
     const res = await fetch(`/documents/${doc.serverId}`, { method: 'DELETE', headers: authHeaders() });
     if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
