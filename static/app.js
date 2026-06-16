@@ -643,6 +643,33 @@ function applyIdentity() {
   const sbRole = document.getElementById('sidebar-user-role');
   if (sbName) sbName.textContent = displayName;
   if (sbRole) sbRole.textContent = role;
+  buildDisciplineSection();
+}
+
+// The sidebar Discipline section reflects the signed-in user's discipline.
+function buildDisciplineSection() {
+  const section = document.getElementById('sidebar-discipline-section');
+  if (!section) return;
+  const name = currentUser && currentUser.discipline;
+  if (!name) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  const color = discColor(name);
+  const card = document.getElementById('sidebar-disc-card');
+  card.style.borderColor = color + '40';
+  card.style.background = color + '14';
+  const titleEl = document.getElementById('sidebar-disc-title');
+  titleEl.textContent = name;
+  titleEl.style.color = color;
+  const linksEl = document.getElementById('sidebar-disc-links');
+  if (name === 'Landscape Architecture') {
+    linksEl.innerHTML = `
+      <a class="sidebar-sublink" data-page="ops" onclick="router.go('ops')">Landscape Operations</a>
+      <a class="sidebar-sublink" onclick="ui.toast('Nursery Inventory — coming soon')">Nursery Inventory</a>
+      <a class="sidebar-sublink" onclick="ui.toast('Irrigation Issues — coming soon')">Irrigation Issues</a>
+      <a class="sidebar-sublink" onclick="ui.toast('Maintenance Schedule — coming soon')">Maintenance Schedule</a>`;
+  } else {
+    linksEl.innerHTML = `<div class="sidebar-disc-empty">Discipline tools coming soon</div>`;
+  }
 }
 
 async function loadMe() {

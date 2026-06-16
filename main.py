@@ -190,7 +190,8 @@ def create_project(body: ProjectCreate, user: User = Depends(get_current_user), 
 
 @app.get("/projects", response_model=list[ProjectOut])
 def list_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(Project).all()
+    # Each user sees only their own projects, so a new account starts fresh.
+    return db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at).all()
 
 
 @app.get("/projects/{project_id}", response_model=ProjectOut)
