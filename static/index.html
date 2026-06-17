@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260616d">
+  <link rel="stylesheet" href="/static/styles.css?v=20260616e">
 </head>
 <body>
 
@@ -56,17 +56,9 @@
           <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
           Home
         </a>
-        <a class="sidebar-link" data-page="my-reviews" onclick="router.go('my-reviews')">
-          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-          My Reviews
-        </a>
-        <a class="sidebar-link" data-page="my-projects" onclick="router.go('my-projects')">
+        <a class="sidebar-link" data-page="my-work" onclick="router.go('my-work')">
           <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-          My Projects
-        </a>
-        <a class="sidebar-link" data-page="my-activity" onclick="router.go('my-activity')">
-          <svg viewBox="0 0 24 24"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
-          My Activity
+          My Work
         </a>
       </div>
 
@@ -210,7 +202,6 @@
             <div class="ws-section">
               <div class="ws-section-header">
                 <h2 class="ws-section-title">My Reviews</h2>
-                <a class="panel-link" onclick="router.go('my-reviews')">View all →</a>
               </div>
               <div id="ws-reviews" class="ws-inbox"></div>
             </div>
@@ -246,41 +237,22 @@
     </div>
 
     <!-- PAGE: MY REVIEWS ────────────────────────────────────────── -->
-    <div id="page-my-reviews" class="page hidden">
+    <div id="page-my-work" class="page hidden">
       <div class="page-container">
         <div class="page-top">
           <div>
-            <h1 class="page-title">My Reviews</h1>
-            <p class="page-desc">Reviews assigned to you across all projects</p>
+            <h1 class="page-title">My Work</h1>
+            <p class="page-desc">Your projects and recent activity</p>
           </div>
         </div>
-        <div id="my-reviews-list" class="ws-inbox"></div>
-      </div>
-    </div>
-
-    <!-- PAGE: MY PROJECTS ───────────────────────────────────────── -->
-    <div id="page-my-projects" class="page hidden">
-      <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">My Projects</h1>
-            <p class="page-desc">All projects you're a member of</p>
-          </div>
+        <div class="ws-section">
+          <div class="ws-section-header"><h2 class="ws-section-title">Projects</h2></div>
+          <div id="my-projects-grid" class="ws-project-grid ws-project-grid-full"></div>
         </div>
-        <div id="my-projects-grid" class="ws-project-grid ws-project-grid-full"></div>
-      </div>
-    </div>
-
-    <!-- PAGE: MY ACTIVITY ───────────────────────────────────────── -->
-    <div id="page-my-activity" class="page hidden">
-      <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">My Activity</h1>
-            <p class="page-desc">Your recent actions across all projects</p>
-          </div>
+        <div class="ws-section">
+          <div class="ws-section-header"><h2 class="ws-section-title">My Activity</h2></div>
+          <div id="my-activity-list"></div>
         </div>
-        <div id="my-activity-list"></div>
       </div>
     </div>
 
@@ -550,7 +522,7 @@
                   <h2 class="panel-title">My Sites</h2>
                   <p class="ops-panel-desc">Landscape operations grouped by project.</p>
                 </div>
-                <span class="panel-link" onclick="router.go('my-projects')">View projects</span>
+                <span class="panel-link" onclick="router.go('my-work')">View projects</span>
               </div>
               <div class="panel-body"><div id="ops-sites" class="ops-sites"></div></div>
             </div>
@@ -749,6 +721,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260616d"></script>
+  <script src="/static/app.js?v=20260616e"></script>
 </body>
 </html>

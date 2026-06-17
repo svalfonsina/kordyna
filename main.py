@@ -522,6 +522,40 @@ def my_reviews(user: User = Depends(get_current_user), db: Session = Depends(get
     ]
 
 
+@app.get("/my-activity")
+def my_activity(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """The signed-in user's own actions (things with a user FK), newest first."""
+    items = []
+    for c in (
+        db.query(ChangeEvent)
+        .filter(ChangeEvent.created_by == user.id)
+        .order_by(ChangeEvent.created_at.desc())
+        .limit(25)
+        .all()
+    ):
+        items.append({
+            "type": "change",
+            "text": f'You created change event "{c.title}" — {c.region_count} change regions',
+            "project_id": c.project_id,
+            "at": c.created_at,
+        })
+    for d in (
+        db.query(Document)
+        .filter(Document.uploaded_by == user.id)
+        .order_by(Document.created_at.desc())
+        .limit(25)
+        .all()
+    ):
+        items.append({
+            "type": "document",
+            "text": f'You uploaded {d.title} (Rev {d.revision})',
+            "project_id": d.project_id,
+            "at": d.created_at,
+        })
+    items.sort(key=lambda i: i["at"] or datetime.min, reverse=True)
+    return items[:25]
+
+
 # ── Disciplines ──────────────────────────────────────────────────────
 
 def serialize_me(user: User) -> dict:

@@ -490,8 +490,8 @@ function updateTopbar(page) {
   const centerEl = document.getElementById('topbar-center');
   const infoEl = document.getElementById('topbar-project-info');
 
-  const workspacePages = ['workspace', 'my-reviews', 'my-projects', 'my-activity', 'ops'];
-  const titles = { ops: 'Landscape Operations', settings: 'My Profile' };
+  const workspacePages = ['workspace', 'my-work', 'ops'];
+  const titles = { ops: 'Landscape Operations', settings: 'My Profile', 'my-work': 'My Work' };
 
   if (workspacePages.includes(page) || page === 'settings') {
     centerEl.innerHTML = '';
@@ -839,7 +839,7 @@ loaders.workspace = async function() {
     if (res.ok) myReviews = await res.json();
   } catch (e) { /* show empty state */ }
   const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || `Project ${id}`;
-  document.getElementById('ws-reviews').innerHTML = myReviews.slice(0, 6).map(r =>
+  document.getElementById('ws-reviews').innerHTML = myReviews.map(r =>
     `<div class="ws-review-item" onclick="enterProject(${r.project_id})">
       <div class="ws-review-icon pending">⏳</div>
       <div class="ws-review-body">
@@ -885,31 +885,10 @@ loaders.workspace = async function() {
     <div class="ws-acc-card"><div class="ws-acc-val green">${PROJECTS.length}</div><div class="ws-acc-label">Projects</div></div>`;
 };
 
-/* ── MY REVIEWS (full page) ────────────────────────────────────────── */
+/* ── MY WORK (projects + my real activity) ─────────────────────────── */
 
-loaders['my-reviews'] = async function() {
-  let myReviews = [];
-  try {
-    const res = await fetch('/my-reviews', { headers: authHeaders() });
-    if (res.ok) myReviews = await res.json();
-  } catch (e) { /* show empty state */ }
-  const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || `Project ${id}`;
-  document.getElementById('my-reviews-list').innerHTML = myReviews.map(r =>
-    `<div class="ws-review-item" onclick="enterProject(${r.project_id})">
-      <div class="ws-review-icon pending">⏳</div>
-      <div class="ws-review-body">
-        <div class="ws-review-title">CE-${r.change_event_id} · ${r.change_title}</div>
-        <div class="ws-review-meta"><span>Awaiting your review${r.notes ? ' · ' + r.notes : ''}</span></div>
-      </div>
-      <span class="ws-review-project">${projName(r.project_id)}</span>
-      <span class="ws-review-badge pending">Pending</span>
-    </div>`
-  ).join('') || '<div class="empty-state"><h3>Inbox zero</h3><p>No reviews are waiting on you. New reviews appear here when drawings change in your projects.</p></div>';
-};
-
-/* ── MY PROJECTS (full page) ───────────────────────────────────────── */
-
-loaders['my-projects'] = function() {
+loaders['my-work'] = async function() {
+  // Projects
   document.getElementById('my-projects-grid').innerHTML = PROJECTS.map(p => {
     const confClass = p.confidence >= 90 ? 'high' : p.confidence >= 80 ? 'mid' : 'low';
     return `<div class="ws-project-card" onclick="enterProject(${p.id})">
@@ -927,20 +906,24 @@ loaders['my-projects'] = function() {
   }).join('') + `<div class="ws-project-card ws-project-new" onclick="ui.showModal('modal-new-project')">
       <div class="ws-project-new-inner">＋ New Project</div>
     </div>`;
-};
 
-/* ── MY ACTIVITY (full page) ───────────────────────────────────────── */
-
-loaders['my-activity'] = function() {
-  document.getElementById('my-activity-list').innerHTML = MY_ACTIVITY_LOG.map(a =>
+  // My real activity
+  let activity = [];
+  try {
+    const res = await fetch('/my-activity', { headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
+    if (res.ok) activity = await res.json();
+  } catch (e) { /* show empty state */ }
+  const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || '';
+  document.getElementById('my-activity-list').innerHTML = activity.map(a =>
     `<div class="ws-activity-item">
-      <div class="ws-activity-dot ${a.type}"></div>
+      <div class="ws-activity-dot ${a.type === 'change' ? 'conflict' : 'upload'}"></div>
       <div class="ws-activity-body">
         <div class="ws-activity-text">${a.text}</div>
-        <div class="ws-activity-time">${a.time} · ${a.project}</div>
+        <div class="ws-activity-time">${shortDate(a.at)}${projName(a.project_id) ? ' · ' + projName(a.project_id) : ''}</div>
       </div>
     </div>`
-  ).join('');
+  ).join('') || '<div class="empty-state"><h3>Nothing yet</h3><p>Your uploads and change events will show up here as you work.</p></div>';
 };
 
 /* ── LANDSCAPE OPERATIONS ──────────────────────────────────────────── */
