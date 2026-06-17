@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260616e">
+  <link rel="stylesheet" href="/static/styles.css?v=20260616f">
 </head>
 <body>
 
@@ -75,29 +75,25 @@
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           Overview
         </a>
-        <a class="sidebar-link" data-page="changes" onclick="router.go('changes')">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-          Change Events
-        </a>
-        <a class="sidebar-link" data-page="impact" onclick="router.go('impact')">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-          Impact Maps
+        <a class="sidebar-link" data-page="documents" onclick="router.go('documents')">
+          <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          Documents
         </a>
         <a class="sidebar-link" data-page="reviews" onclick="router.go('reviews')">
           <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           Reviews
         </a>
-        <a class="sidebar-link" data-page="documents" onclick="router.go('documents')">
-          <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-          Documents
+        <a class="sidebar-link" data-page="changes" onclick="router.go('changes')">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          Changes
         </a>
-        <a class="sidebar-link" data-page="disciplines" onclick="router.go('disciplines')">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          Disciplines
+        <a class="sidebar-link" data-page="impact" onclick="router.go('impact')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Coordination
         </a>
-        <a class="sidebar-link" data-page="confidence" onclick="router.go('confidence')">
-          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Confidence
+        <a class="sidebar-link" data-page="activity" onclick="router.go('activity')">
+          <svg viewBox="0 0 24 24"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+          Activity
         </a>
       </div>
 
@@ -271,15 +267,6 @@
         </div>
 
         <div class="kpi-strip">
-          <div class="kpi-card kpi-primary">
-            <div class="kpi-icon-wrap">
-              <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <div class="kpi-body">
-              <span class="kpi-value" id="kpi-confidence">92%</span>
-              <span class="kpi-label">Project Confidence</span>
-            </div>
-          </div>
           <div class="kpi-card">
             <div class="kpi-body">
               <span class="kpi-value" id="kpi-changes">4</span>
@@ -310,14 +297,10 @@
           <div class="overview-left">
             <div class="panel">
               <div class="panel-header">
-                <h2 class="panel-title">Recent Change Events</h2>
+                <h2 class="panel-title">Recent Changes</h2>
                 <a class="panel-link" onclick="router.go('changes')">View all →</a>
               </div>
               <div id="overview-changes" class="panel-body"></div>
-            </div>
-            <div class="panel">
-              <div class="panel-header"><h2 class="panel-title">Confidence Factors</h2></div>
-              <div id="overview-factors" class="panel-body"></div>
             </div>
           </div>
           <div class="overview-right">
@@ -342,10 +325,10 @@
       <div class="page-container">
         <div class="page-top">
           <div>
-            <h1 class="page-title">Change Events</h1>
+            <h1 class="page-title">Changes</h1>
             <p class="page-desc">Track revisions, impacts, and review progress across the project</p>
           </div>
-          <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">+ New Change Event</button>
+          <button class="btn btn-primary" onclick="ui.showModal('modal-upload-change')">+ New Change</button>
         </div>
         <div class="change-table">
           <div class="change-table-header">
@@ -354,7 +337,7 @@
             <span class="ct-col ct-status">Status</span>
             <span class="ct-col ct-by">Uploaded By</span>
             <span class="ct-col ct-docs">Regions</span>
-            <span class="ct-col ct-disc">Impacted</span>
+            <span class="ct-col ct-disc">Affected</span>
             <span class="ct-col ct-progress">Review Progress</span>
             <span class="ct-col ct-risk">Risk</span>
             <span class="ct-col ct-date">Updated</span>
@@ -368,7 +351,7 @@
     <!-- PAGE: CHANGE DETAIL ─────────────────────────────────────── -->
     <div id="page-change-detail" class="page hidden">
       <div class="page-container">
-        <button class="btn-back" onclick="router.go('changes')">← Back to Change Events</button>
+        <button class="btn-back" onclick="router.go('changes')">← Back to Changes</button>
         <div class="cd-header">
           <div class="cd-header-left">
             <span class="cd-id" id="cd-id"></span>
@@ -391,7 +374,7 @@
             </div>
             <div class="panel">
               <div class="panel-header">
-                <h2 class="panel-title">Impact Map</h2>
+                <h2 class="panel-title">Coordination</h2>
                 <a class="panel-link" onclick="router.go('impact')">Expand →</a>
               </div>
               <div class="cd-impact-canvas" id="cd-impact-canvas">
@@ -409,16 +392,12 @@
               <div class="panel-body" id="cd-reviews"></div>
             </div>
             <div class="panel">
-              <div class="panel-header"><h2 class="panel-title">Impacted Disciplines</h2></div>
+              <div class="panel-header"><h2 class="panel-title">Affected Disciplines</h2></div>
               <div class="panel-body" id="cd-disciplines"></div>
             </div>
             <div class="panel">
               <div class="panel-header"><h2 class="panel-title">Required Actions</h2></div>
               <div class="panel-body" id="cd-actions"></div>
-            </div>
-            <div class="panel">
-              <div class="panel-header"><h2 class="panel-title">Confidence Impact</h2></div>
-              <div class="panel-body" id="cd-confidence"></div>
             </div>
           </div>
         </div>
@@ -430,14 +409,14 @@
       <div class="impact-fullpage">
         <div class="impact-topbar">
           <div class="impact-topbar-left">
-            <h2>Impact Map</h2>
+            <h2>Coordination</h2>
             <select id="impact-change-select" class="impact-select" onchange="renderImpactMap()"></select>
           </div>
           <div class="impact-legend">
             <span><i class="dot-reviewed"></i> Reviewed</span>
             <span><i class="dot-pending"></i> Pending</span>
             <span><i class="dot-conflict"></i> Conflict</span>
-            <span><i class="dot-none"></i> Not Impacted</span>
+            <span><i class="dot-none"></i> Not Affected</span>
           </div>
         </div>
         <div class="impact-body">
@@ -554,21 +533,16 @@
     </div>
 
     <!-- PAGE: CONFIDENCE ────────────────────────────────────────── -->
-    <div id="page-confidence" class="page hidden">
+    <!-- PAGE: PROJECT ACTIVITY ──────────────────────────────────── -->
+    <div id="page-activity" class="page hidden">
       <div class="page-container">
-        <div class="conf-header">
-          <div class="conf-score-wrap">
-            <div class="conf-score-ring" id="conf-ring"></div>
-            <div class="conf-score-info">
-              <h1 class="conf-title">Project Confidence</h1>
-              <p class="conf-sub">Confidence is based on review completion, open conflicts, impact coverage, and document currency.</p>
-            </div>
+        <div class="page-top">
+          <div>
+            <h1 class="page-title">Activity</h1>
+            <p class="page-desc">Everything happening in this project, newest first</p>
           </div>
         </div>
-        <div class="conf-grid">
-          <div class="conf-main" id="conf-main"></div>
-          <div class="conf-side" id="conf-side"></div>
-        </div>
+        <div id="activity-list"></div>
       </div>
     </div>
 
@@ -721,6 +695,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260616e"></script>
+  <script src="/static/app.js?v=20260616f"></script>
 </body>
 </html>

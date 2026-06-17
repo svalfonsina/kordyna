@@ -1119,7 +1119,6 @@ loaders.overview = async function() {
   if (!currentProject) { router.go('workspace'); return; }
 
   document.getElementById('overview-title').textContent = currentProject.name;
-  document.getElementById('kpi-confidence').textContent = currentProject.confidence + '%';
   document.getElementById('kpi-changes').textContent = currentProject.changes;
   document.getElementById('kpi-reviews').textContent = currentProject.pendingReviews;
   document.getElementById('kpi-conflicts').textContent = currentProject.conflicts;
@@ -1137,26 +1136,6 @@ loaders.overview = async function() {
       </div>
     </div>`;
   }).join('') || '<p style="color:var(--text-muted)">No change events yet — upload old + new drawings to detect changes.</p>';
-
-  const totalReviews = projectChanges.reduce((n, c) => n + c.reviews.length, 0);
-  const doneReviews = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'reviewed').length, 0);
-  const flaggedReviews = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'flagged').length, 0);
-  const completion = totalReviews ? Math.round(doneReviews / totalReviews * 100) : 100;
-  const conflictFree = totalReviews ? Math.round((totalReviews - flaggedReviews) / totalReviews * 100) : 100;
-  const factors = [
-    { name: 'Review Completion', score: completion, color: completion >= 80 ? 'var(--green)' : completion >= 50 ? 'var(--yellow)' : 'var(--red)' },
-    { name: 'Conflict-Free Reviews', score: conflictFree, color: conflictFree >= 90 ? 'var(--green)' : 'var(--red)' },
-    { name: 'Documents on File', score: currentProject.docs > 0 ? 100 : 0, color: currentProject.docs > 0 ? 'var(--green)' : 'var(--yellow)' }
-  ];
-  document.getElementById('overview-factors').innerHTML = factors.map(f =>
-    `<div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:0.85rem">${f.name}</span>
-        <span style="font-size:0.85rem;font-weight:700">${f.score}%</span>
-      </div>
-      <div class="ct-progress-bar"><div class="ct-progress-fill" style="width:${f.score}%;background:${f.color}"></div></div>
-    </div>`
-  ).join('');
 
   const projectReviews = [];
   projectChanges.forEach(c => c.reviews.forEach(r => projectReviews.push({ ...r, change: c.id })));
@@ -1259,12 +1238,6 @@ loaders['change-detail'] = async function(data) {
   document.getElementById('cd-actions').innerHTML = c.reviews.filter(r => r.status === 'pending').map(r =>
     `<div class="cd-action-item"><span class="cd-action-bullet"></span><span>Complete ${r.discipline} review</span></div>`
   ).join('') || '<p style="color:var(--text-muted)">No outstanding actions</p>';
-
-  const done = c.reviews.filter(r => r.status === 'reviewed').length;
-  document.getElementById('cd-confidence').innerHTML = `
-    <div class="cd-conf-row"><span>Reviews complete</span><span style="font-weight:700">${done}/${c.reviews.length}</span></div>
-    <div class="cd-conf-row"><span>Conflicts</span><span style="font-weight:700;color:${c.reviews.some(r=>r.status==='flagged')?'var(--red)':'var(--green)'}">${c.reviews.filter(r=>r.status==='flagged').length}</span></div>
-    <div class="cd-conf-row"><span>Risk level</span><span class="ct-risk risk-${risk.toLowerCase()}" style="font-weight:700">${risk}</span></div>`;
 
   // Diff image in place of the sample impact mini-map
   const canvas = document.querySelector('#page-change-detail .cd-impact-canvas');
@@ -1426,6 +1399,7 @@ async function fetchServerDocuments() {
       rev: d.revision,
       by: d.uploaded_by,
       date: new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      createdAtRaw: d.created_at,
       notes: d.notes,
       fileUrl: `/documents/${d.id}/file`,
       filename: d.filename,
@@ -1725,44 +1699,36 @@ loaders['discipline-detail'] = async function(data) {
 
 /* ── CONFIDENCE ────────────────────────────────────────────────────── */
 
-loaders.confidence = async function() {
+/* ── PROJECT ACTIVITY ──────────────────────────────────────────────── */
+
+loaders.activity = async function() {
   if (!currentProject) { router.go('workspace'); return; }
   const projectChanges = await fetchProjectChanges();
-  const score = currentProject.confidence;
-  const circ = 2 * Math.PI * 42;
-  const offset = circ * (1 - score / 100);
-  const color = score >= 90 ? 'var(--green)' : score >= 70 ? 'var(--yellow)' : 'var(--red)';
-  document.getElementById('conf-ring').innerHTML = `
-    <svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="42"/><circle class="ring-fill" cx="50" cy="50" r="42" stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/></svg>
-    <div class="conf-score-num">${score}%</div>`;
+  let docs = [];
+  try { docs = await fetchServerDocuments(); } catch (e) { docs = []; }
 
-  const total = projectChanges.reduce((n, c) => n + c.reviews.length, 0);
-  const done = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'reviewed').length, 0);
-  const flagged = projectChanges.reduce((n, c) => n + c.reviews.filter(r => r.status === 'flagged').length, 0);
-  const completion = total ? Math.round(done / total * 100) : 100;
-  const conflictFree = total ? Math.round((total - flagged) / total * 100) : 100;
-  const factors = [
-    { name: 'Review Completion', score: completion, color: completion >= 80 ? 'var(--green)' : completion >= 50 ? 'var(--yellow)' : 'var(--red)' },
-    { name: 'Conflict-Free Reviews', score: conflictFree, color: conflictFree >= 90 ? 'var(--green)' : 'var(--red)' },
-    { name: 'Documents on File', score: currentProject.docs > 0 ? 100 : 0, color: currentProject.docs > 0 ? 'var(--green)' : 'var(--yellow)' }
-  ];
-  document.getElementById('conf-main').innerHTML = factors.map(f =>
-    `<div class="conf-factor"><div class="conf-factor-header"><span class="conf-factor-name">${f.name}</span><span class="conf-factor-score" style="color:${f.color}">${f.score}%</span></div>
-    <div class="conf-factor-bar"><div class="conf-factor-fill" style="width:${f.score}%;background:${f.color}"></div></div></div>`
-  ).join('');
+  const events = [];
+  projectChanges.forEach(c => {
+    events.push({ type: 'change', text: `<strong>${c.creator || 'Someone'}</strong> created change <strong>CE-${c.id}</strong> "${c.title}" — ${c.region_count} regions`, at: c.created_at });
+    c.reviews.filter(r => r.status !== 'pending').forEach(r => {
+      events.push({ type: r.status === 'flagged' ? 'conflict' : 'review', text: `<strong>${r.discipline}</strong> ${r.status === 'flagged' ? 'flagged a conflict on' : 'completed review of'} CE-${c.id}`, at: r.updated_at });
+    });
+  });
+  docs.forEach(d => {
+    if (d.real) events.push({ type: 'document', text: `<strong>${d.by}</strong> uploaded ${d.title} (Rev ${d.rev})`, at: d.createdAtRaw || d.date });
+  });
+  events.sort((a, b) => new Date(b.at) - new Date(a.at));
 
-  const recs = [];
-  projectChanges.forEach(c => {
-    c.reviews.filter(r => r.status === 'flagged').forEach(r => recs.push({ urgent: true, text: `Resolve ${r.discipline} conflict on CE-${c.id}`, id: c.id }));
-  });
-  projectChanges.forEach(c => {
-    c.reviews.filter(r => r.status === 'pending').forEach(r => recs.push({ urgent: false, text: `Complete ${r.discipline} review on CE-${c.id}`, id: c.id }));
-  });
-  document.getElementById('conf-side').innerHTML = `
-    <div class="panel"><div class="panel-header"><h2 class="panel-title">Recommendations</h2></div><div class="panel-body">
-      ${recs.slice(0, 6).map(r => `<div class="cd-action-item" style="cursor:pointer" onclick="router.go('change-detail',{id:${r.id}})"><span class="cd-action-bullet" style="background:${r.urgent ? 'var(--red)' : 'var(--yellow)'}"></span><span>${r.text}</span></div>`).join('')
-        || '<p style="color:var(--text-muted)">Nothing outstanding — confidence is healthy.</p>'}
-    </div></div>`;
+  const dotColor = t => t === 'conflict' ? 'var(--red)' : t === 'review' ? 'var(--green)' : t === 'document' ? 'var(--primary)' : 'var(--yellow)';
+  document.getElementById('activity-list').innerHTML = events.map(e =>
+    `<div class="ws-activity-item">
+      <div class="ws-activity-dot" style="background:${dotColor(e.type)}"></div>
+      <div class="ws-activity-body">
+        <div class="ws-activity-text">${e.text}</div>
+        <div class="ws-activity-time">${shortDate(e.at)}</div>
+      </div>
+    </div>`
+  ).join('') || '<div class="empty-state"><h3>No activity yet</h3><p>Uploads, reviews, and changes in this project will appear here.</p></div>';
 };
 
 
