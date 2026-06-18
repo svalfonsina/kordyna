@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -171,3 +172,22 @@ class Message(Base):
 
     user = relationship("User")
     project = relationship("Project")
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    title = Column(String(300), nullable=False)
+    discipline_id = Column(Integer, ForeignKey("disciplines.id"), nullable=True)
+    assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    start_date = Column(Date, nullable=True)
+    due_date = Column(Date, nullable=True)
+    status = Column(String(20), default="on_track", nullable=False)  # complete, on_track, at_risk, delayed
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project")
+    discipline = relationship("Discipline")
+    assignee = relationship("User", foreign_keys=[assignee_id])

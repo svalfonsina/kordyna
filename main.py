@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
@@ -24,6 +24,7 @@ from models import (
     ProjectMember,
     Review,
     SessionLocal,
+    Task,
     Team,
     TeamMembership,
     User,
@@ -554,6 +555,127 @@ def my_activity(user: User = Depends(get_current_user), db: Session = Depends(ge
         })
     items.sort(key=lambda i: i["at"] or datetime.min, reverse=True)
     return items[:25]
+
+
+# ── Tasks / Schedule ─────────────────────────────────────────────────
+
+TASK_STATUSES = ("complete", "on_track", "at_risk", "delayed")
+
+
+class TaskCreate(BaseModel):
+    title: str
+    discipline_id: int | None = None
+    assignee_id: int | None = None
+    start_date: date | None = None
+    due_date: date | None = None
+    status: str = "on_track"
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    discipline_id: int | None = None
+    assignee_id: int | None = None
+    start_date: date | None = None
+    due_date: date | None = None
+    status: str | None = None
+
+
+def serialize_task(t: Task) -> dict:
+    return {
+        "id": t.id,
+        "project_id": t.project_id,
+        "title": t.title,
+        "discipline_id": t.discipline_id,
+        "discipline": t.discipline.name if t.discipline else None,
+        "assignee_id": t.assignee_id,
+        "assignee": (t.assignee.full_name or t.assignee.username) if t.assignee else None,
+        "start_date": t.start_date.isoformat() if t.start_date else None,
+        "due_date": t.due_date.isoformat() if t.due_date else None,
+        "status": t.status,
+    }
+
+
+@app.get("/projects/{project_id}/tasks")
+def list_tasks(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tasks = db.query(Task).filter(Task.project_id == project_id).order_by(Task.start_date, Task.id).all()
+    return [serialize_task(t) for t in tasks]
+
+
+@app.post("/projects/{project_id}/tasks", status_code=201)
+def create_task(project_id: int, body: TaskCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    status = body.status if body.status in TASK_STATUSES else "on_track"
+    task = Task(
+        project_id=project_id,
+        title=body.title.strip(),
+        discipline_id=body.discipline_id,
+        assignee_id=body.assignee_id,
+        start_date=body.start_date,
+        due_date=body.due_date,
+        status=status,
+        created_by=user.id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return serialize_task(task)
+
+
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, body: TaskUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if body.title is not None:
+        task.title = body.title.strip()
+    if body.discipline_id is not None:
+        task.discipline_id = body.discipline_id
+    if body.assignee_id is not None:
+        task.assignee_id = body.assignee_id
+    if body.start_date is not None:
+        task.start_date = body.start_date
+    if body.due_date is not None:
+        task.due_date = body.due_date
+    if body.status is not None and body.status in TASK_STATUSES:
+        task.status = body.status
+    db.commit()
+    db.refresh(task)
+    return serialize_task(task)
+
+
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(task)
+    db.commit()
+
+
+@app.get("/my-tasks")
+def my_tasks(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tasks = (
+        db.query(Task)
+        .filter(Task.assignee_id == user.id, Task.status != "complete")
+        .order_by(Task.due_date, Task.id)
+        .all()
+    )
+    return [serialize_task(t) for t in tasks]
+
+
+@app.get("/company/members")
+def company_members(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    members = db.query(User).filter(User.company_id == user.company_id).order_by(User.id).all()
+    return [
+        {
+            "id": m.id,
+            "name": m.full_name or m.username,
+            "discipline": m.discipline.name if m.discipline else None,
+        }
+        for m in members
+    ]
 
 
 # ── Disciplines ──────────────────────────────────────────────────────

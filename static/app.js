@@ -1732,6 +1732,191 @@ loaders.activity = async function() {
 };
 
 
+/* ── SCHEDULE ──────────────────────────────────────────────────────── */
+
+const TASK_STATUS = {
+  complete: { label: 'Complete', color: '#00C48C' },
+  on_track: { label: 'On Track', color: '#2E5BFF' },
+  at_risk:  { label: 'At Risk',  color: '#FFB547' },
+  delayed:  { label: 'Delayed',  color: '#FF5A5F' }
+};
+let scheduleTasks = [];
+let scheduleView = 'gantt';
+
+loaders.schedule = async function() {
+  if (!currentProject) { router.go('workspace'); return; }
+  try {
+    const res = await fetch(`/projects/${currentProject.backendId}/tasks`, { headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
+    scheduleTasks = res.ok ? await res.json() : [];
+  } catch (e) { scheduleTasks = []; }
+
+  // Summary by status
+  const counts = { complete: 0, on_track: 0, at_risk: 0, delayed: 0 };
+  scheduleTasks.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1; });
+  document.getElementById('sched-summary').innerHTML = `
+    <div class="sched-stat"><div class="sched-stat-val">${scheduleTasks.length}</div><div class="sched-stat-label">Total Tasks</div></div>
+    <div class="sched-stat"><div class="sched-stat-val" style="color:${TASK_STATUS.on_track.color}">${counts.on_track}</div><div class="sched-stat-label">On Track</div></div>
+    <div class="sched-stat"><div class="sched-stat-val" style="color:${TASK_STATUS.at_risk.color}">${counts.at_risk}</div><div class="sched-stat-label">At Risk</div></div>
+    <div class="sched-stat"><div class="sched-stat-val" style="color:${TASK_STATUS.delayed.color}">${counts.delayed}</div><div class="sched-stat-label">Delayed</div></div>
+    <div class="sched-stat"><div class="sched-stat-val" style="color:${TASK_STATUS.complete.color}">${counts.complete}</div><div class="sched-stat-label">Complete</div></div>`;
+
+  renderSchedule();
+};
+
+function schedView(v) {
+  scheduleView = v;
+  document.querySelectorAll('.sched-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+  renderSchedule();
+}
+
+function groupByDiscipline(tasks) {
+  const groups = {};
+  tasks.forEach(t => {
+    const key = t.discipline || 'Unassigned';
+    (groups[key] = groups[key] || []).push(t);
+  });
+  return groups;
+}
+
+function taskStatusBadge(status) {
+  const s = TASK_STATUS[status] || TASK_STATUS.on_track;
+  return `<span class="task-badge" style="background:${s.color}22;color:${s.color}">${s.label}</span>`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+async function renderSchedule() {
+  const body = document.getElementById('sched-body');
+  if (scheduleView === 'mine') {
+    let mine = [];
+    try {
+      const res = await fetch('/my-tasks', { headers: authHeaders() });
+      if (res.ok) mine = await res.json();
+    } catch (e) {}
+    body.innerHTML = renderTaskList(mine, true) ||
+      '<div class="empty-state"><h3>No tasks assigned to you</h3><p>Tasks you own will appear here.</p></div>';
+    return;
+  }
+  if (!scheduleTasks.length) {
+    body.innerHTML = '<div class="empty-state"><h3>No tasks yet</h3><p>Add the first task to start building the project schedule.</p></div>';
+    return;
+  }
+  if (scheduleView === 'list') {
+    body.innerHTML = renderTaskList(scheduleTasks, false);
+  } else {
+    body.innerHTML = renderGantt(scheduleTasks);
+  }
+}
+
+function renderTaskList(tasks, showProject) {
+  if (!tasks.length) return '';
+  const groups = groupByDiscipline(tasks);
+  return Object.keys(groups).map(disc => `
+    <div class="sched-group">
+      <div class="sched-group-header"><span class="disc-dot" style="background:${discColor(disc)}"></span>${disc}<span class="sched-group-count">${groups[disc].length}</span></div>
+      ${groups[disc].map(t => `
+        <div class="task-row">
+          <div class="task-row-main">
+            <div class="task-row-title">${t.title}</div>
+            <div class="task-row-meta">${t.assignee ? t.assignee : 'Unassigned'} · ${fmtDate(t.start_date)} → ${fmtDate(t.due_date)}${showProject && t.project_id ? ' · ' + ((PROJECTS.find(p=>p.backendId===t.project_id)||{}).name||'') : ''}</div>
+          </div>
+          <select class="task-status-select" onchange="updateTaskStatus(${t.id}, this.value)">
+            ${Object.keys(TASK_STATUS).map(s => `<option value="${s}" ${s===t.status?'selected':''}>${TASK_STATUS[s].label}</option>`).join('')}
+          </select>
+          <button class="task-del" title="Delete task" onclick="deleteTask(${t.id})">
+            <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function renderGantt(tasks) {
+  const dated = tasks.filter(t => t.start_date || t.due_date);
+  if (!dated.length) return renderTaskList(tasks, false);
+  // date range
+  const allDates = [];
+  dated.forEach(t => { if (t.start_date) allDates.push(new Date(t.start_date)); if (t.due_date) allDates.push(new Date(t.due_date)); });
+  let min = new Date(Math.min(...allDates)), max = new Date(Math.max(...allDates));
+  // pad a few days each side
+  min.setDate(min.getDate() - 2); max.setDate(max.getDate() + 2);
+  const span = Math.max(1, (max - min) / 86400000);
+  const pct = d => ((new Date(d) - min) / 86400000) / span * 100;
+
+  // month ruler
+  const months = [];
+  let cur = new Date(min.getFullYear(), min.getMonth(), 1);
+  while (cur <= max) {
+    months.push({ label: cur.toLocaleDateString('en-US', { month: 'short' }), left: pct(cur < min ? min : cur) });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  const ruler = `<div class="gantt-ruler">${months.map(m => `<span class="gantt-month" style="left:${Math.max(0,m.left)}%">${m.label}</span>`).join('')}</div>`;
+
+  const groups = groupByDiscipline(tasks);
+  const rows = Object.keys(groups).map(disc => `
+    <div class="gantt-group-header"><span class="disc-dot" style="background:${discColor(disc)}"></span>${disc}</div>
+    ${groups[disc].map(t => {
+      const s = TASK_STATUS[t.status] || TASK_STATUS.on_track;
+      const start = t.start_date || t.due_date;
+      const end = t.due_date || t.start_date;
+      const left = pct(start);
+      const width = Math.max(2, pct(end) - left);
+      return `<div class="gantt-row">
+        <div class="gantt-label" title="${t.title}">${t.title}</div>
+        <div class="gantt-track">
+          <div class="gantt-bar" style="left:${left}%;width:${width}%;background:${s.color}" onclick="ui.toast('${t.title.replace(/'/g,'')} · ${s.label}${t.assignee?' · '+t.assignee.replace(/'/g,''):''}')">
+            <span class="gantt-bar-label">${t.assignee || ''}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}`).join('');
+
+  return `<div class="gantt"><div class="gantt-head"><div class="gantt-label-head">Task</div>${ruler}</div>${rows}</div>`;
+}
+
+async function updateTaskStatus(taskId, status) {
+  try {
+    const res = await fetch(`/tasks/${taskId}`, { method: 'PUT', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    if (handleSessionExpired(res)) return;
+    if (!res.ok) throw new Error('Update failed');
+    ui.toast('Task updated');
+    loaders.schedule();
+  } catch (err) { ui.toast(err.message); }
+}
+
+async function deleteTask(taskId) {
+  if (!(await ui.confirm({ title: 'Delete task', message: 'Delete this task? This cannot be undone.', confirmLabel: 'Delete' }))) return;
+  try {
+    const res = await fetch(`/tasks/${taskId}`, { method: 'DELETE', headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
+    if (!res.ok && res.status !== 204) throw new Error('Delete failed');
+    ui.toast('Task deleted');
+    loaders.schedule();
+  } catch (err) { ui.toast(err.message); }
+}
+
+async function openNewTask() {
+  if (!currentProject) return;
+  // disciplines
+  const discSel = document.getElementById('task-discipline');
+  let discs = [];
+  try { discs = await loadServerDisciplines(); } catch (e) {}
+  discSel.innerHTML = '<option value="">Unassigned</option>' + discs.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  // company members
+  const aSel = document.getElementById('task-assignee');
+  let members = [];
+  try { const r = await fetch('/company/members', { headers: authHeaders() }); if (r.ok) members = await r.json(); } catch (e) {}
+  aSel.innerHTML = '<option value="">Unassigned</option>' + members.map(m => `<option value="${m.id}">${m.name}${m.discipline ? ' (' + m.discipline + ')' : ''}</option>`).join('');
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-start').value = '';
+  document.getElementById('task-due').value = '';
+  document.getElementById('task-status').value = 'on_track';
+  ui.showModal('modal-new-task');
+}
+
 /* ── ACTIONS ───────────────────────────────────────────────────────── */
 
 const actions = {
@@ -1806,6 +1991,39 @@ const actions = {
       ui.toast(err.message);
     } finally {
       btn.textContent = 'Save Changes';
+      btn.disabled = false;
+    }
+    return false;
+  },
+
+  async createTask(e) {
+    e.preventDefault();
+    if (!currentProject) return false;
+    const btn = document.getElementById('btn-create-task');
+    const payload = {
+      title: document.getElementById('task-title').value.trim(),
+      discipline_id: document.getElementById('task-discipline').value ? parseInt(document.getElementById('task-discipline').value) : null,
+      assignee_id: document.getElementById('task-assignee').value ? parseInt(document.getElementById('task-assignee').value) : null,
+      start_date: document.getElementById('task-start').value || null,
+      due_date: document.getElementById('task-due').value || null,
+      status: document.getElementById('task-status').value
+    };
+    if (!payload.title) return false;
+    btn.textContent = 'Creating...';
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/projects/${currentProject.backendId}/tasks`, {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      if (handleSessionExpired(res)) return false;
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Could not create task'); }
+      ui.hideModal('modal-new-task');
+      ui.toast('Task created');
+      if (router.current === 'schedule') loaders.schedule();
+    } catch (err) {
+      ui.toast(err.message);
+    } finally {
+      btn.textContent = 'Create Task';
       btn.disabled = false;
     }
     return false;

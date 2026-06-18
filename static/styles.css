@@ -367,6 +367,51 @@ img { max-width: 100%; display: block; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   SCHEDULE
+   ═══════════════════════════════════════════════════════════════════ */
+.sched-summary { display: flex; gap: 28px; padding: 18px 24px; margin-bottom: 18px; }
+.sched-stat { display: flex; flex-direction: column; }
+.sched-stat-val { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.sched-stat-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; margin-top: 2px; }
+.sched-toolbar { margin-bottom: 14px; }
+.sched-tabs { display: inline-flex; gap: 4px; background: var(--bg-card); border-radius: var(--radius); padding: 4px; }
+.sched-tab { padding: 7px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-dim); transition: all var(--transition); }
+.sched-tab.active { background: var(--primary); color: #fff; }
+
+.sched-group { margin-bottom: 18px; }
+.sched-group-header { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; padding: 8px 4px; }
+.sched-group-count { margin-left: auto; font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+.task-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; }
+.task-row-main { flex: 1; min-width: 0; }
+.task-row-title { font-size: 0.9rem; font-weight: 600; }
+.task-row-meta { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+.task-status-select { width: auto; padding: 6px 28px 6px 10px; font-size: 0.78rem; }
+.task-del { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0; }
+.task-del svg { width: 14px; height: 14px; fill: none; stroke: var(--text-muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.task-del:hover { background: var(--red-bg); }
+.task-del:hover svg { stroke: var(--red); }
+.task-badge { display: inline-flex; border-radius: 20px; padding: 3px 12px; font-size: 0.72rem; font-weight: 700; }
+
+/* Gantt */
+.gantt { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.gantt-head { display: flex; align-items: center; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+.gantt-label-head { width: 220px; flex-shrink: 0; padding: 10px 16px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.gantt-ruler { position: relative; flex: 1; height: 38px; }
+.gantt-month { position: absolute; top: 12px; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; transform: translateX(2px); border-left: 1px solid var(--border); padding-left: 6px; }
+.gantt-group-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 0.8rem; font-weight: 700; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
+.gantt-row { display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+.gantt-row:last-child { border-bottom: none; }
+.gantt-label { width: 220px; flex-shrink: 0; padding: 10px 16px; font-size: 0.83rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gantt-track { position: relative; flex: 1; height: 40px; }
+.gantt-bar { position: absolute; top: 9px; height: 22px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; padding: 0 8px; min-width: 8px; transition: filter var(--transition); }
+.gantt-bar:hover { filter: brightness(1.12); }
+.gantt-bar-label { font-size: 0.7rem; color: rgba(255,255,255,0.9); font-weight: 600; white-space: nowrap; overflow: hidden; }
+@media (max-width: 768px) {
+  .sched-summary { flex-wrap: wrap; gap: 16px; }
+  .gantt-label, .gantt-label-head { width: 120px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    PROJECT OVERVIEW (KPI)
    ═══════════════════════════════════════════════════════════════════ */
 .overview-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
