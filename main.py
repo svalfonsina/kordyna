@@ -2,7 +2,7 @@ import os
 from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -138,6 +138,43 @@ def get_db():
 def create_token(user_id: int) -> str:
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+
+
+# Signed, short-lived URLs for file access — issued only after a permission
+# check, so <img>/<iframe> tags (which can't send auth headers) stay private.
+def create_file_token(kind: str, obj_id: int) -> str:
+    expire = datetime.utcnow() + timedelta(hours=24)
+    return jwt.encode({"typ": kind, "id": obj_id, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def file_token_ok(token: str | None, kind: str, obj_id: int) -> bool:
+    if not token:
+        return False
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("typ") == kind and int(payload.get("id")) == obj_id
+    except (JWTError, KeyError, ValueError, TypeError):
+        return False
+
+
+def user_from_bearer(authorization: str | None, db: Session) -> User | None:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    raw = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(raw, SECRET_KEY, algorithms=[ALGORITHM])
+        return db.query(User).filter(User.id == int(payload["sub"])).first()
+    except (JWTError, KeyError, ValueError):
+        return None
+
+
+def require_project_in_company(project_id: int, user: User, db: Session) -> Project:
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.company_id is not None and project.company_id != user.company_id:
+        raise HTTPException(status_code=403, detail="Not authorized for this project")
+    return project
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
@@ -374,7 +411,7 @@ def list_changes(project_id: int, user: User = Depends(get_current_user), db: Se
             "title": e.title,
             "region_count": e.region_count,
             "created_at": e.created_at,
-            "diff_image": f"/changes/{e.id}/diff-image",
+            "diff_image": f"/changes/{e.id}/diff-image?token={create_file_token('diff', e.id)}",
             "creator": e.creator.username if e.creator else None,
             "reviews_total": len(e.reviews),
             "reviews_done": sum(1 for r in e.reviews if r.status == "reviewed"),
@@ -431,7 +468,7 @@ def get_change(change_id: int, user: User = Depends(get_current_user), db: Sessi
         "project_id": event.project_id,
         "region_count": event.region_count,
         "created_at": event.created_at,
-        "diff_image": f"/changes/{event.id}/diff-image",
+        "diff_image": f"/changes/{event.id}/diff-image?token={create_file_token('diff', event.id)}",
         "reviews": [
             {
                 "id": r.id,
@@ -447,10 +484,16 @@ def get_change(change_id: int, user: User = Depends(get_current_user), db: Sessi
 
 
 @app.get("/changes/{change_id}/diff-image")
-def get_diff_image(change_id: int, db: Session = Depends(get_db)):
+def get_diff_image(change_id: int, token: str | None = None, authorization: str | None = Header(None), db: Session = Depends(get_db)):
     event = db.query(ChangeEvent).filter(ChangeEvent.id == change_id).first()
     if not event or not event.diff_image_path:
         raise HTTPException(status_code=404, detail="Image not found")
+    authorized = file_token_ok(token, "diff", change_id)
+    if not authorized:
+        u = user_from_bearer(authorization, db)
+        authorized = bool(u and event.project and event.project.company_id == u.company_id)
+    if not authorized:
+        raise HTTPException(status_code=401, detail="Not authorized")
     if not os.path.exists(event.diff_image_path):
         raise HTTPException(status_code=404, detail="File no longer available on server")
     return FileResponse(event.diff_image_path, media_type="image/png")
@@ -1042,6 +1085,7 @@ def list_documents(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_project_in_company(project_id, user, db)
     q = db.query(Document).filter(Document.project_id == project_id)
     if discipline_id is not None:
         q = q.filter(Document.discipline_id == discipline_id)
@@ -1057,16 +1101,24 @@ def list_documents(
             "notes": d.notes,
             "uploaded_by": d.uploader.username,
             "created_at": d.created_at,
+            "file_url": f"/documents/{d.id}/file?token={create_file_token('doc', d.id)}",
         }
         for d in docs
     ]
 
 
 @app.get("/documents/{doc_id}/file")
-def get_document_file(doc_id: int, db: Session = Depends(get_db)):
+def get_document_file(doc_id: int, token: str | None = None, authorization: str | None = Header(None), db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc or not doc.file_path:
         raise HTTPException(status_code=404, detail="Document not found")
+    # Authorize: a signed file token, or a logged-in user in the same company.
+    authorized = file_token_ok(token, "doc", doc_id)
+    if not authorized:
+        u = user_from_bearer(authorization, db)
+        authorized = bool(u and doc.project and doc.project.company_id == u.company_id)
+    if not authorized:
+        raise HTTPException(status_code=401, detail="Not authorized")
     if not os.path.exists(doc.file_path):
         raise HTTPException(status_code=404, detail="File no longer available on server")
     ext = os.path.splitext(doc.file_path)[1].lower()

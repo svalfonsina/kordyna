@@ -1401,7 +1401,7 @@ async function fetchServerDocuments() {
       date: new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       createdAtRaw: d.created_at,
       notes: d.notes,
-      fileUrl: `/documents/${d.id}/file`,
+      fileUrl: d.file_url || `/documents/${d.id}/file`,
       filename: d.filename,
       real: true
     }));
