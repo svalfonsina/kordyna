@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 import diff_engine
 from models import (
+    ActivityEvent,
     Base,
     ChangeEvent,
     Company,
@@ -102,8 +103,38 @@ def ensure_default_company() -> None:
         db.close()
 
 
+def ensure_activity_backfill() -> None:
+    """Seed the audit log once from existing changes and documents so the
+    activity history isn't blank for projects that predate logging."""
+    db = SessionLocal()
+    try:
+        if db.query(ActivityEvent.id).first():
+            return
+        for c in db.query(ChangeEvent).all():
+            creator = db.query(User).filter(User.id == c.created_by).first()
+            db.add(ActivityEvent(
+                company_id=creator.company_id if creator else None,
+                project_id=c.project_id, actor_id=c.created_by,
+                verb="created", object_type="change", object_label=c.title,
+                created_at=c.created_at,
+            ))
+        for d in db.query(Document).all():
+            uploader = db.query(User).filter(User.id == d.uploaded_by).first()
+            db.add(ActivityEvent(
+                company_id=uploader.company_id if uploader else None,
+                project_id=d.project_id, actor_id=d.uploaded_by,
+                verb="uploaded", object_type="document",
+                object_label=f"{d.title} (Rev {d.revision})",
+                created_at=d.created_at,
+            ))
+        db.commit()
+    finally:
+        db.close()
+
+
 run_migrations()
 ensure_default_company()
+ensure_activity_backfill()
 seed_disciplines()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -175,6 +206,52 @@ def require_project_in_company(project_id: int, user: User, db: Session) -> Proj
     if project.company_id is not None and project.company_id != user.company_id:
         raise HTTPException(status_code=403, detail="Not authorized for this project")
     return project
+
+
+def log_event(db: Session, actor: User | None, verb: str, object_type: str, label: str | None, project_id: int | None = None) -> None:
+    """Record an audit event. Added to the session; the caller commits."""
+    db.add(ActivityEvent(
+        company_id=actor.company_id if actor else None,
+        project_id=project_id,
+        actor_id=actor.id if actor else None,
+        verb=verb,
+        object_type=object_type,
+        object_label=label,
+    ))
+
+
+def event_text(actor_name: str, e: ActivityEvent) -> str:
+    label = e.object_label or ""
+    v, o = e.verb, e.object_type
+    if v == "uploaded":
+        return f"{actor_name} uploaded {label}"
+    if v == "deleted":
+        return f"{actor_name} deleted {o} {label}".rstrip()
+    if v == "renamed":
+        return f"{actor_name} renamed a project to {label}"
+    if v == "completed_review":
+        return f"{actor_name} completed {label} review"
+    if v == "flagged_conflict":
+        return f"{actor_name} flagged a conflict on {label}"
+    if v == "completed_task":
+        return f"{actor_name} completed task {label}"
+    if v == "created":
+        article = {"change": "change", "task": "task", "project": "project"}.get(o, o)
+        return f"{actor_name} created {article} {label}"
+    return f"{actor_name} {v} {label}".strip()
+
+
+def serialize_event(e: ActivityEvent) -> dict:
+    actor_name = (e.actor.full_name or e.actor.username) if e.actor else "Someone"
+    return {
+        "id": e.id,
+        "type": e.object_type,
+        "verb": e.verb,
+        "label": e.object_label,
+        "project_id": e.project_id,
+        "at": e.created_at,
+        "text": event_text(actor_name, e),
+    }
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
@@ -262,6 +339,8 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 def create_project(body: ProjectCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project = Project(name=body.name, description=body.description, owner_id=user.id, company_id=user.company_id)
     db.add(project)
+    db.flush()
+    log_event(db, user, "created", "project", project.name, project.id)
     db.commit()
     db.refresh(project)
     return project
@@ -302,6 +381,7 @@ def update_project(project_id: int, body: ProjectUpdate, user: User = Depends(ge
     project.name = name
     if body.description is not None:
         project.description = body.description.strip() or None
+    log_event(db, user, "renamed", "project", name, project.id)
     db.commit()
     db.refresh(project)
     return project
@@ -334,7 +414,11 @@ def delete_project(project_id: int, user: User = Depends(get_current_user), db: 
 
     db.query(ProjectMember).filter(ProjectMember.project_id == project_id).delete()
     db.query(Message).filter(Message.project_id == project_id).delete()
+    db.query(Task).filter(Task.project_id == project_id).delete()
+    db.query(ActivityEvent).filter(ActivityEvent.project_id == project_id).delete()
+    project_name = project.name
     db.delete(project)
+    log_event(db, user, "deleted", "project", project_name, project_id=None)
     db.commit()
 
 
@@ -389,6 +473,7 @@ async def create_change(
     for did in discipline_ids:
         db.add(Review(change_event_id=event.id, discipline_id=did, status="pending"))
 
+    log_event(db, user, "created", "change", event.title, project_id)
     db.commit()
     db.refresh(event)
 
@@ -507,7 +592,10 @@ def delete_change(change_id: int, user: User = Depends(get_current_user), db: Se
     if event.diff_image_path and os.path.exists(event.diff_image_path):
         os.remove(event.diff_image_path)
     db.query(Review).filter(Review.change_event_id == change_id).delete()
+    title = event.title
+    proj_id = event.project_id
     db.delete(event)
+    log_event(db, user, "deleted", "change", title, proj_id)
     db.commit()
 
 
@@ -532,6 +620,13 @@ def update_review(
         raise HTTPException(status_code=404, detail="Review not found")
     review.status = body.status
     review.notes = body.notes
+    if body.status in ("reviewed", "flagged"):
+        ce = db.query(ChangeEvent).filter(ChangeEvent.id == change_id).first()
+        label = f"{review.discipline.name} · CE-{change_id}"
+        if body.status == "reviewed":
+            log_event(db, user, "completed_review", "review", label, ce.project_id if ce else None)
+        else:
+            log_event(db, user, "flagged_conflict", "review", label, ce.project_id if ce else None)
     db.commit()
     db.refresh(review)
     return {
@@ -568,36 +663,29 @@ def my_reviews(user: User = Depends(get_current_user), db: Session = Depends(get
 
 @app.get("/my-activity")
 def my_activity(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """The signed-in user's own actions (things with a user FK), newest first."""
-    items = []
-    for c in (
-        db.query(ChangeEvent)
-        .filter(ChangeEvent.created_by == user.id)
-        .order_by(ChangeEvent.created_at.desc())
-        .limit(25)
+    """The signed-in user's own actions from the audit log, newest first."""
+    events = (
+        db.query(ActivityEvent)
+        .filter(ActivityEvent.actor_id == user.id)
+        .order_by(ActivityEvent.created_at.desc())
+        .limit(30)
         .all()
-    ):
-        items.append({
-            "type": "change",
-            "text": f'You created change event "{c.title}" — {c.region_count} change regions',
-            "project_id": c.project_id,
-            "at": c.created_at,
-        })
-    for d in (
-        db.query(Document)
-        .filter(Document.uploaded_by == user.id)
-        .order_by(Document.created_at.desc())
-        .limit(25)
+    )
+    return [serialize_event(e) for e in events]
+
+
+@app.get("/projects/{project_id}/activity")
+def project_activity(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Project-wide audit log, newest first."""
+    require_project_in_company(project_id, user, db)
+    events = (
+        db.query(ActivityEvent)
+        .filter(ActivityEvent.project_id == project_id)
+        .order_by(ActivityEvent.created_at.desc())
+        .limit(50)
         .all()
-    ):
-        items.append({
-            "type": "document",
-            "text": f'You uploaded {d.title} (Rev {d.revision})',
-            "project_id": d.project_id,
-            "at": d.created_at,
-        })
-    items.sort(key=lambda i: i["at"] or datetime.min, reverse=True)
-    return items[:25]
+    )
+    return [serialize_event(e) for e in events]
 
 
 # ── Tasks / Schedule ─────────────────────────────────────────────────
@@ -661,6 +749,8 @@ def create_task(project_id: int, body: TaskCreate, user: User = Depends(get_curr
         created_by=user.id,
     )
     db.add(task)
+    db.flush()
+    log_event(db, user, "created", "task", task.title, project_id)
     db.commit()
     db.refresh(task)
     return serialize_task(task)
@@ -682,7 +772,10 @@ def update_task(task_id: int, body: TaskUpdate, user: User = Depends(get_current
     if body.due_date is not None:
         task.due_date = body.due_date
     if body.status is not None and body.status in TASK_STATUSES:
+        became_complete = body.status == "complete" and task.status != "complete"
         task.status = body.status
+        if became_complete:
+            log_event(db, user, "completed_task", "task", task.title, task.project_id)
     db.commit()
     db.refresh(task)
     return serialize_task(task)
@@ -693,7 +786,10 @@ def delete_task(task_id: int, user: User = Depends(get_current_user), db: Sessio
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    title = task.title
+    proj_id = task.project_id
     db.delete(task)
+    log_event(db, user, "deleted", "task", title, proj_id)
     db.commit()
 
 
@@ -1062,6 +1158,8 @@ async def upload_document(
         notes=notes,
     )
     db.add(doc)
+    db.flush()
+    log_event(db, user, "uploaded", "document", f"{doc.title} (Rev {doc.revision})", project_id)
     db.commit()
     db.refresh(doc)
 
@@ -1176,7 +1274,10 @@ def delete_document(doc_id: int, user: User = Depends(get_current_user), db: Ses
         raise HTTPException(status_code=404, detail="Document not found")
     if os.path.exists(doc.file_path):
         os.remove(doc.file_path)
+    label = f"{doc.title} (Rev {doc.revision})"
+    proj_id = doc.project_id
     db.delete(doc)
+    log_event(db, user, "deleted", "document", label, proj_id)
     db.commit()
 
 

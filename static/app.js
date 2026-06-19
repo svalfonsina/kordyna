@@ -914,16 +914,16 @@ loaders['my-work'] = async function() {
     if (handleSessionExpired(res)) return;
     if (res.ok) activity = await res.json();
   } catch (e) { /* show empty state */ }
-  const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || '';
+  const projName = id => (PROJECTS.find(p => p.backendId === id) || {}).name || '';
   document.getElementById('my-activity-list').innerHTML = activity.map(a =>
     `<div class="ws-activity-item">
-      <div class="ws-activity-dot ${a.type === 'change' ? 'conflict' : 'upload'}"></div>
+      <div class="ws-activity-dot" style="background:${activityDotColor(a.verb, a.type)}"></div>
       <div class="ws-activity-body">
         <div class="ws-activity-text">${a.text}</div>
         <div class="ws-activity-time">${shortDate(a.at)}${projName(a.project_id) ? ' · ' + projName(a.project_id) : ''}</div>
       </div>
     </div>`
-  ).join('') || '<div class="empty-state"><h3>Nothing yet</h3><p>Your uploads and change events will show up here as you work.</p></div>';
+  ).join('') || '<div class="empty-state"><h3>Nothing yet</h3><p>Your uploads, reviews, changes, and tasks will show up here as you work.</p></div>';
 };
 
 /* ── LANDSCAPE OPERATIONS ──────────────────────────────────────────── */
@@ -1701,34 +1701,32 @@ loaders['discipline-detail'] = async function(data) {
 
 /* ── PROJECT ACTIVITY ──────────────────────────────────────────────── */
 
+function activityDotColor(verb, type) {
+  if (verb === 'flagged_conflict' || verb === 'deleted') return 'var(--red)';
+  if (verb === 'completed_review' || verb === 'completed_task') return 'var(--green)';
+  if (type === 'document') return 'var(--primary)';
+  if (type === 'task') return 'var(--yellow)';
+  return 'var(--primary)';
+}
+
 loaders.activity = async function() {
   if (!currentProject) { router.go('workspace'); return; }
-  const projectChanges = await fetchProjectChanges();
-  let docs = [];
-  try { docs = await fetchServerDocuments(); } catch (e) { docs = []; }
+  let events = [];
+  try {
+    const res = await fetch(`/projects/${currentProject.backendId}/activity`, { headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
+    if (res.ok) events = await res.json();
+  } catch (e) { events = []; }
 
-  const events = [];
-  projectChanges.forEach(c => {
-    events.push({ type: 'change', text: `<strong>${c.creator || 'Someone'}</strong> created change <strong>CE-${c.id}</strong> "${c.title}" — ${c.region_count} regions`, at: c.created_at });
-    c.reviews.filter(r => r.status !== 'pending').forEach(r => {
-      events.push({ type: r.status === 'flagged' ? 'conflict' : 'review', text: `<strong>${r.discipline}</strong> ${r.status === 'flagged' ? 'flagged a conflict on' : 'completed review of'} CE-${c.id}`, at: r.updated_at });
-    });
-  });
-  docs.forEach(d => {
-    if (d.real) events.push({ type: 'document', text: `<strong>${d.by}</strong> uploaded ${d.title} (Rev ${d.rev})`, at: d.createdAtRaw || d.date });
-  });
-  events.sort((a, b) => new Date(b.at) - new Date(a.at));
-
-  const dotColor = t => t === 'conflict' ? 'var(--red)' : t === 'review' ? 'var(--green)' : t === 'document' ? 'var(--primary)' : 'var(--yellow)';
   document.getElementById('activity-list').innerHTML = events.map(e =>
     `<div class="ws-activity-item">
-      <div class="ws-activity-dot" style="background:${dotColor(e.type)}"></div>
+      <div class="ws-activity-dot" style="background:${activityDotColor(e.verb, e.type)}"></div>
       <div class="ws-activity-body">
         <div class="ws-activity-text">${e.text}</div>
         <div class="ws-activity-time">${shortDate(e.at)}</div>
       </div>
     </div>`
-  ).join('') || '<div class="empty-state"><h3>No activity yet</h3><p>Uploads, reviews, and changes in this project will appear here.</p></div>';
+  ).join('') || '<div class="empty-state"><h3>No activity yet</h3><p>Uploads, reviews, changes, and tasks in this project will appear here.</p></div>';
 };
 
 

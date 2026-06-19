@@ -174,6 +174,21 @@ class Message(Base):
     project = relationship("Project")
 
 
+class ActivityEvent(Base):
+    __tablename__ = "activity_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    verb = Column(String(40), nullable=False)         # uploaded, deleted, created, renamed, completed_review, flagged_conflict, completed_task
+    object_type = Column(String(40), nullable=False)  # document, change, review, task, project
+    object_label = Column(String(400), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    actor = relationship("User")
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
