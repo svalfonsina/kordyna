@@ -1266,12 +1266,12 @@ loaders['change-detail'] = async function(data) {
   document.getElementById('cd-reviews').innerHTML = c.reviews.map(r => {
     const label = r.status === 'reviewed' ? 'Reviewed' : r.status === 'flagged' ? 'Conflict' : 'Pending';
     const buttons = r.status === 'reviewed'
-      ? `<button class="btn btn-ghost btn-sm" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'pending')">Reopen</button>`
-      : `<button class="btn btn-primary btn-sm" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>
-         <button class="btn btn-danger btn-sm" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'flagged')">Flag</button>`;
+      ? `<button class="btn btn-ghost btn-sm cd-review-btn" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'pending')">Reopen</button>`
+      : `<button class="btn btn-primary btn-sm cd-review-btn" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>
+         <button class="btn btn-danger btn-sm cd-review-btn" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'flagged')">Flag</button>`;
     return `<div class="cd-review-row">
       <div class="cd-review-disc">${r.discipline}</div>
-      <div style="display:flex;align-items:center;gap:8px">${reviewStatusBadge(label)}${buttons}</div>
+      <div class="cd-review-actions">${reviewStatusBadge(label)}${buttons}</div>
     </div>`;
   }).join('') || '<p style="color:var(--text-muted)">No reviews assigned</p>';
 

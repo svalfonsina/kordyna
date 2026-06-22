@@ -481,8 +481,10 @@ img { max-width: 100%; display: block; }
 .cd-timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0; }
 .cd-timeline-text { font-size: 0.85rem; line-height: 1.5; }
 .cd-timeline-time { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-.cd-review-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.cd-review-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .cd-review-row:last-child { border-bottom: none; }
+.cd-review-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.cd-review-btn { min-width: 116px; justify-content: center; }
 .cd-review-disc { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .cd-review-status { font-size: 0.78rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
 .cd-disc-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 0.82rem; font-weight: 500; margin: 0 6px 6px 0; }
