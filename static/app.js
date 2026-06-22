@@ -1406,19 +1406,47 @@ loaders.reviews = async function() {
   if (currentReviewTab === 'conflict') filtered = allReviews.filter(r => r.ui === 'Conflict');
   if (currentReviewTab === 'completed') filtered = allReviews.filter(r => r.ui === 'Reviewed');
 
-  document.getElementById('reviews-list').innerHTML = filtered.map(r => {
-    const d = disc(r.discipline);
-    const action = r.ui === 'Pending'
-      ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>`
-      : r.ui === 'Conflict'
-      ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Resolve</button>`
-      : '';
-    return `<div class="review-card" onclick="router.go('change-detail',{id:${r.changeId}})">
-      <div><div class="review-card-title">${r.changeTitle}</div><div class="review-card-sub">CE-${r.changeId}</div></div>
-      <div class="review-card-disc"><span class="disc-dot" style="background:${discColor(r.discipline)}"></span> ${r.discipline}</div>
-      <div><span class="review-card-status" style="background:${r.ui==='Reviewed'?'var(--green-bg)':r.ui==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${r.ui==='Reviewed'?'var(--green)':r.ui==='Conflict'?'var(--red)':'var(--yellow)'}">${r.ui}</span></div>
-      <div class="review-card-date">${r.changeDate}</div>
-      <div class="review-card-action">${action}</div>
+  // Group reviews by change event so each change is one collapsible dropdown.
+  const groups = {};
+  filtered.forEach(r => { (groups[r.changeId] = groups[r.changeId] || []).push(r); });
+  const order = projectChanges.map(c => c.id).filter(id => groups[id]);
+
+  const statusStyle = ui =>
+    `background:${ui==='Reviewed'?'var(--green-bg)':ui==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${ui==='Reviewed'?'var(--green)':ui==='Conflict'?'var(--red)':'var(--yellow)'}`;
+
+  document.getElementById('reviews-list').innerHTML = order.map(cid => {
+    const rows = groups[cid];
+    const title = rows[0].changeTitle;
+    const date = rows[0].changeDate;
+    const reviewed = rows.filter(r => r.ui === 'Reviewed').length;
+    const conflicts = rows.filter(r => r.ui === 'Conflict').length;
+    const pending = rows.filter(r => r.ui === 'Pending').length;
+    // open by default when something needs attention
+    const open = (conflicts || pending) ? 'open' : '';
+    const meta = [
+      conflicts ? `<span class="rev-meta-pill" style="${statusStyle('Conflict')}">${conflicts} conflict${conflicts>1?'s':''}</span>` : '',
+      pending ? `<span class="rev-meta-pill" style="${statusStyle('Pending')}">${pending} pending</span>` : '',
+      `<span class="rev-meta-count">${reviewed}/${rows.length} reviewed</span>`
+    ].join('');
+    const body = rows.map(r => {
+      const action = r.ui === 'Pending'
+        ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>`
+        : r.ui === 'Conflict'
+        ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Resolve</button>`
+        : '';
+      return `<div class="rev-row" onclick="router.go('change-detail',{id:${r.changeId}})">
+        <span class="rev-row-disc"><span class="disc-dot" style="background:${discColor(r.discipline)}"></span> ${r.discipline}</span>
+        <span class="review-card-status" style="${statusStyle(r.ui)}">${r.ui}</span>
+        <span class="rev-row-date">${r.changeDate}</span>
+        <span class="rev-row-action">${action}</span>
+      </div>`;
+    }).join('');
+    return `<div class="rev-group ${open}">
+      <div class="rev-group-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="rev-group-title"><span class="chevron">▶</span><strong>${title}</strong><span class="rev-ce">CE-${cid}</span></div>
+        <div class="rev-group-meta">${meta}<span class="rev-group-date">${date}</span></div>
+      </div>
+      <div class="rev-group-body">${body}</div>
     </div>`;
   }).join('') || '<div class="empty-state"><h3>No reviews here</h3><p>Reviews are created automatically when a change event is uploaded.</p></div>';
 };

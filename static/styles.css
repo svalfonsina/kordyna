@@ -531,6 +531,28 @@ img { max-width: 100%; display: block; }
 .review-card-date { font-size: 0.82rem; color: var(--text-dim); }
 .review-card-action .btn { width: 100%; justify-content: center; }
 
+/* Reviews grouped by change (collapsible) */
+.rev-group { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 10px; overflow: hidden; }
+.rev-group-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; cursor: pointer; transition: background var(--transition); }
+.rev-group-header:hover { background: var(--bg-card-hover); }
+.rev-group-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rev-group-title strong { font-size: 0.95rem; font-weight: 700; }
+.rev-ce { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+.rev-group-title .chevron { font-size: 0.65rem; color: var(--text-muted); transition: transform 0.2s; }
+.rev-group.open .rev-group-title .chevron { transform: rotate(90deg); }
+.rev-group-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.rev-meta-pill { font-size: 0.7rem; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
+.rev-meta-count { font-size: 0.78rem; color: var(--text-dim); }
+.rev-group-date { font-size: 0.78rem; color: var(--text-muted); min-width: 50px; text-align: right; }
+.rev-group-body { display: none; border-top: 1px solid var(--border); }
+.rev-group.open .rev-group-body { display: block; }
+.rev-row { display: grid; grid-template-columns: 1.5fr 100px 80px 130px; align-items: center; gap: 14px; padding: 11px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background var(--transition); }
+.rev-row:last-child { border-bottom: none; }
+.rev-row:hover { background: rgba(255,255,255,0.03); }
+.rev-row-disc { font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
+.rev-row-date { font-size: 0.8rem; color: var(--text-dim); }
+.rev-row-action .btn { width: 100%; justify-content: center; }
+
 /* ── DOCUMENTS ─────────────────────────────────────────────────────── */
 .doc-layout { display: grid; grid-template-columns: 400px 1fr; gap: 20px; }
 .doc-accordion {}
