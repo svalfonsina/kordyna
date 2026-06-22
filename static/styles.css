@@ -201,23 +201,23 @@ img { max-width: 100%; display: block; }
 .ws-container { max-width: 1280px; }
 
 /* Greeting */
-.ws-greeting { background: none; border: none; text-align: left; margin: 12px 0 48px; }
+.ws-greeting { background: none; border: none; text-align: left; margin: 12px 0 22px; }
 .ws-greeting-line {
-  font-family: 'Satoshi', var(--font);
-  font-weight: 700;
-  font-size: 34px;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #2E5BFF;
+  font-family: var(--font);
+  font-weight: 800;
+  font-size: 1.9rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: var(--text);
 }
 .ws-greeting-sub {
-  font-family: 'Satoshi', var(--font);
+  font-family: var(--font);
   font-weight: 500;
-  font-size: 15px;
+  font-size: 0.95rem;
   line-height: 1.5;
-  margin-top: 10px;
-  color: #A8B3C7;
+  margin-top: 6px;
+  color: var(--text-dim);
 }
 
 /* Action card */
@@ -239,6 +239,18 @@ img { max-width: 100%; display: block; }
 .ws-section { margin-bottom: 24px; }
 .ws-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .ws-section-title { font-size: 1rem; font-weight: 700; }
+
+/* Home: each section is a contained card so nothing floats */
+#page-workspace .ws-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; }
+#page-workspace .ws-section-header { margin-bottom: 14px; }
+#page-workspace .ws-inbox { gap: 0; }
+#page-workspace .ws-review-item { background: transparent; border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 12px 4px; }
+#page-workspace .ws-review-item:last-child { border-bottom: none; }
+#page-workspace .ws-review-item:hover { background: rgba(255,255,255,0.03); }
+#page-workspace .ws-project-card { background: var(--bg-card-hover); }
+#page-workspace .ws-project-new { background: transparent; }
+#page-workspace .ws-acc-card { background: var(--bg-card-hover); }
+#page-workspace .ws-activity-item:last-child { border-bottom: none; padding-bottom: 0; }
 
 /* Inbox (reviews list) */
 .ws-inbox { display: flex; flex-direction: column; gap: 2px; }
