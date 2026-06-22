@@ -470,6 +470,28 @@ async function confirmArchiveProject() {
   }
 }
 
+async function deleteCurrentProjectPermanent() {
+  if (!currentProject) return;
+  const ok = await ui.confirm({
+    title: 'Delete project permanently',
+    message: `Permanently delete "${currentProject.name}" and everything in it — changes, reviews, documents, and tasks? This cannot be undone. Use Archive instead if you might want it back.`,
+    confirmLabel: 'Delete permanently',
+    danger: true
+  });
+  if (!ok) return;
+  try {
+    const res = await fetch(`/projects/${currentProject.backendId}`, { method: 'DELETE', headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
+    if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
+    ui.toast('Project deleted');
+    await loadRealProjects();
+    buildSidebar();
+    exitProject();
+  } catch (err) {
+    ui.toast(err.message);
+  }
+}
+
 async function restoreProject(projectId) {
   try {
     const res = await fetch(`/projects/${projectId}/restore`, { method: 'PUT', headers: authHeaders() });
