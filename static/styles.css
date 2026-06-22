@@ -96,6 +96,8 @@ img { max-width: 100%; display: block; }
 .sidebar-link { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; color: var(--text-dim); transition: all var(--transition); }
 .sidebar-link:hover { background: rgba(255,255,255,0.05); color: var(--text); }
 .sidebar-link.active { background: var(--primary-bg); color: var(--primary); }
+.sidebar-link.has-attention::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-left: auto; flex-shrink: 0; box-shadow: 0 0 7px 1px rgba(239,69,101,0.85); animation: attentionPulse 1.8s ease-in-out infinite; }
+@keyframes attentionPulse { 0%, 100% { box-shadow: 0 0 5px 0 rgba(239,69,101,0.6); } 50% { box-shadow: 0 0 9px 2px rgba(239,69,101,0.95); } }
 .sidebar-link svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sidebar-project-link { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; font-size: 0.83rem; font-weight: 500; color: var(--text-dim); cursor: pointer; transition: all var(--transition); }
 .sidebar-project-link:hover { background: rgba(255,255,255,0.05); color: var(--text); }

@@ -372,7 +372,36 @@ function enterProject(projectId) {
   if (!p) { ui.toast('Project not found'); return; }
   currentProject = p;
   updateSidebarProjectState();
+  updateProjectNavBadges();
   router.go('overview');
+}
+
+// Glow a project nav item red when its section has something outstanding.
+async function updateProjectNavBadges() {
+  if (!currentProject) return;
+  let changes = [], tasks = [];
+  try { changes = await fetchProjectChanges(); } catch (e) {}
+  try {
+    const r = await fetch(`/projects/${currentProject.backendId}/tasks`, { headers: authHeaders() });
+    if (r.ok) tasks = await r.json();
+  } catch (e) {}
+
+  const hasPendingReview = changes.some(c => c.reviews.some(r => r.status === 'pending'));
+  const hasConflict = changes.some(c => c.reviews.some(r => r.status === 'flagged'));
+  const hasOpenChange = changes.some(c => changeStatus(c) !== 'Resolved');
+  const today = new Date().toISOString().slice(0, 10);
+  const hasTaskAttention = tasks.some(t =>
+    t.status !== 'complete' && (t.status === 'delayed' || t.status === 'at_risk' || (t.due_date && t.due_date < today)));
+
+  const attention = {
+    reviews: hasPendingReview || hasConflict,
+    changes: hasOpenChange,
+    impact: hasConflict,        // Coordination
+    schedule: hasTaskAttention
+  };
+  document.querySelectorAll('#sidebar-project-nav .sidebar-link').forEach(l => {
+    l.classList.toggle('has-attention', !!attention[l.dataset.page]);
+  });
 }
 
 /* Shared cache of a project's change events with their reviews. */
@@ -429,6 +458,8 @@ async function updateReviewStatus(changeId, disciplineId, status) {
     if (currentProject) delete projectChangeCache[currentProject.backendId];
     await loadRealProjects();
     buildSidebar();
+    updateSidebarProjectState();
+    updateProjectNavBadges();
     if (loaders[router.current]) loaders[router.current](router.lastData);
   } catch (err) {
     ui.toast(err.message);
@@ -1834,6 +1865,7 @@ loaders.schedule = async function() {
     <div class="sched-stat"><div class="sched-stat-val" style="color:${TASK_STATUS.complete.color}">${counts.complete}</div><div class="sched-stat-label">Complete</div></div>`;
 
   renderSchedule();
+  updateProjectNavBadges();
 };
 
 function schedView(v) {
@@ -2020,6 +2052,8 @@ const actions = {
       delete projectChangeCache[projectId];
       await loadRealProjects();
       buildSidebar();
+      updateSidebarProjectState();
+      updateProjectNavBadges();
       router.go('change-detail', { id: change.id });
     } catch (err) {
       ui.toast(err.message);
