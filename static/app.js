@@ -447,24 +447,38 @@ function renameCurrentProject() {
   ui.showModal('modal-rename-project');
 }
 
-function deleteCurrentProject() {
+function archiveCurrentProject() {
   if (!currentProject) return;
   document.getElementById('delete-project-text').textContent =
-    `Permanently delete "${currentProject.name}"? This removes the project and all its change events, reviews, and documents. This cannot be undone.`;
+    `Archive "${currentProject.name}"? It will be hidden from your projects but kept safely and can be restored anytime from My Work → Archived.`;
   ui.showModal('modal-delete-project');
 }
 
-async function confirmDeleteProject() {
+async function confirmArchiveProject() {
   if (!currentProject) return;
   try {
-    const res = await fetch(`/projects/${currentProject.backendId}`, { method: 'DELETE', headers: authHeaders() });
+    const res = await fetch(`/projects/${currentProject.backendId}/archive`, { method: 'PUT', headers: authHeaders() });
     if (handleSessionExpired(res)) return;
-    if (!res.ok && res.status !== 204) throw new Error(`Delete failed (${res.status})`);
+    if (!res.ok) throw new Error(`Archive failed (${res.status})`);
     ui.hideModal('modal-delete-project');
-    ui.toast('Project deleted');
+    ui.toast('Project archived — restore anytime from My Work');
     await loadRealProjects();
     buildSidebar();
     exitProject();
+  } catch (err) {
+    ui.toast(err.message);
+  }
+}
+
+async function restoreProject(projectId) {
+  try {
+    const res = await fetch(`/projects/${projectId}/restore`, { method: 'PUT', headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
+    if (!res.ok) throw new Error(`Restore failed (${res.status})`);
+    ui.toast('Project restored');
+    await loadRealProjects();
+    buildSidebar();
+    loaders['my-work']();
   } catch (err) {
     ui.toast(err.message);
   }
@@ -924,6 +938,21 @@ loaders['my-work'] = async function() {
       </div>
     </div>`
   ).join('') || '<div class="empty-state"><h3>Nothing yet</h3><p>Your uploads, reviews, changes, and tasks will show up here as you work.</p></div>';
+
+  // Archived projects (restorable)
+  let archived = [];
+  try {
+    const res = await fetch('/projects/archived', { headers: authHeaders() });
+    if (res.ok) archived = await res.json();
+  } catch (e) { /* leave empty */ }
+  const section = document.getElementById('archived-section');
+  section.classList.toggle('hidden', archived.length === 0);
+  document.getElementById('archived-list').innerHTML = archived.map(p =>
+    `<div class="archived-row">
+      <div><div class="archived-name">${p.name}</div>${p.description ? `<div class="archived-client">${p.description}</div>` : ''}</div>
+      <button class="btn btn-ghost btn-sm" onclick="restoreProject(${p.id})">Restore</button>
+    </div>`
+  ).join('');
 };
 
 /* ── LANDSCAPE OPERATIONS ──────────────────────────────────────────── */

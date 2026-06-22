@@ -72,7 +72,7 @@ def run_migrations() -> None:
         "company_id": "INTEGER",
         "role": "VARCHAR(40)",
     })
-    _add_missing_columns("projects", {"company_id": "INTEGER"})
+    _add_missing_columns("projects", {"company_id": "INTEGER", "archived": "BOOLEAN DEFAULT FALSE"})
 
 
 def ensure_default_company() -> None:
@@ -229,6 +229,10 @@ def event_text(actor_name: str, e: ActivityEvent) -> str:
         return f"{actor_name} deleted {o} {label}".rstrip()
     if v == "renamed":
         return f"{actor_name} renamed a project to {label}"
+    if v == "archived":
+        return f"{actor_name} archived project {label}"
+    if v == "restored":
+        return f"{actor_name} restored project {label}"
     if v == "completed_review":
         return f"{actor_name} completed {label} review"
     if v == "flagged_conflict":
@@ -349,12 +353,43 @@ def create_project(body: ProjectCreate, user: User = Depends(get_current_user), 
 @app.get("/projects", response_model=list[ProjectOut])
 def list_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Projects are shared across the company so the whole team collaborates.
+    # Archived projects are hidden but not deleted.
     return (
         db.query(Project)
-        .filter(Project.company_id == user.company_id)
+        .filter(Project.company_id == user.company_id, Project.archived.isnot(True))
         .order_by(Project.created_at)
         .all()
     )
+
+
+@app.get("/projects/archived", response_model=list[ProjectOut])
+def list_archived_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return (
+        db.query(Project)
+        .filter(Project.company_id == user.company_id, Project.archived.is_(True))
+        .order_by(Project.created_at.desc())
+        .all()
+    )
+
+
+@app.put("/projects/{project_id}/archive", response_model=ProjectOut)
+def archive_project(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    project = require_project_in_company(project_id, user, db)
+    project.archived = True
+    log_event(db, user, "archived", "project", project.name, project_id)
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+@app.put("/projects/{project_id}/restore", response_model=ProjectOut)
+def restore_project(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    project = require_project_in_company(project_id, user, db)
+    project.archived = False
+    log_event(db, user, "restored", "project", project.name, project_id)
+    db.commit()
+    db.refresh(project)
+    return project
 
 
 @app.get("/projects/{project_id}", response_model=ProjectOut)

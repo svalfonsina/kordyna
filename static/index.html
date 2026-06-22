@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260616i">
+  <link rel="stylesheet" href="/static/styles.css?v=20260616j">
 </head>
 <body>
 
@@ -253,6 +253,10 @@
           <div class="ws-section-header"><h2 class="ws-section-title">My Activity</h2></div>
           <div id="my-activity-list"></div>
         </div>
+        <div class="ws-section hidden" id="archived-section">
+          <div class="ws-section-header"><h2 class="ws-section-title">Archived</h2></div>
+          <div id="archived-list"></div>
+        </div>
       </div>
     </div>
 
@@ -266,7 +270,7 @@
           </div>
           <div class="overview-actions">
             <button class="btn btn-ghost btn-sm" onclick="renameCurrentProject()">Rename</button>
-            <button class="btn btn-ghost btn-sm overview-delete-btn" onclick="deleteCurrentProject()">Delete</button>
+            <button class="btn btn-ghost btn-sm overview-delete-btn" onclick="archiveCurrentProject()">Archive</button>
           </div>
         </div>
 
@@ -673,11 +677,11 @@
   <div id="modal-delete-project" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-delete-project')"></div>
     <div class="modal-content">
-      <h3>Delete Project</h3>
+      <h3>Archive Project</h3>
       <p class="modal-text" id="delete-project-text"></p>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-delete-project')">Cancel</button>
-        <button type="button" class="btn btn-danger" onclick="confirmDeleteProject()">Delete Project</button>
+        <button type="button" class="btn btn-primary" onclick="confirmArchiveProject()">Archive Project</button>
       </div>
     </div>
   </div>
@@ -751,6 +755,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260616i"></script>
+  <script src="/static/app.js?v=20260616j"></script>
 </body>
 </html>

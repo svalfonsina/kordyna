@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -91,6 +92,7 @@ class Project(Base):
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    archived = Column(Boolean, default=False)
 
     owner = relationship("User")
     changes = relationship("ChangeEvent", back_populates="project")
