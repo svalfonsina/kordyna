@@ -1005,6 +1005,24 @@ def notifications(user: User = Depends(get_current_user), db: Session = Depends(
             "at": d.created_at,
         })
 
+    # Schedule notifications: tasks the user is assigned to (tagged on).
+    my_tasks = (
+        db.query(Task)
+        .filter(Task.assignee_id == user.id, Task.status != "complete")
+        .order_by(Task.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    for t in my_tasks:
+        due = f" — due {t.due_date.isoformat()}" if t.due_date else ""
+        items.append({
+            "type": "task",
+            "text": f'You were assigned to "{t.title}"{due}',
+            "project_id": t.project_id,
+            "change_id": None,
+            "at": t.created_at,
+        })
+
     items.sort(key=lambda i: i["at"] or datetime.min, reverse=True)
     return items[:15]
 

@@ -762,26 +762,27 @@ function toggleProfileMenu(e) {
   e.stopPropagation();
   const panel = document.getElementById('profile-panel');
   const opening = panel.classList.contains('hidden');
-  panel.classList.toggle('hidden');
-  if (!opening) return;
-  const close = ev => {
-    if (!panel.contains(ev.target)) {
-      panel.classList.add('hidden');
-      document.removeEventListener('click', close);
-    }
-  };
-  setTimeout(() => document.addEventListener('click', close), 0);
+  document.getElementById('notif-panel').classList.add('hidden'); // close the other overlay
+  panel.classList.toggle('hidden', !opening);
 }
 
 function closeProfileMenu() {
   document.getElementById('profile-panel').classList.add('hidden');
 }
 
+// One global handler: clicking anywhere outside an open overlay closes it.
+document.addEventListener('click', (ev) => {
+  const np = document.getElementById('notif-panel');
+  const pp = document.getElementById('profile-panel');
+  if (np && !np.classList.contains('hidden') && !ev.target.closest('.notif-wrap')) np.classList.add('hidden');
+  if (pp && !pp.classList.contains('hidden') && !ev.target.closest('.profile-wrap')) pp.classList.add('hidden');
+});
+
 /* ── NOTIFICATIONS ─────────────────────────────────────────────────── */
 
 let notifItems = [];
 
-const NOTIF_ICONS = { review: '⏳', conflict: '⚠️', change: '📐', document: '📄' };
+const NOTIF_ICONS = { review: '⏳', conflict: '⚠️', change: '📐', document: '📄', task: '🗓️' };
 
 async function refreshNotifications() {
   try {
@@ -798,7 +799,8 @@ function toggleNotifications(e) {
   e.stopPropagation();
   const panel = document.getElementById('notif-panel');
   const opening = panel.classList.contains('hidden');
-  panel.classList.toggle('hidden');
+  document.getElementById('profile-panel').classList.add('hidden'); // close the other overlay
+  panel.classList.toggle('hidden', !opening);
   if (!opening) return;
 
   renderNotifications();
@@ -807,14 +809,6 @@ function toggleNotifications(e) {
     localStorage.setItem('kordyna_notif_seen', notifItems[0].at);
   }
   document.getElementById('notif-dot').classList.add('hidden');
-
-  const close = ev => {
-    if (!panel.contains(ev.target)) {
-      panel.classList.add('hidden');
-      document.removeEventListener('click', close);
-    }
-  };
-  setTimeout(() => document.addEventListener('click', close), 0);
 }
 
 function renderNotifications() {
@@ -838,7 +832,8 @@ function openNotification(i) {
   if (!p) { ui.toast('Project not available'); return; }
   currentProject = p;
   updateSidebarProjectState();
-  if (n.change_id) router.go('change-detail', { id: n.change_id });
+  if (n.type === 'task') router.go('schedule');
+  else if (n.change_id) router.go('change-detail', { id: n.change_id });
   else router.go('documents');
 }
 
