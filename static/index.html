@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260623d">
+  <link rel="stylesheet" href="/static/styles.css?v=20260623e">
 </head>
 <body>
 
@@ -422,10 +422,9 @@
             <select id="impact-change-select" class="impact-select" onchange="renderImpactMap()"></select>
           </div>
           <div class="impact-legend">
-            <span><i class="dot-reviewed"></i> Reviewed</span>
-            <span><i class="dot-pending"></i> Pending</span>
-            <span><i class="dot-conflict"></i> Conflict</span>
-            <span><i class="dot-none"></i> Not Affected</span>
+            <span><i class="dot-conflict"></i> Action Required</span>
+            <span><i class="dot-pending"></i> Needs Review</span>
+            <span><i class="dot-reviewed"></i> Informed / No Action</span>
           </div>
         </div>
         <div class="impact-body">
@@ -756,6 +755,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260623d"></script>
+  <script src="/static/app.js?v=20260623e"></script>
 </body>
 </html>

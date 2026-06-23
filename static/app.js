@@ -1335,37 +1335,120 @@ loaders.impact = async function() {
   renderImpactMap();
 };
 
+// Line-style discipline icons (24×24 box, drawn with stroke)
+const DISC_ICON_PATHS = {
+  'Architecture': '<path d="M4 11l8-6 8 6"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>',
+  'Structural': '<rect x="6" y="3" width="12" height="18" rx="1"/><path d="M6 9h12M6 15h12M12 3v18"/>',
+  'Civil Engineering': '<path d="M4 20h16"/><path d="M7 20v-9l5-3 5 3v9"/><path d="M7 14h10"/>',
+  'Mechanical': '<circle cx="12" cy="12" r="3.2"/><path d="M12 4v2.4M12 17.6V20M4 12h2.4M17.6 12H20M6.3 6.3l1.7 1.7M16 16l1.7 1.7M17.7 6.3L16 8M8 16l-1.7 1.7"/>',
+  'Electrical': '<path d="M13 3L5 13h6l-1 8 8-11h-6z"/>',
+  'Plumbing': '<path d="M15 7a3.5 3.5 0 1 0-3.6 5.8L5 19l2 2 6.2-6.4A3.5 3.5 0 0 0 17 9l-2 2-2-2 2-2z"/>',
+  'Landscape Architecture': '<path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M6 18c3.5-3.5 7.5-6.5 11.5-8.5"/>',
+  'Survey': '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+  'Contractor': '<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/><path d="M10 6.2A2 2 0 0 1 14 7v4.5M10 6.2V11"/>',
+  'Realtor': '<circle cx="9" cy="8" r="2.6"/><circle cx="16" cy="9" r="2.2"/><path d="M4.5 18a4.5 4.5 0 0 1 9 0"/><path d="M14.2 17.5A4 4 0 0 1 20.5 15"/>',
+  'Geotechnical': '<path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 16l8 4 8-4"/>'
+};
+const DOC_ICON = '<path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4"/><path d="M10 12h6M10 16h6"/>';
+const NAME_SHORT = { 'Civil Engineering': 'Civil Eng', 'Landscape Architecture': 'Landscape' };
+
+function discIconSvg(name, x, y, color, s = 0.82) {
+  const p = DISC_ICON_PATHS[name] || DOC_ICON;
+  return `<g transform="translate(${(x - 12 * s).toFixed(1)},${(y - 12 * s).toFixed(1)}) scale(${s})" fill="none" stroke="${color}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</g>`;
+}
+function impactNodeMeta(status) {
+  if (status === 'flagged') return { color: 'var(--red)', cat: 'action', label: 'Action required', sub: '1 open' };
+  if (status === 'pending') return { color: 'var(--yellow)', cat: 'review', label: 'Review required', sub: '1 open' };
+  return { color: 'var(--green)', cat: 'informed', label: 'Informed', sub: 'No action' };
+}
+function impactBadgeBg(cat) {
+  return cat === 'action' ? 'rgba(239,69,101,0.10)' : cat === 'review' ? 'rgba(255,166,0,0.10)' : 'rgba(12,206,107,0.08)';
+}
+
 function renderImpactMap() {
   const changeId = parseInt(document.getElementById('impact-change-select').value);
   const cache = currentProject ? (projectChangeCache[currentProject.backendId] || []) : [];
   const change = cache.find(c => c.id === changeId);
   const svg = document.getElementById('impact-svg');
   if (!change) { svg.innerHTML = ''; return; }
-  const w = svg.parentElement.offsetWidth;
-  const h = svg.parentElement.offsetHeight;
-  const cx = w / 2, cy = h / 2;
-  let html = `<circle cx="${cx}" cy="${cy}" r="36" fill="var(--primary)" opacity="0.9"/>
-    <text x="${cx}" y="${cy-6}" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">CE-${change.id}</text>
-    <text x="${cx}" y="${cy+10}" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9">Source</text>`;
-
+  const w = svg.parentElement.offsetWidth || 900;
+  const h = svg.parentElement.offsetHeight || 600;
+  const cx = w / 2, cy = (h - 48) / 2;
   const nodes = change.reviews;
-  const angleStep = (2 * Math.PI) / Math.max(nodes.length, 1);
-  const radius = Math.min(w, h) * 0.35;
+  const n = Math.max(nodes.length, 1);
+  const centerR = 70, nodeR = 46;
+  const radius = Math.max(150, Math.min(w / 2 - 190, (h - 130) / 2 - nodeR));
 
-  nodes.forEach((r, i) => {
-    const angle = angleStep * i - Math.PI / 2;
-    const nx = cx + radius * Math.cos(angle);
-    const ny = cy + radius * Math.sin(angle);
-    const nodeColor = r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--yellow)';
-    html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nodeColor}" stroke-width="2" opacity="0.4"/>`;
-    html += `<g class="impact-node" onclick="showImpactDetail('${r.discipline.replace(/'/g, "\\'")}',${change.id})" onmouseenter="this.classList.add('is-hover')" onmouseleave="this.classList.remove('is-hover')">
-      <circle cx="${nx}" cy="${ny}" r="28" fill="${nodeColor}" opacity="0.2"/>
-      <circle cx="${nx}" cy="${ny}" r="28" fill="none" stroke="${nodeColor}" stroke-width="2"/>
-      <text x="${nx}" y="${ny-2}" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="800">${discAbbr(r.discipline)}</text>
-      <text x="${nx}" y="${ny+12}" text-anchor="middle" fill="var(--text-dim)" font-size="7" font-weight="600">${r.discipline.slice(0, 10).toUpperCase()}</text>
+  const defs = `<defs><radialGradient id="ce-grad" cx="50%" cy="36%" r="72%">
+      <stop offset="0%" stop-color="#5B82FF"/><stop offset="55%" stop-color="#2E5BFF"/><stop offset="100%" stop-color="#1A347F"/>
+    </radialGradient></defs>`;
+
+  const orbits = `
+    <circle cx="${cx}" cy="${cy}" r="${(radius - 34).toFixed(1)}" fill="none" stroke="rgba(139,153,176,0.15)" stroke-width="1" stroke-dasharray="2 7"/>
+    <circle cx="${cx}" cy="${cy}" r="${(radius + 38).toFixed(1)}" fill="none" stroke="rgba(139,153,176,0.10)" stroke-width="1" stroke-dasharray="2 7"/>`;
+
+  const pos = nodes.map((r, i) => {
+    const a = (2 * Math.PI / n) * i - Math.PI / 2;
+    return { r, a, nx: cx + radius * Math.cos(a), ny: cy + radius * Math.sin(a) };
+  });
+
+  let lines = '', dots = '', nodesHtml = '', badges = '';
+  pos.forEach(p => {
+    const m = impactNodeMeta(p.r.status), c = m.color;
+    const dx = Math.cos(p.a), dy = Math.sin(p.a);
+    const x1 = cx + dx * centerR, y1 = cy + dy * centerR;
+    const x2 = p.nx - dx * nodeR, y2 = p.ny - dy * nodeR;
+    lines += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="2" opacity="0.5"/>`;
+    dots += `<circle cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="4" fill="${c}"/><circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="4" fill="${c}"/>`;
+  });
+
+  pos.forEach(p => {
+    const m = impactNodeMeta(p.r.status), c = m.color, name = p.r.discipline;
+    const label = (NAME_SHORT[name] || name).toUpperCase();
+    nodesHtml += `<g class="impact-node" onclick="showImpactDetail('${name.replace(/'/g, "\\'")}',${change.id})" onmouseenter="this.classList.add('is-hover')" onmouseleave="this.classList.remove('is-hover')">
+      <circle cx="${p.nx.toFixed(1)}" cy="${p.ny.toFixed(1)}" r="${nodeR}" fill="#0A1A38" fill-opacity="0.9"/>
+      <circle cx="${p.nx.toFixed(1)}" cy="${p.ny.toFixed(1)}" r="${nodeR}" fill="none" stroke="${c}" stroke-width="2.5"/>
+      ${discIconSvg(name, p.nx, p.ny - 16, c)}
+      <text x="${p.nx.toFixed(1)}" y="${(p.ny + 11).toFixed(1)}" text-anchor="middle" fill="var(--text)" font-size="17" font-weight="800" letter-spacing="0.5">${discAbbr(name)}</text>
+      <text x="${p.nx.toFixed(1)}" y="${(p.ny + 27).toFixed(1)}" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="8" font-weight="600" letter-spacing="0.6">${label}</text>
+    </g>`;
+
+    const right = Math.cos(p.a) >= -0.01;
+    const bw = 120, bh = 38;
+    const bx = right ? p.nx + nodeR + 14 : p.nx - nodeR - 14 - bw;
+    const by = p.ny - bh / 2;
+    badges += `<g pointer-events="none">
+      <rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw}" height="${bh}" rx="7" fill="${impactBadgeBg(m.cat)}" stroke="${c}" stroke-opacity="0.45"/>
+      <text x="${(bx + 11).toFixed(1)}" y="${(by + 16).toFixed(1)}" fill="${c}" font-size="10.5" font-weight="700">${m.label}</text>
+      <text x="${(bx + 11).toFixed(1)}" y="${(by + 29).toFixed(1)}" fill="var(--text-dim)" font-size="9.5">${m.sub}</text>
     </g>`;
   });
-  svg.innerHTML = html;
+
+  const center = `
+    <circle cx="${cx}" cy="${cy}" r="${centerR + 26}" fill="#2E5BFF" opacity="0.05"/>
+    <circle cx="${cx}" cy="${cy}" r="${centerR + 16}" fill="#2E5BFF" opacity="0.08"/>
+    <circle cx="${cx}" cy="${cy}" r="${centerR + 8}" fill="#2E5BFF" opacity="0.12"/>
+    <circle cx="${cx}" cy="${cy}" r="${centerR + 9}" fill="none" stroke="#5B82FF" stroke-width="2" opacity="0.4"/>
+    <circle cx="${cx}" cy="${cy}" r="${centerR}" fill="url(#ce-grad)"/>
+    <circle cx="${cx}" cy="${cy}" r="${centerR}" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.5"/>
+    <g transform="translate(${cx - 11},${cy - 44}) scale(0.92)" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${DOC_ICON}</g>
+    <text x="${cx}" y="${cy - 2}" text-anchor="middle" fill="#fff" font-size="26" font-weight="800">CE-${change.id}</text>
+    <text x="${cx}" y="${cy + 18}" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="12" font-weight="500">Source</text>
+    <text x="${cx}" y="${cy + 35}" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="10">Change Event</text>`;
+
+  const ly = h - 16;
+  const items = [['var(--red)', 'Action Required'], ['var(--yellow)', 'Needs Review'], ['var(--green)', 'Informed / No Action']];
+  const widths = items.map(([, t]) => 22 + t.length * 6.3);
+  const total = widths.reduce((a, b) => a + b, 0);
+  let ix = cx - total / 2;
+  let legend = `<rect x="${(cx - total / 2 - 18).toFixed(1)}" y="${ly - 20}" width="${(total + 36).toFixed(1)}" height="32" rx="9" fill="rgba(12,29,58,0.55)" stroke="var(--border)"/>`;
+  items.forEach(([c, t], i) => {
+    legend += `<circle cx="${(ix + 6).toFixed(1)}" cy="${ly - 4}" r="5" fill="${c}"/>`;
+    legend += `<text x="${(ix + 17).toFixed(1)}" y="${ly}" fill="var(--text-dim)" font-size="11">${t}</text>`;
+    ix += widths[i];
+  });
+
+  svg.innerHTML = defs + orbits + lines + center + nodesHtml + dots + badges + legend;
 }
 
 function showImpactDetail(discName, changeId) {
