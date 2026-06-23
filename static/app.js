@@ -1358,7 +1358,7 @@ function renderImpactMap() {
     const ny = cy + radius * Math.sin(angle);
     const nodeColor = r.status === 'reviewed' ? 'var(--green)' : r.status === 'flagged' ? 'var(--red)' : 'var(--yellow)';
     html += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nodeColor}" stroke-width="2" opacity="0.4"/>`;
-    html += `<g class="impact-node" onclick="showImpactDetail('${r.discipline.replace(/'/g, "\\'")}',${change.id})">
+    html += `<g class="impact-node" onclick="showImpactDetail('${r.discipline.replace(/'/g, "\\'")}',${change.id})" onmouseenter="this.classList.add('is-hover')" onmouseleave="this.classList.remove('is-hover')">
       <circle cx="${nx}" cy="${ny}" r="28" fill="${nodeColor}" opacity="0.2"/>
       <circle cx="${nx}" cy="${ny}" r="28" fill="none" stroke="${nodeColor}" stroke-width="2"/>
       <text x="${nx}" y="${ny-2}" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="800">${discAbbr(r.discipline)}</text>
@@ -1374,15 +1374,27 @@ function showImpactDetail(discName, changeId) {
   const review = change ? change.reviews.find(r => r.discipline === discName) : null;
   const label = review ? (review.status === 'reviewed' ? 'Reviewed' : review.status === 'flagged' ? 'Conflict' : 'Pending') : null;
   const panel = document.getElementById('impact-panel');
+  if (!change) { panel.innerHTML = ''; return; }
   panel.innerHTML = `
     <div style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <span class="disc-abbr" style="background:${discColor(discName)}22;color:${discColor(discName)}">${discAbbr(discName)}</span>
-        <div><div style="font-weight:700">${discName}</div><div style="font-size:0.78rem;color:var(--text-dim)">Assigned to review this change</div></div>
+        <div><div style="font-weight:700">${discName}</div><div style="font-size:0.78rem;color:var(--text-dim)">Reviewing this change</div></div>
       </div>
-      ${label ? `<div style="margin-bottom:12px"><span style="font-size:0.78rem;font-weight:600;padding:3px 8px;border-radius:4px;background:${label==='Reviewed'?'var(--green-bg)':label==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${label==='Reviewed'?'var(--green)':label==='Conflict'?'var(--red)':'var(--yellow)'}">${label}</span></div>` : ''}
-      ${review && review.notes ? `<div style="font-size:0.82rem;color:var(--text-dim)">Notes: ${review.notes}</div>` : ''}
-      ${review && review.status !== 'reviewed' ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="updateReviewStatus(${changeId}, ${review.discipline_id}, 'reviewed')">Mark Reviewed</button>` : ''}
+      ${label ? `<div style="margin-bottom:16px"><span style="font-size:0.78rem;font-weight:600;padding:3px 8px;border-radius:4px;background:${label==='Reviewed'?'var(--green-bg)':label==='Conflict'?'var(--red-bg)':'var(--yellow-bg)'};color:${label==='Reviewed'?'var(--green)':label==='Conflict'?'var(--red)':'var(--yellow)'}">${label}</span></div>` : ''}
+
+      <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:6px">Document</div>
+      <div style="font-weight:600;margin-bottom:4px">CE-${change.id} — ${change.title}</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:16px">${change.region_count} change region${change.region_count === 1 ? '' : 's'} detected${change.creator ? ' · uploaded by ' + change.creator : ''} · ${shortDate(change.created_at)}</div>
+
+      ${review && review.notes ? `<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:6px">Review notes</div><div style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px">${review.notes}</div>` : ''}
+      ${review && review.updated_at && review.status !== 'pending' ? `<div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:16px">Last updated ${shortDate(review.updated_at)}</div>` : ''}
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <a href="${change.diff_image}" target="_blank" class="btn btn-ghost btn-sm" style="text-align:center;text-decoration:none">View diff drawing</a>
+        <button class="btn btn-ghost btn-sm" onclick="router.go('change-detail',{id:${change.id}})">Open change detail</button>
+        ${review && review.status !== 'reviewed' ? `<button class="btn btn-primary btn-sm" onclick="updateReviewStatus(${changeId}, ${review.discipline_id}, 'reviewed')">Mark Reviewed</button>` : ''}
+      </div>
     </div>`;
 }
 
