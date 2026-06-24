@@ -926,9 +926,7 @@ loaders.workspace = async function() {
         <span><span class="ws-project-stat-val">${p.conflicts}</span> conflicts</span>
       </div>
     </div>`;
-  }).join('') + `<div class="ws-project-card ws-project-new" onclick="ui.showModal('modal-new-project')">
-      <div class="ws-project-new-inner">＋ New Project</div>
-    </div>`;
+  }).join('');
 
   document.getElementById('ws-activity').innerHTML = ACTIVITY.slice(0, 5).map(a =>
     `<div class="ws-activity-item">
@@ -965,9 +963,7 @@ loaders['my-work'] = async function() {
         <span><span class="ws-project-stat-val">${p.docs}</span> docs</span>
       </div>
     </div>`;
-  }).join('') + `<div class="ws-project-card ws-project-new" onclick="ui.showModal('modal-new-project')">
-      <div class="ws-project-new-inner">＋ New Project</div>
-    </div>`;
+  }).join('');
 
   // My real activity
   let activity = [];
