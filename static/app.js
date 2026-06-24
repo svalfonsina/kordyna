@@ -1823,6 +1823,11 @@ function openDocUpload() {
   ui.showModal('modal-upload-doc');
 }
 
+function openChangeUpload() {
+  collab.resetStaged('change-upload-collab');
+  ui.showModal('modal-upload-change');
+}
+
 function showDocDetail(idx) {
   const doc = DOC_CACHE[idx];
   if (!doc) return;
@@ -2301,9 +2306,11 @@ const actions = {
         throw new Error(d.detail || `Comparison failed (${res.status})`);
       }
       const change = await res.json();
+      const followed = await collab.applyStaged('change', change.id);
       ui.hideModal('modal-upload-change');
       e.target.reset();
-      ui.toast(`"${change.title}" — ${change.region_count} change regions detected`);
+      collab.resetStaged('change-upload-collab');
+      ui.toast(`"${change.title}" — ${change.region_count} change regions detected${followed ? ` · ${followed} tagged` : ''}`);
       delete projectChangeCache[projectId];
       await loadRealProjects();
       buildSidebar();
