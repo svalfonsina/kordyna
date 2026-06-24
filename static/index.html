@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260624a">
+  <link rel="stylesheet" href="/static/styles.css?v=20260624b">
 </head>
 <body>
 
@@ -499,7 +499,7 @@
             <h1 class="page-title">Project Documents</h1>
             <p class="page-desc">Construction documents organized by discipline and connected to change events</p>
           </div>
-          <button class="btn btn-primary" onclick="ui.showModal('modal-upload-doc')">+ Upload Document</button>
+          <button class="btn btn-primary" onclick="openDocUpload()">+ Upload Document</button>
         </div>
         <div class="doc-layout">
           <div class="doc-list-col"><div id="doc-accordion"></div></div>
@@ -748,6 +748,7 @@
         <div class="field"><label>Link to Change Event (optional)</label><select id="doc-upload-change"><option value="">None</option></select></div>
         <div class="field"><label>File</label><div class="file-drop" id="drop-doc"><input type="file" id="file-doc" accept=".pdf,.png,.jpg,.jpeg,.tiff,.dwg,.dxf" required onchange="this.nextElementSibling.textContent = this.files.length ? this.files[0].name : 'Drop or browse'"><p>Drop or browse</p></div></div>
         <div class="field"><label>Notes (optional)</label><textarea id="doc-upload-notes" rows="2" placeholder="Revision notes..."></textarea></div>
+        <div class="field"><label>Collaborators (optional)</label><div id="doc-upload-collab"></div></div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-upload-doc')">Cancel</button>
           <button type="submit" class="btn btn-primary" id="btn-upload-doc">Upload</button>
@@ -776,6 +777,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260624a"></script>
+  <script src="/static/app.js?v=20260624b"></script>
 </body>
 </html>

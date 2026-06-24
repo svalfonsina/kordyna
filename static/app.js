@@ -1233,15 +1233,12 @@ const collab = {
         <button class="collab-add-btn" onclick="collab.openPicker('${type}',${id})">+ Add</button>
       </div>`;
   },
-  async openPicker(type, id) {
-    this._ctx = { type, id };
+  async _fetchMembers() {
+    try { const r = await fetch('/company/members', { headers: authHeaders() }); if (r.ok) return await r.json(); } catch (e) {}
+    return [];
+  },
+  _renderPicker(available) {
     const list = document.getElementById('collab-picker-list');
-    list.innerHTML = '<p class="collab-picker-empty">Loading…</p>';
-    ui.showModal('modal-collaborators');
-    let members = [];
-    try { const r = await fetch('/company/members', { headers: authHeaders() }); if (r.ok) members = await r.json(); } catch (e) {}
-    const current = new Set((await this.list(type, id)).map(p => p.user_id));
-    const available = members.filter(m => !current.has(m.id));
     list.innerHTML = available.length ? available.map(m =>
       `<button class="collab-pick-item" onclick="collab.add(${m.id}, this)">
         <span class="collab-avatar" style="background:${this.color(m.name)}">${this.initials(m.name)}</span>
@@ -1249,10 +1246,36 @@ const collab = {
         <span class="collab-pick-add">Add</span>
       </button>`).join('') : '<p class="collab-picker-empty">Everyone is already a collaborator.</p>';
   },
+  // Picker against a live, already-created object → adds immediately.
+  async openPicker(type, id) {
+    this._ctx = { mode: 'live', type, id };
+    document.getElementById('collab-picker-list').innerHTML = '<p class="collab-picker-empty">Loading…</p>';
+    ui.showModal('modal-collaborators');
+    this._members = await this._fetchMembers();
+    const current = new Set((await this.list(type, id)).map(p => p.user_id));
+    this._renderPicker(this._members.filter(m => !current.has(m.id)));
+  },
+  // Picker for an object that doesn't exist yet (create forms) → stages locally.
+  async openStagedPicker(mountId) {
+    this._ctx = { mode: 'staged', mountId };
+    document.getElementById('collab-picker-list').innerHTML = '<p class="collab-picker-empty">Loading…</p>';
+    ui.showModal('modal-collaborators');
+    this._members = await this._fetchMembers();
+    const staged = new Set(this.staged.map(s => s.id));
+    this._renderPicker(this._members.filter(m => !staged.has(m.id)));
+  },
   async add(userId, btn) {
     if (!this._ctx) return;
-    const { type, id } = this._ctx;
     if (btn) { btn.disabled = true; const t = btn.querySelector('.collab-pick-add'); if (t) t.textContent = 'Added ✓'; }
+    const popItem = () => { if (btn) setTimeout(() => { const p = btn.closest('.collab-pick-item'); if (p) p.remove(); }, 350); };
+    if (this._ctx.mode === 'staged') {
+      const m = (this._members || []).find(x => x.id === userId);
+      if (m && !this.staged.some(s => s.id === userId)) this.staged.push({ id: m.id, name: m.name, discipline: m.discipline });
+      this.renderStaged(this._ctx.mountId);
+      popItem();
+      return;
+    }
+    const { type, id } = this._ctx;
     try {
       const r = await fetch(`/collaborators/${type}/${id}`, {
         method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -1262,11 +1285,43 @@ const collab = {
       delete this.cache[`${type}:${id}`];
       ui.toast('Collaborator added & notified');
       this.refreshMount(type, id);
-      if (btn) setTimeout(() => { const p = btn.closest('.collab-pick-item'); if (p) p.remove(); }, 450);
+      popItem();
     } catch (e) {
       ui.toast(e.message);
       if (btn) { btn.disabled = false; const t = btn.querySelector('.collab-pick-add'); if (t) t.textContent = 'Add'; }
     }
+  },
+  // ── Staged collaborators for create-time forms ──
+  staged: [],
+  resetStaged(mountId) { this.staged = []; this.renderStaged(mountId); },
+  renderStaged(mountId) {
+    const el = document.getElementById(mountId);
+    if (!el) return;
+    const chips = this.staged.map(s =>
+      `<span class="collab-chip" title="${s.name}${s.discipline ? ' · ' + s.discipline : ''}">
+        <span class="collab-avatar" style="background:${this.color(s.name)}">${this.initials(s.name)}</span>
+        <span class="collab-chip-name">${s.name}</span>
+        <button type="button" class="collab-remove" title="Remove" onclick="collab.removeStaged(${s.id},'${mountId}')">×</button>
+      </span>`).join('');
+    el.innerHTML = `<div class="collab-row">
+        ${chips || '<span class="collab-empty">No collaborators yet</span>'}
+        <button type="button" class="collab-add-btn" onclick="collab.openStagedPicker('${mountId}')">+ Add</button>
+      </div>`;
+  },
+  removeStaged(userId, mountId) { this.staged = this.staged.filter(s => s.id !== userId); this.renderStaged(mountId); },
+  async applyStaged(type, id) {
+    const people = this.staged.slice();
+    this.staged = [];
+    for (const s of people) {
+      try {
+        await fetch(`/collaborators/${type}/${id}`, {
+          method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: s.id })
+        });
+      } catch (e) { /* best effort — don't block the upload on a follow */ }
+    }
+    if (people.length) delete this.cache[`${type}:${id}`];
+    return people.length;
   },
   async remove(type, id, userId) {
     try {
@@ -1762,6 +1817,11 @@ loaders.documents = async function() {
     changeSelect.innerHTML = '<option value="">None</option>' + projectChanges.map(c => `<option value="${c.id}">CE-${c.id} — ${c.title}</option>`).join('');
   }
 };
+
+function openDocUpload() {
+  collab.resetStaged('doc-upload-collab');
+  ui.showModal('modal-upload-doc');
+}
 
 function showDocDetail(idx) {
   const doc = DOC_CACHE[idx];
@@ -2414,9 +2474,11 @@ const actions = {
         throw new Error(d.detail || `Upload failed (${res.status})`);
       }
       const doc = await res.json();
+      const followed = await collab.applyStaged('document', doc.id);
       ui.hideModal('modal-upload-doc');
       e.target.reset();
-      ui.toast(`"${doc.title}" uploaded — Rev ${doc.revision}`);
+      collab.resetStaged('doc-upload-collab');
+      ui.toast(followed ? `"${doc.title}" uploaded — ${followed} collaborator${followed > 1 ? 's' : ''} notified` : `"${doc.title}" uploaded — Rev ${doc.revision}`);
       if (router.current === 'documents') loaders.documents();
     } catch (err) {
       ui.toast(err.message);
