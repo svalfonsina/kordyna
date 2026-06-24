@@ -163,6 +163,22 @@ class Document(Base):
     uploader = relationship("User")
 
 
+class Collaborator(Base):
+    """A user explicitly added to view + get notified about an object
+    (a project, document, or change event). Additive on top of the shared
+    company workspace — it grants no exclusivity, only an explicit follow."""
+    __tablename__ = "collaborators"
+
+    id = Column(Integer, primary_key=True, index=True)
+    object_type = Column(String(40), nullable=False, index=True)  # project, document, change
+    object_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    added_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
 class Message(Base):
     __tablename__ = "messages"
 

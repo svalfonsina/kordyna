@@ -813,7 +813,7 @@ document.addEventListener('click', (ev) => {
 
 let notifItems = [];
 
-const NOTIF_ICONS = { review: '⏳', conflict: '⚠️', change: '📐', document: '📄', task: '🗓️' };
+const NOTIF_ICONS = { review: '⏳', conflict: '⚠️', change: '📐', document: '📄', task: '🗓️', collaborator: '👥' };
 
 async function refreshNotifications() {
   try {
@@ -1192,10 +1192,106 @@ loaders.settings = async function() {
 
 /* ── PROJECT OVERVIEW ──────────────────────────────────────────────── */
 
+/* ── COLLABORATORS ─────────────────────────────────────────────────── */
+// Reusable "add collaborators" widget for projects, documents, and changes.
+// Collaborators get an explicit view + notification follow on the item.
+const collab = {
+  cache: {},
+  mounts: {},
+  _ctx: null,
+  initials(name) {
+    return (name || '').split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  },
+  color(name) {
+    const palette = ['#2E5BFF', '#0CCE6B', '#FF8C42', '#8B5CF6', '#EC4899', '#06B6D4', '#FFA600', '#10B981'];
+    let h = 0;
+    for (const ch of (name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return palette[h % palette.length];
+  },
+  async list(type, id, force) {
+    const key = `${type}:${id}`;
+    if (!force && this.cache[key]) return this.cache[key];
+    try {
+      const r = await fetch(`/collaborators/${type}/${id}`, { headers: authHeaders() });
+      this.cache[key] = r.ok ? await r.json() : [];
+    } catch (e) { this.cache[key] = []; }
+    return this.cache[key];
+  },
+  async render(type, id, mountId) {
+    const el = document.getElementById(mountId);
+    if (!el || id == null) return;
+    this.mounts[`${type}:${id}`] = mountId;
+    const people = await this.list(type, id, true);
+    const chips = people.map(p =>
+      `<span class="collab-chip" title="${p.name}${p.discipline ? ' · ' + p.discipline : ''}">
+        <span class="collab-avatar" style="background:${this.color(p.name)}">${this.initials(p.name)}</span>
+        <span class="collab-chip-name">${p.name}</span>
+        <button class="collab-remove" title="Remove collaborator" onclick="collab.remove('${type}',${id},${p.user_id})">×</button>
+      </span>`).join('');
+    el.innerHTML = `<div class="collab-row">
+        ${chips || '<span class="collab-empty">No collaborators yet</span>'}
+        <button class="collab-add-btn" onclick="collab.openPicker('${type}',${id})">+ Add</button>
+      </div>`;
+  },
+  async openPicker(type, id) {
+    this._ctx = { type, id };
+    const list = document.getElementById('collab-picker-list');
+    list.innerHTML = '<p class="collab-picker-empty">Loading…</p>';
+    ui.showModal('modal-collaborators');
+    let members = [];
+    try { const r = await fetch('/company/members', { headers: authHeaders() }); if (r.ok) members = await r.json(); } catch (e) {}
+    const current = new Set((await this.list(type, id)).map(p => p.user_id));
+    const available = members.filter(m => !current.has(m.id));
+    list.innerHTML = available.length ? available.map(m =>
+      `<button class="collab-pick-item" onclick="collab.add(${m.id}, this)">
+        <span class="collab-avatar" style="background:${this.color(m.name)}">${this.initials(m.name)}</span>
+        <span class="collab-pick-info"><span class="collab-pick-name">${m.name}</span>${m.discipline ? `<span class="collab-pick-disc">${m.discipline}</span>` : ''}</span>
+        <span class="collab-pick-add">Add</span>
+      </button>`).join('') : '<p class="collab-picker-empty">Everyone is already a collaborator.</p>';
+  },
+  async add(userId, btn) {
+    if (!this._ctx) return;
+    const { type, id } = this._ctx;
+    if (btn) { btn.disabled = true; const t = btn.querySelector('.collab-pick-add'); if (t) t.textContent = 'Added ✓'; }
+    try {
+      const r = await fetch(`/collaborators/${type}/${id}`, {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+      });
+      if (!r.ok) throw new Error('Could not add collaborator');
+      delete this.cache[`${type}:${id}`];
+      ui.toast('Collaborator added & notified');
+      this.refreshMount(type, id);
+      if (btn) setTimeout(() => { const p = btn.closest('.collab-pick-item'); if (p) p.remove(); }, 450);
+    } catch (e) {
+      ui.toast(e.message);
+      if (btn) { btn.disabled = false; const t = btn.querySelector('.collab-pick-add'); if (t) t.textContent = 'Add'; }
+    }
+  },
+  async remove(type, id, userId) {
+    try {
+      await fetch(`/collaborators/${type}/${id}/${userId}`, { method: 'DELETE', headers: authHeaders() });
+      delete this.cache[`${type}:${id}`];
+      ui.toast('Collaborator removed');
+      this.refreshMount(type, id);
+    } catch (e) { ui.toast(e.message); }
+  },
+  refreshMount(type, id) {
+    const mountId = this.mounts[`${type}:${id}`];
+    if (mountId) this.render(type, id, mountId);
+  }
+};
+
 loaders.overview = async function() {
   if (!currentProject) { router.go('workspace'); return; }
 
   document.getElementById('overview-title').textContent = currentProject.name;
+  if (currentProject.backendId) {
+    collab.render('project', currentProject.backendId, 'overview-collab');
+  } else {
+    const oc = document.getElementById('overview-collab');
+    if (oc) oc.innerHTML = '<span class="collab-empty">Save this project to add collaborators</span>';
+  }
   document.getElementById('kpi-changes').textContent = currentProject.changes;
   document.getElementById('kpi-reviews').textContent = currentProject.pendingReviews;
   document.getElementById('kpi-conflicts').textContent = currentProject.conflicts;
@@ -1277,6 +1373,7 @@ loaders['change-detail'] = async function(data) {
 
   document.getElementById('cd-id').textContent = `CE-${c.id}`;
   document.getElementById('cd-title').textContent = c.title;
+  collab.render('change', c.id, 'cd-collab');
   document.getElementById('cd-meta').textContent = `Uploaded${c.creator ? ' by ' + c.creator : ''} · ${shortDate(c.created_at)} · ${c.region_count} change regions`;
 
   const stEl = document.getElementById('cd-status');
@@ -1694,8 +1791,11 @@ function showDocDetail(idx) {
       ${doc.notes ? `<div class="doc-detail-section"><h4>Notes</h4><p>${doc.notes}</p></div>` : ''}
       ${fileSection}
       <div class="doc-detail-section"><h4>Linked Changes</h4><p>${linked || 'None'}</p></div>
+      ${doc.real && doc.serverId ? '<div class="doc-detail-section"><h4>Collaborators</h4><div id="doc-collab"></div></div>' : ''}
       ${doc.fileUrl ? renderFilePreview(doc, idx) : ''}
     </div>`;
+
+  if (doc.real && doc.serverId) collab.render('document', doc.serverId, 'doc-collab');
 
   // The DB row can outlive the file (server storage reset) — swap the
   // preview for a clear message instead of an embedded error page.

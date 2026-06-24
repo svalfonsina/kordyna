@@ -17,6 +17,7 @@ from models import (
     ActivityEvent,
     Base,
     ChangeEvent,
+    Collaborator,
     Company,
     Discipline,
     Document,
@@ -239,6 +240,8 @@ def event_text(actor_name: str, e: ActivityEvent) -> str:
         return f"{actor_name} flagged a conflict on {label}"
     if v == "completed_task":
         return f"{actor_name} completed task {label}"
+    if v == "added_collaborator":
+        return f"{actor_name} added a collaborator: {label}"
     if v == "created":
         article = {"change": "change", "task": "task", "project": "project"}.get(o, o)
         return f"{actor_name} created {article} {label}"
@@ -852,6 +855,104 @@ def company_members(user: User = Depends(get_current_user), db: Session = Depend
     ]
 
 
+# ── Collaborators ────────────────────────────────────────────────────
+
+COLLAB_TYPES = {"project", "document", "change"}
+
+
+def _collab_object(db: Session, object_type: str, object_id: int):
+    """Resolve a collaborator target to (object, display_label)."""
+    if object_type == "project":
+        o = db.query(Project).filter(Project.id == object_id).first()
+        return o, (o.name if o else None)
+    if object_type == "document":
+        o = db.query(Document).filter(Document.id == object_id).first()
+        return o, (o.title if o else None)
+    if object_type == "change":
+        o = db.query(ChangeEvent).filter(ChangeEvent.id == object_id).first()
+        return o, (o.title if o else None)
+    return None, None
+
+
+def _collab_project_id(obj, object_type: str):
+    if object_type == "project":
+        return obj.id
+    return getattr(obj, "project_id", None)
+
+
+class CollaboratorAdd(BaseModel):
+    user_id: int
+
+
+@app.get("/collaborators/{object_type}/{object_id}")
+def list_collaborators(object_type: str, object_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if object_type not in COLLAB_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid object type")
+    rows = (
+        db.query(Collaborator)
+        .filter(Collaborator.object_type == object_type, Collaborator.object_id == object_id)
+        .order_by(Collaborator.created_at)
+        .all()
+    )
+    out = []
+    for c in rows:
+        u = c.user
+        if not u:
+            continue
+        out.append({
+            "user_id": u.id,
+            "name": u.full_name or u.username,
+            "discipline": u.discipline.name if u.discipline else None,
+            "added_at": c.created_at,
+        })
+    return out
+
+
+@app.post("/collaborators/{object_type}/{object_id}", status_code=201)
+def add_collaborator(object_type: str, object_id: int, body: CollaboratorAdd, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if object_type not in COLLAB_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid object type")
+    obj, label = _collab_object(db, object_type, object_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Object not found")
+    target = db.query(User).filter(User.id == body.user_id, User.company_id == user.company_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing = (
+        db.query(Collaborator)
+        .filter(
+            Collaborator.object_type == object_type,
+            Collaborator.object_id == object_id,
+            Collaborator.user_id == body.user_id,
+        )
+        .first()
+    )
+    if existing:
+        return {"ok": True, "already": True}
+    db.add(Collaborator(object_type=object_type, object_id=object_id, user_id=body.user_id, added_by=user.id))
+    db.add(ActivityEvent(
+        company_id=user.company_id,
+        project_id=_collab_project_id(obj, object_type),
+        actor_id=user.id,
+        verb="added_collaborator",
+        object_type=object_type,
+        object_label=f"{target.full_name or target.username} → {label}",
+    ))
+    db.commit()
+    return {"ok": True}
+
+
+@app.delete("/collaborators/{object_type}/{object_id}/{collab_user_id}")
+def remove_collaborator(object_type: str, object_id: int, collab_user_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db.query(Collaborator).filter(
+        Collaborator.object_type == object_type,
+        Collaborator.object_id == object_id,
+        Collaborator.user_id == collab_user_id,
+    ).delete()
+    db.commit()
+    return {"ok": True}
+
+
 # ── Disciplines ──────────────────────────────────────────────────────
 
 def serialize_me(user: User) -> dict:
@@ -1021,6 +1122,26 @@ def notifications(user: User = Depends(get_current_user), db: Session = Depends(
             "project_id": t.project_id,
             "change_id": None,
             "at": t.created_at,
+        })
+
+    # Collaborations: objects you've been explicitly added to follow.
+    my_collabs = (
+        db.query(Collaborator)
+        .filter(Collaborator.user_id == user.id)
+        .order_by(Collaborator.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    for c in my_collabs:
+        obj, label = _collab_object(db, c.object_type, c.object_id)
+        if not label:
+            continue
+        items.append({
+            "type": "collaborator",
+            "text": f'You were added as a collaborator on "{label}"',
+            "project_id": _collab_project_id(obj, c.object_type) if obj else None,
+            "change_id": c.object_id if c.object_type == "change" else None,
+            "at": c.created_at,
         })
 
     items.sort(key=lambda i: i["at"] or datetime.min, reverse=True)

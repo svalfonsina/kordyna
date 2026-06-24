@@ -523,6 +523,27 @@ img { max-width: 100%; display: block; }
 .impact-node:hover circle,
 .impact-node.is-hover circle { opacity: 0.85; stroke-width: 4; filter: drop-shadow(0 0 7px rgba(255,255,255,0.85)); }
 
+/* ── COLLABORATORS ─────────────────────────────────────────────────── */
+.collab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.collab-chip { display: inline-flex; align-items: center; gap: 7px; padding: 3px 9px 3px 3px; background: var(--bg-card-hover); border: 1px solid var(--border); border-radius: 999px; font-size: 0.82rem; }
+.collab-avatar { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.3px; flex-shrink: 0; }
+.collab-chip-name { color: var(--text); }
+.collab-remove { background: none; border: none; color: var(--text-muted); font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 2px; width: auto; transition: color var(--transition); }
+.collab-remove:hover { color: var(--red); }
+.collab-empty { color: var(--text-muted); font-size: 0.85rem; }
+.collab-add-btn { background: none; border: 1px dashed var(--border-light, var(--border)); color: var(--text-dim); border-radius: 999px; padding: 4px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; width: auto; transition: all var(--transition); }
+.collab-add-btn:hover { color: var(--primary); border-color: var(--primary); }
+.modal-desc { color: var(--text-dim); font-size: 0.85rem; margin: -6px 0 14px; }
+.collab-picker-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; margin-bottom: 16px; }
+.collab-picker-empty { color: var(--text-muted); font-size: 0.85rem; padding: 10px 4px; }
+.collab-pick-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all var(--transition); }
+.collab-pick-item:hover { background: var(--bg-card-hover); border-color: var(--border-light, var(--border)); }
+.collab-pick-item:disabled { opacity: 0.6; cursor: default; }
+.collab-pick-info { display: flex; flex-direction: column; line-height: 1.3; }
+.collab-pick-name { color: var(--text); font-size: 0.88rem; font-weight: 600; }
+.collab-pick-disc { color: var(--text-muted); font-size: 0.76rem; }
+.collab-pick-add { margin-left: auto; color: var(--primary); font-size: 0.8rem; font-weight: 700; }
+
 /* ── REVIEWS ───────────────────────────────────────────────────────── */
 .review-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-card); border-radius: var(--radius); padding: 4px; width: fit-content; }
 .review-tab { padding: 7px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-dim); transition: all var(--transition); }
