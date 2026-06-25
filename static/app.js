@@ -211,6 +211,13 @@ const router = {
     this.current = page;
     this.lastData = data;
 
+    // Remember where we are so a page refresh returns here, not home.
+    try {
+      localStorage.setItem('kordyna_route', JSON.stringify({
+        page, data: data || null, projectId: currentProject ? currentProject.id : null
+      }));
+    } catch (e) { /* storage may be unavailable */ }
+
     document.querySelectorAll('.sidebar-link, .sidebar-sublink').forEach(l => {
       l.classList.toggle('active', l.dataset.page === page);
     });
@@ -331,7 +338,7 @@ const auth = {
     return false;
   },
 
-  async enter() {
+  async enter(restore = false) {
     document.getElementById('page-auth').classList.add('hidden');
     document.getElementById('sidebar').classList.remove('hidden');
     document.getElementById('topbar').classList.remove('hidden');
@@ -342,12 +349,31 @@ const auth = {
     await loadMe();
     refreshNotifications();
     if (!this._notifTimer) this._notifTimer = setInterval(refreshNotifications, 60000);
+    if (restore && this.restoreRoute()) return;
     router.go('workspace');
+  },
+
+  // On refresh, return to the page (and project) the user was last on.
+  restoreRoute() {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem('kordyna_route') || 'null'); } catch (e) { saved = null; }
+    if (!saved || !saved.page || saved.page === 'workspace') return false;
+    if (!document.getElementById('page-' + saved.page)) return false;
+    if (saved.projectId != null) {
+      const p = PROJECTS.find(x => x.id === saved.projectId);
+      if (!p) return false;  // project no longer available — fall back to home
+      currentProject = p;
+      updateSidebarProjectState();
+      updateProjectNavBadges();
+    }
+    router.go(saved.page, saved.data || undefined);
+    return true;
   },
 
   logout() {
     this.token = null;
     localStorage.removeItem('kordyna_token');
+    localStorage.removeItem('kordyna_route');
     currentProject = null;
     document.getElementById('page-auth').classList.remove('hidden');
     document.getElementById('sidebar').classList.add('hidden');
@@ -356,7 +382,7 @@ const auth = {
   },
 
   check() {
-    if (this.token) this.enter();
+    if (this.token) this.enter(true);
     else {
       document.getElementById('main').style.display = 'none';
       loadDisciplineSelects();
