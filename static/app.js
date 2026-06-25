@@ -446,6 +446,11 @@ function shortDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Only members of a discipline may change that discipline's review status.
+function canReviewDiscipline(disciplineId) {
+  return !!(currentUser && currentUser.discipline_id != null && currentUser.discipline_id === disciplineId);
+}
+
 async function updateReviewStatus(changeId, disciplineId, status) {
   try {
     const res = await fetch(`/changes/${changeId}/reviews/${disciplineId}`, {
@@ -1452,7 +1457,9 @@ loaders['change-detail'] = async function(data) {
 
   document.getElementById('cd-reviews').innerHTML = c.reviews.map(r => {
     const label = r.status === 'reviewed' ? 'Reviewed' : r.status === 'flagged' ? 'Conflict' : 'Pending';
-    const buttons = r.status === 'reviewed'
+    const buttons = !canReviewDiscipline(r.discipline_id)
+      ? ''
+      : r.status === 'reviewed'
       ? `<button class="btn btn-ghost btn-sm cd-review-btn" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'pending')">Reopen</button>`
       : `<button class="btn btn-primary btn-sm cd-review-btn" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>
          <button class="btn btn-danger btn-sm cd-review-btn" onclick="updateReviewStatus(${c.id}, ${r.discipline_id}, 'flagged')">Flag</button>`;
@@ -1637,7 +1644,7 @@ function showImpactDetail(discName, changeId) {
       <div style="display:flex;flex-direction:column;gap:8px">
         <a href="${change.diff_image}" target="_blank" class="btn btn-ghost btn-sm" style="text-align:center;text-decoration:none">View diff drawing</a>
         <button class="btn btn-ghost btn-sm" onclick="router.go('change-detail',{id:${change.id}})">Open change detail</button>
-        ${review && review.status !== 'reviewed' ? `<button class="btn btn-primary btn-sm" onclick="updateReviewStatus(${changeId}, ${review.discipline_id}, 'reviewed')">Mark Reviewed</button>` : ''}
+        ${review && review.status !== 'reviewed' && canReviewDiscipline(review.discipline_id) ? `<button class="btn btn-primary btn-sm" onclick="updateReviewStatus(${changeId}, ${review.discipline_id}, 'reviewed')">Mark Reviewed</button>` : ''}
       </div>
     </div>`;
 }
@@ -1711,7 +1718,9 @@ loaders.reviews = async function() {
       `<span class="rev-meta-count">${reviewed}/${rows.length} reviewed</span>`
     ].join('');
     const body = rows.map(r => {
-      const action = r.ui === 'Pending'
+      const action = !canReviewDiscipline(r.discipline_id)
+        ? ''
+        : r.ui === 'Pending'
         ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Mark Reviewed</button>`
         : r.ui === 'Conflict'
         ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();updateReviewStatus(${r.changeId}, ${r.discipline_id}, 'reviewed')">Resolve</button>`

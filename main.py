@@ -656,6 +656,8 @@ def update_review(
     )
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
+    if user.discipline_id != review.discipline_id:
+        raise HTTPException(status_code=403, detail="Only members of this discipline can update its review")
     review.status = body.status
     review.notes = body.notes
     if body.status in ("reviewed", "flagged"):
