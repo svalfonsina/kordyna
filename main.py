@@ -880,6 +880,18 @@ def _collab_project_id(obj, object_type: str):
     return getattr(obj, "project_id", None)
 
 
+def _collab_owner_id(db: Session, obj, object_type: str):
+    """The project owner controls collaborators for the project and for
+    everything inside it (its documents and change events)."""
+    if object_type == "project":
+        return obj.owner_id
+    pid = getattr(obj, "project_id", None)
+    if pid is None:
+        return None
+    proj = db.query(Project).filter(Project.id == pid).first()
+    return proj.owner_id if proj else None
+
+
 class CollaboratorAdd(BaseModel):
     user_id: int
 
@@ -915,6 +927,9 @@ def add_collaborator(object_type: str, object_id: int, body: CollaboratorAdd, us
     obj, label = _collab_object(db, object_type, object_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Object not found")
+    owner_id = _collab_owner_id(db, obj, object_type)
+    if owner_id is not None and owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the project owner can add collaborators")
     target = db.query(User).filter(User.id == body.user_id, User.company_id == user.company_id).first()
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
@@ -944,6 +959,11 @@ def add_collaborator(object_type: str, object_id: int, body: CollaboratorAdd, us
 
 @app.delete("/collaborators/{object_type}/{object_id}/{collab_user_id}")
 def remove_collaborator(object_type: str, object_id: int, collab_user_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    obj, _ = _collab_object(db, object_type, object_id)
+    if obj is not None:
+        owner_id = _collab_owner_id(db, obj, object_type)
+        if owner_id is not None and owner_id != user.id:
+            raise HTTPException(status_code=403, detail="Only the project owner can manage collaborators")
     db.query(Collaborator).filter(
         Collaborator.object_type == object_type,
         Collaborator.object_id == object_id,

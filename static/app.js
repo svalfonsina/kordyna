@@ -42,7 +42,7 @@ async function loadRealProjects() {
         if (sr.ok) s = await sr.json();
       } catch (e) { /* summary is cosmetic; keep zeros */ }
       return {
-        id: p.id, backendId: p.id,
+        id: p.id, backendId: p.id, owner_id: p.owner_id,
         name: p.name, client: p.description || '',
         confidence: s.confidence, changes: s.changes,
         pendingReviews: s.reviews_pending, conflicts: s.reviews_flagged,
@@ -1213,20 +1213,29 @@ const collab = {
     } catch (e) { this.cache[key] = []; }
     return this.cache[key];
   },
+  meId() { return currentUser ? currentUser.id : null; },
+  // Only the owner of the current project may add/remove collaborators —
+  // for the project itself and for its documents and change events.
+  canManage() {
+    return !!(currentUser && currentProject && currentProject.owner_id != null && currentProject.owner_id === currentUser.id);
+  },
   async render(type, id, mountId) {
     const el = document.getElementById(mountId);
     if (!el || id == null) return;
     this.mounts[`${type}:${id}`] = mountId;
+    const manage = this.canManage();
     const people = await this.list(type, id, true);
-    const chips = people.map(p =>
-      `<span class="collab-chip" title="${p.name}${p.discipline ? ' · ' + p.discipline : ''}">
+    const chips = people.map(p => {
+      const label = p.user_id === this.meId() ? 'You' : p.name;
+      return `<span class="collab-chip" title="${p.name}${p.discipline ? ' · ' + p.discipline : ''}">
         <span class="collab-avatar" style="background:${this.color(p.name)}">${this.initials(p.name)}</span>
-        <span class="collab-chip-name">${p.name}</span>
-        <button class="collab-remove" title="Remove collaborator" onclick="collab.remove('${type}',${id},${p.user_id})">×</button>
-      </span>`).join('');
+        <span class="collab-chip-name">${label}</span>
+        ${manage ? `<button class="collab-remove" title="Remove collaborator" onclick="collab.remove('${type}',${id},${p.user_id})">×</button>` : ''}
+      </span>`;
+    }).join('');
     el.innerHTML = `<div class="collab-row">
         ${chips || '<span class="collab-empty">No collaborators yet</span>'}
-        <button class="collab-add-btn" onclick="collab.openPicker('${type}',${id})">+ Add</button>
+        ${manage ? `<button class="collab-add-btn" onclick="collab.openPicker('${type}',${id})">+ Add</button>` : ''}
       </div>`;
   },
   async _fetchMembers() {
@@ -1293,6 +1302,10 @@ const collab = {
   renderStaged(mountId) {
     const el = document.getElementById(mountId);
     if (!el) return;
+    if (!this.canManage()) {
+      el.innerHTML = '<span class="collab-empty">Only the project owner can add collaborators</span>';
+      return;
+    }
     const chips = this.staged.map(s =>
       `<span class="collab-chip" title="${s.name}${s.discipline ? ' · ' + s.discipline : ''}">
         <span class="collab-avatar" style="background:${this.color(s.name)}">${this.initials(s.name)}</span>
