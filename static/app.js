@@ -1987,6 +1987,7 @@ loaders.documents = async function() {
           <span class="doc-folder-icon">📁</span>
           <span class="doc-folder-name">${f.name}</span>
           <span class="count">${fdocs.length}</span>
+          <button class="doc-folder-act doc-folder-upload" title="Upload into this folder" onclick="event.stopPropagation();uploadToFolder(${f.id}, ${discId})">+ Upload</button>
           <button class="doc-folder-act" title="Rename folder" onclick="event.stopPropagation();renameFolder(${f.id}, '${safeName}')">Rename</button>
           <button class="doc-folder-act doc-folder-del" title="Delete folder" onclick="event.stopPropagation();deleteFolder(${f.id})">Delete</button>
           <span class="chevron">▶</span>
@@ -2080,6 +2081,17 @@ function populateUploadFolders() {
 function openDocUpload() {
   collab.resetStaged('doc-upload-collab');
   populateUploadFolders();
+  ui.showModal('modal-upload-doc');
+}
+
+// Open the upload modal pre-targeted at a specific folder + its discipline.
+function uploadToFolder(folderId, disciplineId) {
+  collab.resetStaged('doc-upload-collab');
+  const dsel = document.getElementById('doc-upload-discipline');
+  if (dsel) dsel.value = String(disciplineId);
+  populateUploadFolders();
+  const fsel = document.getElementById('doc-upload-folder');
+  if (fsel) fsel.value = String(folderId);
   ui.showModal('modal-upload-doc');
 }
 
