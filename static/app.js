@@ -1132,6 +1132,7 @@ function renderOpsSites() {
         <button class="ops-icon-btn ops-icon-del" title="Remove" onclick="removeOpsSite(${s.id})">×</button>
       </div>
       <div class="ops-site-name">${s.name}</div>
+      ${s.location ? `<div class="ops-site-location">${s.location}</div>` : ''}
       <div class="ops-site-open">${s.open}</div>
       <div class="ops-site-label">Open items</div>
       <span class="ops-badge" style="background:${s.status === 'On Track' ? 'var(--green-bg)' : 'var(--yellow-bg)'};color:${s.status === 'On Track' ? 'var(--green)' : 'var(--yellow)'}">${s.status}</span>
@@ -1263,8 +1264,10 @@ function openOpsSiteModal(id) {
   document.getElementById('ops-site-modal-title').textContent = s ? 'Edit Site' : 'Add Site';
   document.getElementById('ops-s-id').value = s ? s.id : '';
   document.getElementById('ops-s-name').value = s ? s.name : '';
+  document.getElementById('ops-s-location').value = s && s.location ? s.location : '';
   document.getElementById('ops-s-open').value = s ? s.open : 0;
   document.getElementById('ops-s-status').value = s ? s.status : 'On Track';
+  document.getElementById('ops-s-notes').value = s && s.notes ? s.notes : '';
   ui.showModal('modal-ops-site');
 }
 
@@ -1273,8 +1276,10 @@ async function saveOpsSite(e) {
   const id = document.getElementById('ops-s-id').value;
   const payload = {
     name: document.getElementById('ops-s-name').value.trim(),
+    location: document.getElementById('ops-s-location').value.trim() || null,
     open_count: parseInt(document.getElementById('ops-s-open').value, 10) || 0,
-    status: document.getElementById('ops-s-status').value
+    status: document.getElementById('ops-s-status').value,
+    notes: document.getElementById('ops-s-notes').value.trim() || null
   };
   try {
     const r = await fetch(id ? `/ops/sites/${id}` : '/ops/sites', {
@@ -1589,7 +1594,7 @@ loaders['change-detail'] = async function(data) {
   document.getElementById('cd-id').textContent = `CE-${c.id}`;
   document.getElementById('cd-title').textContent = c.title;
   collab.render('change', c.id, 'cd-collab');
-  document.getElementById('cd-meta').textContent = `Uploaded${c.creator ? ' by ' + c.creator : ''} · ${shortDate(c.created_at)} · ${c.region_count} change regions`;
+  document.getElementById('cd-meta').textContent = `Uploaded${c.creator ? ' by ' + c.creator : ''} · ${shortDate(c.created_at)} · ${c.region_count} change regions${c.folder ? ' · 📁 ' + c.folder : ''}`;
 
   const stEl = document.getElementById('cd-status');
   stEl.textContent = st;
@@ -2097,9 +2102,26 @@ function uploadToFolder(folderId, disciplineId) {
   ui.showModal('modal-upload-doc');
 }
 
-function openChangeUpload() {
+async function openChangeUpload() {
   collab.resetStaged('change-upload-collab');
+  DOC_FOLDERS = await fetchFolders();
+  const dsel = document.getElementById('change-upload-discipline');
+  if (dsel) {
+    let discs = [];
+    try { discs = await loadServerDisciplines(); } catch (e) {}
+    dsel.innerHTML = '<option value="">—</option>' + discs.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  }
+  populateChangeFolders();
   ui.showModal('modal-upload-change');
+}
+
+function populateChangeFolders() {
+  const sel = document.getElementById('change-upload-folder');
+  if (!sel) return;
+  const dval = document.getElementById('change-upload-discipline').value;
+  const discId = dval ? parseInt(dval, 10) : null;
+  const folders = discId ? DOC_FOLDERS.filter(f => f.discipline_id === discId) : DOC_FOLDERS;
+  sel.innerHTML = '<option value="">No folder</option>' + folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
 }
 
 /* ── IMAGE LIGHTBOX ────────────────────────────────────────────────── */
@@ -2611,7 +2633,11 @@ const actions = {
       const form = new FormData();
       form.append('old_file', oldFile.files[0]);
       form.append('new_file', newFile.files[0]);
-      const res = await fetch(`/projects/${projectId}/changes?title=${encodeURIComponent(title)}`, {
+      const cfSel = document.getElementById('change-upload-folder');
+      const changeFolderId = cfSel ? cfSel.value : '';
+      let changeUrl = `/projects/${projectId}/changes?title=${encodeURIComponent(title)}`;
+      if (changeFolderId) changeUrl += `&folder_id=${changeFolderId}`;
+      const res = await fetch(changeUrl, {
         method: 'POST', headers: authHeaders(), body: form
       });
       if (!res.ok) {

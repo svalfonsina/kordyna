@@ -115,6 +115,7 @@ class ChangeEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    folder_id = Column(Integer, ForeignKey("document_folders.id"), nullable=True)
     title = Column(String(300), nullable=False)
     diff_image_path = Column(String(500), nullable=True)
     region_count = Column(Integer, default=0)
@@ -220,8 +221,10 @@ class OpsSite(Base):
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     name = Column(String(200), nullable=False)
+    location = Column(String(300), nullable=True)
     open_count = Column(Integer, default=0)
     status = Column(String(40), default="On Track")
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

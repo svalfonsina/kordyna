@@ -78,6 +78,8 @@ def run_migrations() -> None:
     })
     _add_missing_columns("projects", {"company_id": "INTEGER", "archived": "BOOLEAN DEFAULT FALSE"})
     _add_missing_columns("documents", {"folder_id": "INTEGER"})
+    _add_missing_columns("ops_sites", {"location": "VARCHAR(300)", "notes": "TEXT"})
+    _add_missing_columns("change_events", {"folder_id": "INTEGER"})
 
 
 def ensure_default_company() -> None:
@@ -526,12 +528,19 @@ async def create_change(
     old_file: UploadFile = File(...),
     new_file: UploadFile = File(...),
     title: str = "Untitled change",
+    folder_id: int | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    if folder_id is not None:
+        folder = db.query(DocumentFolder).filter(
+            DocumentFolder.id == folder_id, DocumentFolder.project_id == project_id
+        ).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found for this project")
 
     old_bytes = await old_file.read()
     new_bytes = await new_file.read()
@@ -547,6 +556,7 @@ async def create_change(
         diff_image_path=result["overlay_path"],
         region_count=result["region_count"],
         created_by=user.id,
+        folder_id=folder_id,
     )
     db.add(event)
     db.flush()
@@ -568,12 +578,14 @@ async def create_change(
         "regions": result["regions"],
         "diff_image": f"/changes/{event.id}/diff-image",
         "reviews_created": len(discipline_ids),
+        "folder_id": event.folder_id,
     }
 
 
 @app.get("/projects/{project_id}/changes")
 def list_changes(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     events = db.query(ChangeEvent).filter(ChangeEvent.project_id == project_id).order_by(ChangeEvent.created_at.desc()).all()
+    folders = {f.id: f.name for f in db.query(DocumentFolder).filter(DocumentFolder.project_id == project_id).all()}
     return [
         {
             "id": e.id,
@@ -582,6 +594,8 @@ def list_changes(project_id: int, user: User = Depends(get_current_user), db: Se
             "created_at": e.created_at,
             "diff_image": f"/changes/{e.id}/diff-image?token={create_file_token('diff', e.id)}",
             "creator": (e.creator.full_name or e.creator.username) if e.creator else None,
+            "folder_id": e.folder_id,
+            "folder": folders.get(e.folder_id),
             "reviews_total": len(e.reviews),
             "reviews_done": sum(1 for r in e.reviews if r.status == "reviewed"),
             "reviews_flagged": sum(1 for r in e.reviews if r.status == "flagged"),
@@ -638,6 +652,8 @@ def get_change(change_id: int, user: User = Depends(get_current_user), db: Sessi
         "region_count": event.region_count,
         "created_at": event.created_at,
         "diff_image": f"/changes/{event.id}/diff-image?token={create_file_token('diff', event.id)}",
+        "folder_id": event.folder_id,
+        "folder": (db.query(DocumentFolder.name).filter(DocumentFolder.id == event.folder_id).scalar() if event.folder_id else None),
         "reviews": [
             {
                 "id": r.id,
@@ -1040,8 +1056,10 @@ class OpsPriorityIn(BaseModel):
 
 class OpsSiteIn(BaseModel):
     name: str
+    location: str | None = None
     open_count: int = 0
     status: str = "On Track"
+    notes: str | None = None
 
 
 def serialize_ops_priority(p: OpsPriority) -> dict:
@@ -1054,7 +1072,7 @@ def serialize_ops_priority(p: OpsPriority) -> dict:
 
 
 def serialize_ops_site(s: OpsSite) -> dict:
-    return {"id": s.id, "name": s.name, "open": s.open_count, "status": s.status}
+    return {"id": s.id, "name": s.name, "location": s.location, "open": s.open_count, "status": s.status, "notes": s.notes}
 
 
 @app.get("/ops/priorities")
@@ -1099,7 +1117,7 @@ def list_ops_sites(user: User = Depends(get_current_user), db: Session = Depends
 
 @app.post("/ops/sites", status_code=201)
 def create_ops_site(body: OpsSiteIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    s = OpsSite(company_id=user.company_id, name=body.name, open_count=body.open_count, status=body.status)
+    s = OpsSite(company_id=user.company_id, name=body.name, location=body.location, open_count=body.open_count, status=body.status, notes=body.notes)
     db.add(s)
     db.commit()
     db.refresh(s)
@@ -1112,8 +1130,10 @@ def update_ops_site(item_id: int, body: OpsSiteIn, user: User = Depends(get_curr
     if not s:
         raise HTTPException(status_code=404, detail="Site not found")
     s.name = body.name
+    s.location = body.location
     s.open_count = body.open_count
     s.status = body.status
+    s.notes = body.notes
     db.commit()
     db.refresh(s)
     return serialize_ops_site(s)
