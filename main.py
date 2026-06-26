@@ -581,7 +581,7 @@ def list_changes(project_id: int, user: User = Depends(get_current_user), db: Se
             "region_count": e.region_count,
             "created_at": e.created_at,
             "diff_image": f"/changes/{e.id}/diff-image?token={create_file_token('diff', e.id)}",
-            "creator": e.creator.username if e.creator else None,
+            "creator": (e.creator.full_name or e.creator.username) if e.creator else None,
             "reviews_total": len(e.reviews),
             "reviews_done": sum(1 for r in e.reviews if r.status == "reviewed"),
             "reviews_flagged": sum(1 for r in e.reviews if r.status == "flagged"),
@@ -1259,7 +1259,7 @@ def notifications(user: User = Depends(get_current_user), db: Session = Depends(
 
     changes = db.query(ChangeEvent).order_by(ChangeEvent.created_at.desc()).limit(10).all()
     for c in changes:
-        who = c.creator.username if c.creator else "Someone"
+        who = (c.creator.full_name or c.creator.username) if c.creator else "Someone"
         items.append({
             "type": "change",
             "text": f'{who} uploaded "{c.title}" — {c.region_count} change regions',
@@ -1270,7 +1270,7 @@ def notifications(user: User = Depends(get_current_user), db: Session = Depends(
 
     docs = db.query(Document).order_by(Document.created_at.desc()).limit(10).all()
     for d in docs:
-        who = d.uploader.username if d.uploader else "Someone"
+        who = (d.uploader.full_name or d.uploader.username) if d.uploader else "Someone"
         items.append({
             "type": "document",
             "text": f'{who} uploaded {d.title} (Rev {d.revision})',
@@ -1558,7 +1558,7 @@ def list_documents(
             "discipline": d.discipline.name,
             "revision": d.revision,
             "notes": d.notes,
-            "uploaded_by": d.uploader.username,
+            "uploaded_by": d.uploader.full_name or d.uploader.username,
             "created_at": d.created_at,
             "folder_id": d.folder_id,
             "file_url": f"/documents/{d.id}/file?token={create_file_token('doc', d.id)}",
@@ -1714,7 +1714,7 @@ def document_history(
             "filename": d.filename,
             "revision": d.revision,
             "notes": d.notes,
-            "uploaded_by": d.uploader.username,
+            "uploaded_by": d.uploader.full_name or d.uploader.username,
             "created_at": d.created_at,
         }
         for d in docs

@@ -2183,6 +2183,9 @@ function renderFilePreview(doc, idx) {
   const ext = (doc.filename || '').split('.').pop().toLowerCase();
   const toolbar = `
     <div class="doc-preview-toolbar">
+      <button class="doc-tool-btn" onclick="expandDoc(${idx})" title="Expand / full screen">
+        <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      </button>
       <button class="doc-tool-btn" onclick="downloadDoc(${idx})" title="Download">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
@@ -2197,9 +2200,19 @@ function renderFilePreview(doc, idx) {
     return `<div class="doc-preview">${toolbar}<iframe id="doc-preview-frame" src="${doc.fileUrl}#toolbar=0&view=FitH" title="${doc.filename}"></iframe></div>`;
   }
   if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-    return `<div class="doc-preview doc-preview-img">${toolbar}<img src="${doc.fileUrl}" alt="${doc.filename}"></div>`;
+    return `<div class="doc-preview doc-preview-img">${toolbar}<img src="${doc.fileUrl}" alt="${doc.filename}" title="Click to expand" onclick="openLightbox('${doc.fileUrl}')"></div>`;
   }
   return '';
+}
+
+// "Blow up" a document: images open in the fullscreen lightbox, other
+// file types (PDF, etc.) open full-size in a new tab.
+function expandDoc(idx) {
+  const doc = DOC_CACHE[idx];
+  if (!doc || !doc.fileUrl) return;
+  const ext = (doc.filename || '').split('.').pop().toLowerCase();
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) openLightbox(doc.fileUrl);
+  else window.open(doc.fileUrl, '_blank');
 }
 
 function replaceDocFile(idx) {
