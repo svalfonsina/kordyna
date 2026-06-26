@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260625b">
+  <link rel="stylesheet" href="/static/styles.css?v=20260625c">
 </head>
 <body>
 
@@ -778,6 +778,20 @@
     </div>
   </div>
 
+  <div id="modal-prompt" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.promptCancel()"></div>
+    <div class="modal-content">
+      <h3 id="prompt-title">Enter a value</h3>
+      <form onsubmit="event.preventDefault();ui.promptOk()">
+        <div class="field"><label id="prompt-label"></label><input type="text" id="prompt-input" autocomplete="off"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.promptCancel()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="prompt-ok-btn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="modal-upload-change" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-upload-change')"></div>
     <div class="modal-content">
@@ -845,6 +859,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260625b"></script>
+  <script src="/static/app.js?v=20260625c"></script>
 </body>
 </html>

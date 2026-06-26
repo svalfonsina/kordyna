@@ -650,7 +650,24 @@ const ui = {
     return new Promise(resolve => { this._confirmResolve = resolve; });
   },
   confirmOk() { this.hideModal('modal-confirm'); const r = this._confirmResolve; this._confirmResolve = null; if (r) r(true); },
-  confirmCancel() { this.hideModal('modal-confirm'); const r = this._confirmResolve; this._confirmResolve = null; if (r) r(false); }
+  confirmCancel() { this.hideModal('modal-confirm'); const r = this._confirmResolve; this._confirmResolve = null; if (r) r(false); },
+  // Styled replacement for window.prompt(); resolves the entered string, or null on cancel.
+  _promptResolve: null,
+  prompt({ title = 'Enter a value', label = '', value = '', confirmLabel = 'Save', placeholder = '' } = {}) {
+    document.getElementById('prompt-title').textContent = title;
+    const labelEl = document.getElementById('prompt-label');
+    labelEl.textContent = label;
+    labelEl.style.display = label ? '' : 'none';
+    const input = document.getElementById('prompt-input');
+    input.value = value;
+    input.placeholder = placeholder;
+    document.getElementById('prompt-ok-btn').textContent = confirmLabel;
+    this.showModal('modal-prompt');
+    setTimeout(() => { input.focus(); input.select(); }, 30);
+    return new Promise(resolve => { this._promptResolve = resolve; });
+  },
+  promptOk() { const v = document.getElementById('prompt-input').value; this.hideModal('modal-prompt'); const r = this._promptResolve; this._promptResolve = null; if (r) r(v); },
+  promptCancel() { this.hideModal('modal-prompt'); const r = this._promptResolve; this._promptResolve = null; if (r) r(null); }
 };
 
 function disc(name) { return DISCIPLINES.find(d => d.name === name); }
@@ -2003,7 +2020,7 @@ loaders.documents = async function() {
 };
 
 async function createFolder(disciplineId, disciplineName) {
-  const name = (prompt(`New folder under ${disciplineName}:`, '') || '').trim();
+  const name = ((await ui.prompt({ title: 'New Folder', label: `Under ${disciplineName}`, placeholder: 'e.g. Building A · Casa 82', confirmLabel: 'Create' })) || '').trim();
   if (!name) return;
   try {
     const r = await fetch(`/projects/${currentProject.backendId}/folders`, {
@@ -2017,7 +2034,7 @@ async function createFolder(disciplineId, disciplineName) {
 }
 
 async function renameFolder(id, currentName) {
-  const name = (prompt('Rename folder:', currentName) || '').trim();
+  const name = ((await ui.prompt({ title: 'Rename Folder', label: 'Folder name', value: currentName, confirmLabel: 'Rename' })) || '').trim();
   if (!name || name === currentName) return;
   try {
     const r = await fetch(`/folders/${id}`, {
