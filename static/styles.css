@@ -626,6 +626,26 @@ img { max-width: 100%; display: block; }
 .doc-item-del svg { width: 13px; height: 13px; fill: none; stroke: var(--text-muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .doc-item-del:hover { background: var(--red-bg); }
 .doc-item-del:hover svg { stroke: var(--red); }
+
+/* Folders within a discipline */
+.doc-newfolder-btn { background: none; border: 1px dashed var(--border); color: var(--text-dim); font-size: 0.72rem; font-weight: 600; padding: 2px 9px; border-radius: 5px; cursor: pointer; width: auto; transition: all var(--transition); }
+.doc-newfolder-btn:hover { color: var(--primary); border-color: var(--primary); }
+.doc-folder { margin: 4px 0; }
+.doc-folder-header { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.83rem; font-weight: 600; transition: all var(--transition); }
+.doc-folder-header:hover { background: var(--bg-card-hover); }
+.doc-folder-icon { font-size: 0.85rem; }
+.doc-folder-name { color: var(--text); }
+.doc-folder-header .count { margin-left: auto; font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
+.doc-folder-header .chevron { font-size: 0.66rem; color: var(--text-muted); transition: transform 0.2s; }
+.doc-folder.open .doc-folder-header .chevron { transform: rotate(90deg); }
+.doc-folder:not(.open) .doc-folder-header .chevron { transform: none; }
+.doc-folder-body { display: none; padding: 2px 0 2px 18px; }
+.doc-folder.open .doc-folder-body { display: block; }
+.doc-folder-act { background: none; border: 1px solid transparent; color: var(--text-muted); font-size: 0.7rem; font-weight: 600; padding: 2px 7px; border-radius: 5px; cursor: pointer; width: auto; opacity: 0; transition: all var(--transition); }
+.doc-folder-header:hover .doc-folder-act { opacity: 1; }
+.doc-folder-act:hover { color: var(--text); border-color: var(--border); }
+.doc-folder-del:hover { color: var(--red); border-color: var(--red); }
+.doc-folder-select { width: 100%; }
 .doc-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: var(--text-muted); gap: 12px; }
 .doc-detail-empty svg { width: 40px; height: 40px; fill: none; stroke: var(--text-muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .doc-detail-view { padding: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); }

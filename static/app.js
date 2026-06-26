@@ -1893,6 +1893,7 @@ async function fetchServerDocuments() {
       code: '',
       serverId: d.id,
       disciplineId: d.discipline_id,
+      folderId: d.folder_id || null,
       title: d.title,
       discipline: d.discipline,
       rev: d.revision,
@@ -1909,20 +1910,41 @@ async function fetchServerDocuments() {
   }
 }
 
+let DOC_FOLDERS = [];
+
+async function fetchFolders() {
+  if (!currentProject || !currentProject.backendId) return [];
+  try {
+    const r = await fetch(`/projects/${currentProject.backendId}/folders`, { headers: authHeaders() });
+    return r.ok ? await r.json() : [];
+  } catch (e) { return []; }
+}
+
+function docItemHtml(doc) {
+  return `<div class="doc-item" data-idx="${doc._idx}" onclick="showDocDetail(${doc._idx})">
+    ${doc.code ? `<span class="doc-item-code">${doc.code}</span>` : ''}
+    <span class="doc-item-name">${doc.title}</span>
+    <span class="doc-item-rev">Rev ${doc.rev}</span>
+    ${doc.real ? `<button class="doc-item-del" onclick="event.stopPropagation();deleteDocAll(${doc._idx})" title="Delete document (all revisions)">
+      <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+    </button>` : ''}
+  </div>`;
+}
+
 loaders.documents = async function() {
   const serverDocs = await fetchServerDocuments();
   DOC_CACHE = serverDocs;
+  DOC_FOLDERS = await fetchFolders();
 
   // Every discipline is always listed — the whole team's sections stay
   // visible even before they have uploaded anything.
   let serverDiscs = [];
   try { serverDiscs = await loadServerDisciplines(); } catch (e) { serverDiscs = []; }
   const groups = {};
-  serverDiscs.forEach(sd => { groups[sd.name] = []; });
+  const discIdByName = {};
+  serverDiscs.forEach(sd => { groups[sd.name] = []; discIdByName[sd.name] = sd.id; });
 
-  // Show only the latest revision of each real document in the list;
-  // older revisions stay reachable via Revision History in the detail.
-  // (Server returns revisions newest-first per title.)
+  // Show only the latest revision of each real document in the list.
   const seen = new Set();
   DOC_CACHE.forEach((d, i) => {
     if (d.real) {
@@ -1936,22 +1958,37 @@ loaders.documents = async function() {
 
   document.getElementById('doc-accordion').innerHTML = Object.keys(groups).map(name => {
     const docs = groups[name];
-    return `<div class="doc-group ${docs.length ? 'open' : ''}">
+    const discId = discIdByName[name];
+    const folders = DOC_FOLDERS.filter(f => f.discipline_id === discId);
+    const looseDocs = docs.filter(d => !d.folderId);
+
+    const foldersHtml = folders.map(f => {
+      const fdocs = docs.filter(d => d.folderId === f.id);
+      const safeName = f.name.replace(/'/g, "\\'");
+      return `<div class="doc-folder ${fdocs.length ? 'open' : ''}">
+        <div class="doc-folder-header" onclick="this.parentElement.classList.toggle('open')">
+          <span class="doc-folder-icon">📁</span>
+          <span class="doc-folder-name">${f.name}</span>
+          <span class="count">${fdocs.length}</span>
+          <button class="doc-folder-act" title="Rename folder" onclick="event.stopPropagation();renameFolder(${f.id}, '${safeName}')">Rename</button>
+          <button class="doc-folder-act doc-folder-del" title="Delete folder" onclick="event.stopPropagation();deleteFolder(${f.id})">Delete</button>
+          <span class="chevron">▶</span>
+        </div>
+        <div class="doc-folder-body">${fdocs.map(docItemHtml).join('') || '<div class="doc-group-empty">Empty folder</div>'}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="doc-group ${docs.length || folders.length ? 'open' : ''}">
       <div class="doc-group-header" onclick="this.parentElement.classList.toggle('open')">
         <span class="disc-dot" style="background:${discColor(name)}"></span>
         <span>${name}</span>
         <span class="count">${docs.length}</span>
+        ${discId != null ? `<button class="doc-newfolder-btn" title="New folder" onclick="event.stopPropagation();createFolder(${discId}, '${name.replace(/'/g, "\\'")}')">+ Folder</button>` : ''}
         <span class="chevron">▶</span>
       </div>
       <div class="doc-group-body">
-        ${docs.map(doc => `<div class="doc-item" data-idx="${doc._idx}" onclick="showDocDetail(${doc._idx})">
-          ${doc.code ? `<span class="doc-item-code">${doc.code}</span>` : ''}
-          <span class="doc-item-name">${doc.title}</span>
-          <span class="doc-item-rev">Rev ${doc.rev}</span>
-          ${doc.real ? `<button class="doc-item-del" onclick="event.stopPropagation();deleteDocAll(${doc._idx})" title="Delete document (all revisions)">
-            <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-          </button>` : ''}
-        </div>`).join('') || '<div class="doc-group-empty">No documents yet</div>'}
+        ${foldersHtml}
+        ${looseDocs.map(docItemHtml).join('') || (folders.length ? '' : '<div class="doc-group-empty">No documents yet</div>')}
       </div>
     </div>`;
   }).join('');
@@ -1965,8 +2002,67 @@ loaders.documents = async function() {
   }
 };
 
+async function createFolder(disciplineId, disciplineName) {
+  const name = (prompt(`New folder under ${disciplineName}:`, '') || '').trim();
+  if (!name) return;
+  try {
+    const r = await fetch(`/projects/${currentProject.backendId}/folders`, {
+      method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ discipline_id: disciplineId, name })
+    });
+    if (!r.ok) throw new Error('Could not create folder');
+    ui.toast('Folder created');
+    loaders.documents();
+  } catch (e) { ui.toast(e.message); }
+}
+
+async function renameFolder(id, currentName) {
+  const name = (prompt('Rename folder:', currentName) || '').trim();
+  if (!name || name === currentName) return;
+  try {
+    const r = await fetch(`/folders/${id}`, {
+      method: 'PUT', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!r.ok) throw new Error('Could not rename folder');
+    ui.toast('Folder renamed');
+    loaders.documents();
+  } catch (e) { ui.toast(e.message); }
+}
+
+async function deleteFolder(id) {
+  if (!(await ui.confirm({ title: 'Delete folder', message: 'Delete this folder? Documents inside move back to the discipline (they are not deleted).', confirmLabel: 'Delete' }))) return;
+  try {
+    const r = await fetch(`/folders/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (!r.ok) throw new Error('Could not delete folder');
+    ui.toast('Folder deleted');
+    loaders.documents();
+  } catch (e) { ui.toast(e.message); }
+}
+
+async function moveDocToFolder(docId, folderId) {
+  try {
+    const r = await fetch(`/documents/${docId}/folder`, {
+      method: 'PUT', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder_id: folderId ? parseInt(folderId, 10) : null })
+    });
+    if (!r.ok) throw new Error('Could not move document');
+    ui.toast('Document moved');
+    loaders.documents();
+  } catch (e) { ui.toast(e.message); }
+}
+
+function populateUploadFolders() {
+  const sel = document.getElementById('doc-upload-folder');
+  if (!sel) return;
+  const discId = parseInt(document.getElementById('doc-upload-discipline').value, 10);
+  const folders = DOC_FOLDERS.filter(f => f.discipline_id === discId);
+  sel.innerHTML = '<option value="">No folder</option>' + folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+}
+
 function openDocUpload() {
   collab.resetStaged('doc-upload-collab');
+  populateUploadFolders();
   ui.showModal('modal-upload-doc');
 }
 
@@ -2020,6 +2116,11 @@ function showDocDetail(idx) {
       <div class="doc-detail-title">${doc.code ? doc.code + ' — ' : ''}${doc.title}</div>
       <div class="doc-detail-meta">${doc.discipline} · Revision ${doc.rev} · Uploaded by ${doc.by} · ${doc.date}</div>
       <div class="doc-detail-section"><h4>Discipline</h4><p><span class="disc-dot" style="background:${discColor(doc.discipline)}"></span> ${doc.discipline}</p></div>
+      ${doc.real && doc.serverId ? `<div class="doc-detail-section"><h4>Folder</h4>
+        <select class="doc-folder-select" onchange="moveDocToFolder(${doc.serverId}, this.value)">
+          <option value="">No folder</option>
+          ${DOC_FOLDERS.filter(f => f.discipline_id === doc.disciplineId).map(f => `<option value="${f.id}" ${doc.folderId === f.id ? 'selected' : ''}>${f.name}</option>`).join('')}
+        </select></div>` : ''}
       <div class="doc-detail-section"><h4>Revision History</h4>${revHistory}</div>
       ${doc.notes ? `<div class="doc-detail-section"><h4>Notes</h4><p>${doc.notes}</p></div>` : ''}
       ${fileSection}
@@ -2635,8 +2736,11 @@ const actions = {
     btn.disabled = true;
     try {
       const projectId = await ensureBackendProject();
+      const folderSel = document.getElementById('doc-upload-folder');
+      const folderId = folderSel ? folderSel.value : '';
       const params = new URLSearchParams({ discipline_id: disciplineId, title });
       if (notes) params.set('notes', notes);
+      if (folderId) params.set('folder_id', folderId);
       const form = new FormData();
       form.append('file', fileInput.files[0]);
       const res = await fetch(`/projects/${projectId}/documents?${params}`, {

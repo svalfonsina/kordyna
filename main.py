@@ -21,6 +21,7 @@ from models import (
     Company,
     Discipline,
     Document,
+    DocumentFolder,
     Message,
     OpsPriority,
     OpsSite,
@@ -76,6 +77,7 @@ def run_migrations() -> None:
         "role": "VARCHAR(40)",
     })
     _add_missing_columns("projects", {"company_id": "INTEGER", "archived": "BOOLEAN DEFAULT FALSE"})
+    _add_missing_columns("documents", {"folder_id": "INTEGER"})
 
 
 def ensure_default_company() -> None:
@@ -1460,6 +1462,7 @@ async def upload_document(
     title: str,
     file: UploadFile = File(...),
     notes: str | None = None,
+    folder_id: int | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1469,6 +1472,14 @@ async def upload_document(
     disc = db.query(Discipline).filter(Discipline.id == discipline_id).first()
     if not disc:
         raise HTTPException(status_code=404, detail="Discipline not found")
+    if folder_id is not None:
+        folder = db.query(DocumentFolder).filter(
+            DocumentFolder.id == folder_id,
+            DocumentFolder.project_id == project_id,
+            DocumentFolder.discipline_id == discipline_id,
+        ).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found for this discipline")
 
     existing = (
         db.query(Document)
@@ -1481,6 +1492,9 @@ async def upload_document(
         .first()
     )
     next_rev = (existing.revision + 1) if existing else 1
+    # New revisions stay in the same folder unless a folder was specified.
+    if folder_id is None and existing is not None:
+        folder_id = existing.folder_id
 
     import uuid
     ext = os.path.splitext(file.filename or "file.pdf")[1].lower()
@@ -1501,6 +1515,7 @@ async def upload_document(
         revision=next_rev,
         uploaded_by=user.id,
         notes=notes,
+        folder_id=folder_id,
     )
     db.add(doc)
     db.flush()
@@ -1517,6 +1532,7 @@ async def upload_document(
         "filename": doc.filename,
         "revision": doc.revision,
         "notes": doc.notes,
+        "folder_id": doc.folder_id,
         "created_at": doc.created_at,
     }
 
@@ -1544,10 +1560,103 @@ def list_documents(
             "notes": d.notes,
             "uploaded_by": d.uploader.username,
             "created_at": d.created_at,
+            "folder_id": d.folder_id,
             "file_url": f"/documents/{d.id}/file?token={create_file_token('doc', d.id)}",
         }
         for d in docs
     ]
+
+
+# ── Document Folders ─────────────────────────────────────────────────
+
+class FolderIn(BaseModel):
+    discipline_id: int
+    name: str
+
+
+class FolderRename(BaseModel):
+    name: str
+
+
+class DocFolderMove(BaseModel):
+    folder_id: int | None = None
+
+
+def _serialize_folder(f: DocumentFolder) -> dict:
+    return {"id": f.id, "project_id": f.project_id, "discipline_id": f.discipline_id, "name": f.name}
+
+
+@app.get("/projects/{project_id}/folders")
+def list_folders(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_project_in_company(project_id, user, db)
+    rows = db.query(DocumentFolder).filter(DocumentFolder.project_id == project_id).order_by(DocumentFolder.name).all()
+    return [_serialize_folder(f) for f in rows]
+
+
+@app.post("/projects/{project_id}/folders", status_code=201)
+def create_folder(project_id: int, body: FolderIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_project_in_company(project_id, user, db)
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    if not db.query(Discipline).filter(Discipline.id == body.discipline_id).first():
+        raise HTTPException(status_code=404, detail="Discipline not found")
+    f = DocumentFolder(project_id=project_id, discipline_id=body.discipline_id, name=name)
+    db.add(f)
+    db.commit()
+    db.refresh(f)
+    return _serialize_folder(f)
+
+
+@app.put("/folders/{folder_id}")
+def rename_folder(folder_id: int, body: FolderRename, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    f = db.query(DocumentFolder).filter(DocumentFolder.id == folder_id).first()
+    if not f:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    require_project_in_company(f.project_id, user, db)
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Folder name required")
+    f.name = name
+    db.commit()
+    return _serialize_folder(f)
+
+
+@app.delete("/folders/{folder_id}")
+def delete_folder(folder_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    f = db.query(DocumentFolder).filter(DocumentFolder.id == folder_id).first()
+    if not f:
+        return {"ok": True}
+    require_project_in_company(f.project_id, user, db)
+    # Documents in a deleted folder fall back to loose (folder_id = NULL).
+    db.query(Document).filter(Document.folder_id == folder_id).update({Document.folder_id: None})
+    db.delete(f)
+    db.commit()
+    return {"ok": True}
+
+
+@app.put("/documents/{doc_id}/folder")
+def move_document(doc_id: int, body: DocFolderMove, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    require_project_in_company(doc.project_id, user, db)
+    if body.folder_id is not None:
+        folder = db.query(DocumentFolder).filter(
+            DocumentFolder.id == body.folder_id,
+            DocumentFolder.project_id == doc.project_id,
+            DocumentFolder.discipline_id == doc.discipline_id,
+        ).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found for this discipline")
+    # Move every revision of this document together.
+    db.query(Document).filter(
+        Document.project_id == doc.project_id,
+        Document.discipline_id == doc.discipline_id,
+        Document.title == doc.title,
+    ).update({Document.folder_id: body.folder_id})
+    db.commit()
+    return {"ok": True}
 
 
 @app.get("/documents/{doc_id}/file")

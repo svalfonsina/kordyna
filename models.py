@@ -144,12 +144,25 @@ class Review(Base):
     discipline = relationship("Discipline", back_populates="reviews")
 
 
+class DocumentFolder(Base):
+    """A named folder within a project's discipline section, so documents can
+    be grouped into sub-projects under the main project."""
+    __tablename__ = "document_folders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    discipline_id = Column(Integer, ForeignKey("disciplines.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     discipline_id = Column(Integer, ForeignKey("disciplines.id"), nullable=False)
+    folder_id = Column(Integer, ForeignKey("document_folders.id"), nullable=True)
     title = Column(String(300), nullable=False)
     filename = Column(String(500), nullable=False)
     file_path = Column(String(500), nullable=False)
