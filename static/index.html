@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260624i">
+  <link rel="stylesheet" href="/static/styles.css?v=20260625a">
 </head>
 <body>
 
@@ -530,6 +530,7 @@
                   <h2 class="panel-title">Today's Priorities</h2>
                   <p class="ops-panel-desc">Start here. These items are most likely to cost money if missed.</p>
                 </div>
+                <button class="btn btn-ghost btn-sm" onclick="openOpsPriorityModal()">+ Add</button>
               </div>
               <div id="ops-priorities"></div>
             </div>
@@ -540,7 +541,10 @@
                   <h2 class="panel-title">My Sites</h2>
                   <p class="ops-panel-desc">Landscape operations grouped by project.</p>
                 </div>
-                <span class="panel-link" onclick="router.go('my-work')">View projects</span>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span class="panel-link" onclick="router.go('my-work')">View projects</span>
+                  <button class="btn btn-ghost btn-sm" onclick="openOpsSiteModal()">+ Add</button>
+                </div>
               </div>
               <div class="panel-body"><div id="ops-sites" class="ops-sites"></div></div>
             </div>
@@ -681,6 +685,61 @@
     </div>
   </div>
 
+  <div id="modal-ops-priority" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-ops-priority')"></div>
+    <div class="modal-content">
+      <h3 id="ops-priority-modal-title">Add Priority</h3>
+      <form onsubmit="return saveOpsPriority(event)">
+        <input type="hidden" id="ops-p-id">
+        <div class="field-row">
+          <div class="field"><label>Location</label><input type="text" id="ops-p-location" required placeholder="e.g. Lot 14"></div>
+          <div class="field"><label>Project / Site</label><input type="text" id="ops-p-project" placeholder="e.g. Lakeside Mixed Use"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Issue</label><input type="text" id="ops-p-issue" placeholder="e.g. Needs Water"></div>
+          <div class="field"><label>Severity</label><select id="ops-p-severity"><option value="high">High</option><option value="medium">Medium</option></select></div>
+        </div>
+        <div class="field"><label>Detail</label><input type="text" id="ops-p-detail" placeholder="Short summary line"></div>
+        <div class="field-row">
+          <div class="field"><label>Due</label><input type="text" id="ops-p-due" placeholder="e.g. Due today"></div>
+          <div class="field"><label>Action label</label><input type="text" id="ops-p-action" placeholder="e.g. Mark Watered"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Last Watered</label><input type="text" id="ops-p-lastWatered" placeholder="e.g. 6 days ago"></div>
+          <div class="field"><label>Last Inspection</label><input type="text" id="ops-p-lastInspection" placeholder="e.g. 8 days ago"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Responsible Team</label><input type="text" id="ops-p-team" placeholder="e.g. Maintenance"></div>
+          <div class="field"><label>Risk Level</label><input type="text" id="ops-p-risk" placeholder="e.g. High"></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea id="ops-p-notes" rows="2" placeholder="Details..."></textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-ops-priority')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-ops-priority">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-ops-site" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-ops-site')"></div>
+    <div class="modal-content">
+      <h3 id="ops-site-modal-title">Add Site</h3>
+      <form onsubmit="return saveOpsSite(event)">
+        <input type="hidden" id="ops-s-id">
+        <div class="field"><label>Site Name</label><input type="text" id="ops-s-name" required placeholder="e.g. Lakeside Mixed Use"></div>
+        <div class="field-row">
+          <div class="field"><label>Open Items</label><input type="number" id="ops-s-open" min="0" value="0"></div>
+          <div class="field"><label>Status</label><select id="ops-s-status"><option value="On Track">On Track</option><option value="Needs Attention">Needs Attention</option></select></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-ops-site')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-ops-site">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="modal-rename-project" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-rename-project')"></div>
     <div class="modal-content">
@@ -777,7 +836,12 @@
     </div>
   </div>
 
+  <div id="lightbox" class="lightbox hidden" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox()" title="Close">×</button>
+    <img id="lightbox-img" src="" alt="Drawing" onclick="event.stopPropagation();toggleLightboxZoom()">
+  </div>
+
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260624i"></script>
+  <script src="/static/app.js?v=20260625a"></script>
 </body>
 </html>

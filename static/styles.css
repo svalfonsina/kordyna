@@ -545,6 +545,25 @@ img { max-width: 100%; display: block; }
 .collab-pick-disc { color: var(--text-muted); font-size: 0.76rem; }
 .collab-pick-add { margin-left: auto; color: var(--primary); font-size: 0.8rem; font-weight: 700; }
 
+/* ── OPS CONTROLS ──────────────────────────────────────────────────── */
+.ops-card-controls { display: flex; gap: 6px; margin-top: 8px; justify-content: flex-end; }
+.ops-icon-btn { background: none; border: 1px solid var(--border); color: var(--text-dim); border-radius: 6px; padding: 3px 9px; font-size: 0.72rem; font-weight: 600; cursor: pointer; width: auto; transition: all var(--transition); }
+.ops-icon-btn:hover { color: var(--text); border-color: var(--border-light, var(--border)); background: var(--bg-card-hover); }
+.ops-icon-del:hover { color: var(--red); border-color: var(--red); }
+.ops-site-card { position: relative; }
+.ops-site-controls { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity var(--transition); }
+.ops-site-card:hover .ops-site-controls { opacity: 1; }
+.ops-site-empty { color: var(--text-muted); font-size: 0.85rem; padding: 12px; }
+
+/* ── IMAGE LIGHTBOX ────────────────────────────────────────────────── */
+.lightbox { position: fixed; inset: 0; z-index: 300; background: rgba(2,8,20,0.93); display: flex; align-items: center; justify-content: center; padding: 24px; overflow: auto; }
+.lightbox.hidden { display: none; }
+.lightbox img { max-width: 96vw; max-height: 92vh; object-fit: contain; cursor: zoom-in; border-radius: 6px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+.lightbox img.zoomed { max-width: none; max-height: none; width: auto; margin: auto; cursor: zoom-out; }
+.lightbox-close { position: fixed; top: 18px; right: 22px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 1.4rem; line-height: 1; cursor: pointer; z-index: 301; }
+.lightbox-close:hover { background: rgba(255,255,255,0.22); }
+.cd-impact-canvas img { cursor: zoom-in; }
+
 /* ── REVIEWS ───────────────────────────────────────────────────────── */
 .review-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-card); border-radius: var(--radius); padding: 4px; width: fit-content; }
 .review-tab { padding: 7px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; color: var(--text-dim); transition: all var(--transition); }

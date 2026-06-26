@@ -179,6 +179,39 @@ class Collaborator(Base):
     user = relationship("User", foreign_keys=[user_id])
 
 
+class OpsPriority(Base):
+    """A landscape-operations priority item (watering, inspection, issue).
+    Company-scoped like projects so the whole team shares the same list."""
+    __tablename__ = "ops_priorities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    location = Column(String(200), nullable=False)
+    project = Column(String(200), nullable=True)
+    issue = Column(String(200), nullable=True)
+    detail = Column(Text, nullable=True)
+    severity = Column(String(20), default="medium")  # high, medium
+    due = Column(String(80), nullable=True)
+    action = Column(String(80), nullable=True)
+    last_watered = Column(String(80), nullable=True)
+    last_inspection = Column(String(80), nullable=True)
+    team = Column(String(120), nullable=True)
+    risk = Column(String(40), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class OpsSite(Base):
+    __tablename__ = "ops_sites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    name = Column(String(200), nullable=False)
+    open_count = Column(Integer, default=0)
+    status = Column(String(40), default="On Track")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Message(Base):
     __tablename__ = "messages"
 

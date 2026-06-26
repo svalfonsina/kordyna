@@ -22,6 +22,8 @@ from models import (
     Discipline,
     Document,
     Message,
+    OpsPriority,
+    OpsSite,
     Project,
     ProjectMember,
     Review,
@@ -133,9 +135,51 @@ def ensure_activity_backfill() -> None:
         db.close()
 
 
+def ensure_ops_seed() -> None:
+    """Seed the Landscape Operations page once so it starts with the same
+    content it shipped with — now real, editable rows instead of mock data."""
+    db = SessionLocal()
+    try:
+        if db.query(OpsPriority.id).first() or db.query(OpsSite.id).first():
+            return
+        company = db.query(Company).order_by(Company.id).first()
+        cid = company.id if company else None
+        priorities = [
+            dict(location="Lot 14", project="Lakeside Mixed Use", issue="Needs Water",
+                 detail="Last watered 6 days ago", severity="high", due="Due today",
+                 action="Mark Watered", last_watered="6 days ago", last_inspection="8 days ago",
+                 team="Maintenance", risk="High",
+                 notes="Plant material showing signs of drought stress. Irrigation line near front bed may be clogged."),
+            dict(location="Nursery Area A", project="Oak Ridge", issue="Inspection Due",
+                 detail="Nursery stock check required", severity="medium", due="Due today",
+                 action="Complete Inspection", last_watered="2 days ago", last_inspection="14 days ago",
+                 team="Nursery Crew", risk="Medium",
+                 notes="Quarterly nursery stock inspection due. Verify plant counts and check for pest activity."),
+            dict(location="Irrigation Zone 3", project="Lakeside Mixed Use", issue="Possible Line Clog",
+                 detail="Low pressure reported near front beds", severity="high", due="Review today",
+                 action="View Issue", last_watered="1 day ago", last_inspection="3 days ago",
+                 team="Irrigation", risk="High",
+                 notes="Low pressure reported near front beds. Possible clog in the main supply line — needs on-site diagnosis."),
+        ]
+        for p in priorities:
+            db.add(OpsPriority(company_id=cid, **p))
+        sites = [
+            dict(name="Lakeside Mixed Use", open_count=8, status="Needs Attention"),
+            dict(name="Riverfront Townhomes", open_count=4, status="On Track"),
+            dict(name="Oak Ridge", open_count=7, status="Needs Attention"),
+            dict(name="Town Center", open_count=2, status="On Track"),
+        ]
+        for s in sites:
+            db.add(OpsSite(company_id=cid, **s))
+        db.commit()
+    finally:
+        db.close()
+
+
 run_migrations()
 ensure_default_company()
 ensure_activity_backfill()
+ensure_ops_seed()
 seed_disciplines()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -971,6 +1015,111 @@ def remove_collaborator(object_type: str, object_id: int, collab_user_id: int, u
         Collaborator.object_id == object_id,
         Collaborator.user_id == collab_user_id,
     ).delete()
+    db.commit()
+    return {"ok": True}
+
+
+# ── Landscape Operations ─────────────────────────────────────────────
+
+class OpsPriorityIn(BaseModel):
+    location: str
+    project: str | None = None
+    issue: str | None = None
+    detail: str | None = None
+    severity: str = "medium"
+    due: str | None = None
+    action: str | None = None
+    last_watered: str | None = None
+    last_inspection: str | None = None
+    team: str | None = None
+    risk: str | None = None
+    notes: str | None = None
+
+
+class OpsSiteIn(BaseModel):
+    name: str
+    open_count: int = 0
+    status: str = "On Track"
+
+
+def serialize_ops_priority(p: OpsPriority) -> dict:
+    return {
+        "id": p.id, "location": p.location, "project": p.project, "issue": p.issue,
+        "detail": p.detail, "severity": p.severity, "due": p.due, "action": p.action,
+        "lastWatered": p.last_watered, "lastInspection": p.last_inspection,
+        "team": p.team, "risk": p.risk, "notes": p.notes,
+    }
+
+
+def serialize_ops_site(s: OpsSite) -> dict:
+    return {"id": s.id, "name": s.name, "open": s.open_count, "status": s.status}
+
+
+@app.get("/ops/priorities")
+def list_ops_priorities(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = db.query(OpsPriority).filter(OpsPriority.company_id == user.company_id).order_by(OpsPriority.id).all()
+    return [serialize_ops_priority(p) for p in rows]
+
+
+@app.post("/ops/priorities", status_code=201)
+def create_ops_priority(body: OpsPriorityIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    p = OpsPriority(company_id=user.company_id, **body.model_dump())
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return serialize_ops_priority(p)
+
+
+@app.put("/ops/priorities/{item_id}")
+def update_ops_priority(item_id: int, body: OpsPriorityIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    p = db.query(OpsPriority).filter(OpsPriority.id == item_id, OpsPriority.company_id == user.company_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Priority not found")
+    for k, v in body.model_dump().items():
+        setattr(p, k, v)
+    db.commit()
+    db.refresh(p)
+    return serialize_ops_priority(p)
+
+
+@app.delete("/ops/priorities/{item_id}")
+def delete_ops_priority(item_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db.query(OpsPriority).filter(OpsPriority.id == item_id, OpsPriority.company_id == user.company_id).delete()
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/ops/sites")
+def list_ops_sites(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = db.query(OpsSite).filter(OpsSite.company_id == user.company_id).order_by(OpsSite.id).all()
+    return [serialize_ops_site(s) for s in rows]
+
+
+@app.post("/ops/sites", status_code=201)
+def create_ops_site(body: OpsSiteIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    s = OpsSite(company_id=user.company_id, name=body.name, open_count=body.open_count, status=body.status)
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return serialize_ops_site(s)
+
+
+@app.put("/ops/sites/{item_id}")
+def update_ops_site(item_id: int, body: OpsSiteIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    s = db.query(OpsSite).filter(OpsSite.id == item_id, OpsSite.company_id == user.company_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Site not found")
+    s.name = body.name
+    s.open_count = body.open_count
+    s.status = body.status
+    db.commit()
+    db.refresh(s)
+    return serialize_ops_site(s)
+
+
+@app.delete("/ops/sites/{item_id}")
+def delete_ops_site(item_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db.query(OpsSite).filter(OpsSite.id == item_id, OpsSite.company_id == user.company_id).delete()
     db.commit()
     return {"ok": True}
 

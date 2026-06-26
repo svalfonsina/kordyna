@@ -1032,36 +1032,9 @@ loaders['my-work'] = async function() {
 
 /* ── LANDSCAPE OPERATIONS ──────────────────────────────────────────── */
 
-const OPS_PRIORITIES = [
-  {
-    id: 1, location: 'Lot 14', project: 'Lakeside Mixed Use',
-    issue: 'Needs Water', detail: 'Last watered 6 days ago',
-    due: 'Due today', severity: 'high', action: 'Mark Watered',
-    lastWatered: '6 days ago', lastInspection: '8 days ago', team: 'Maintenance', risk: 'High',
-    notes: 'Plant material showing signs of drought stress. Irrigation line near front bed may be clogged.'
-  },
-  {
-    id: 2, location: 'Nursery Area A', project: 'Oak Ridge',
-    issue: 'Inspection Due', detail: 'Nursery stock check required',
-    due: 'Due today', severity: 'medium', action: 'Complete Inspection',
-    lastWatered: '2 days ago', lastInspection: '14 days ago', team: 'Nursery Crew', risk: 'Medium',
-    notes: 'Quarterly nursery stock inspection due. Verify plant counts and check for pest activity.'
-  },
-  {
-    id: 3, location: 'Irrigation Zone 3', project: 'Lakeside Mixed Use',
-    issue: 'Possible Line Clog', detail: 'Low pressure reported near front beds',
-    due: 'Review today', severity: 'high', action: 'View Issue',
-    lastWatered: '1 day ago', lastInspection: '3 days ago', team: 'Irrigation', risk: 'High',
-    notes: 'Low pressure reported near front beds. Possible clog in the main supply line — needs on-site diagnosis.'
-  }
-];
-
-const OPS_SITES = [
-  { name: 'Lakeside Mixed Use', open: 8, status: 'Needs Attention' },
-  { name: 'Riverfront Townhomes', open: 4, status: 'On Track' },
-  { name: 'Oak Ridge', open: 7, status: 'Needs Attention' },
-  { name: 'Town Center', open: 2, status: 'On Track' }
-];
+// Landscape Operations data is loaded from the backend (see loaders.ops).
+let OPS_PRIORITIES = [];
+let OPS_SITES = [];
 
 const OPS_ACTIVITY = [
   'John Martinez watered Lot 18',
@@ -1072,16 +1045,29 @@ const OPS_ACTIVITY = [
 
 let opsSelectedId = null;
 
-loaders.ops = function() {
+loaders.ops = async function() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  document.getElementById('ops-greeting').textContent = `${greeting}, Sara`;
+  const firstName = ((currentUser && (currentUser.full_name || currentUser.username)) || 'there').trim().split(/\s+/)[0];
+  document.getElementById('ops-greeting').textContent = `${greeting}, ${firstName}`;
 
+  try {
+    const [pr, st] = await Promise.all([
+      fetch('/ops/priorities', { headers: authHeaders() }),
+      fetch('/ops/sites', { headers: authHeaders() })
+    ]);
+    OPS_PRIORITIES = pr.ok ? await pr.json() : [];
+    OPS_SITES = st.ok ? await st.json() : [];
+  } catch (e) { OPS_PRIORITIES = []; OPS_SITES = []; }
+
+  const needWater = OPS_PRIORITIES.filter(p => (p.issue || '').toLowerCase().includes('water')).length;
+  const inspections = OPS_PRIORITIES.filter(p => (p.issue || '').toLowerCase().includes('inspect')).length;
+  const highRisk = OPS_PRIORITIES.filter(p => p.severity === 'high').length;
   document.getElementById('ops-stats').innerHTML = `
-    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--red)">14</div><div class="ops-stat-label">Need Water</div></div>
-    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--yellow)">3</div><div class="ops-stat-label">Inspections Due</div></div>
-    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--yellow)">2</div><div class="ops-stat-label">Nursery Issues</div></div>
-    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--green)">87%</div><div class="ops-stat-label">Landscape Health</div></div>`;
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--red)">${needWater}</div><div class="ops-stat-label">Need Water</div></div>
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--yellow)">${inspections}</div><div class="ops-stat-label">Inspections Due</div></div>
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--yellow)">${highRisk}</div><div class="ops-stat-label">High-Risk Items</div></div>
+    <div class="ops-stat"><div class="ops-stat-val" style="color:var(--green)">${OPS_SITES.length}</div><div class="ops-stat-label">Active Sites</div></div>`;
 
   if (!OPS_PRIORITIES.find(p => p.id === opsSelectedId)) {
     opsSelectedId = OPS_PRIORITIES.length ? OPS_PRIORITIES[0].id : null;
@@ -1108,10 +1094,14 @@ function renderOpsPriorities() {
       </div>
       <div class="ops-priority-side">
         <div class="ops-priority-due">
-          <div style="color:${opsSevColor(p.severity)};font-weight:700;font-size:0.82rem">${p.due}</div>
+          <div style="color:${opsSevColor(p.severity)};font-weight:700;font-size:0.82rem">${p.due || ''}</div>
           <div class="ops-priority-next">Next action</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();opsAction(${p.id})">${p.action}</button>
+        ${p.action ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();opsAction(${p.id})">${p.action}</button>` : ''}
+        <div class="ops-card-controls">
+          <button class="ops-icon-btn" title="Edit" onclick="event.stopPropagation();openOpsPriorityModal(${p.id})">Edit</button>
+          <button class="ops-icon-btn ops-icon-del" title="Remove" onclick="event.stopPropagation();removeOpsPriority(${p.id})">Remove</button>
+        </div>
       </div>
     </div>`
   ).join('') || '<div class="empty-state" style="min-height:120px"><p>All clear — no priorities today 🎉</p></div>';
@@ -1120,12 +1110,16 @@ function renderOpsPriorities() {
 function renderOpsSites() {
   document.getElementById('ops-sites').innerHTML = OPS_SITES.map(s => `
     <div class="ops-site-card">
+      <div class="ops-site-controls">
+        <button class="ops-icon-btn" title="Edit" onclick="openOpsSiteModal(${s.id})">Edit</button>
+        <button class="ops-icon-btn ops-icon-del" title="Remove" onclick="removeOpsSite(${s.id})">×</button>
+      </div>
       <div class="ops-site-name">${s.name}</div>
       <div class="ops-site-open">${s.open}</div>
       <div class="ops-site-label">Open items</div>
       <span class="ops-badge" style="background:${s.status === 'On Track' ? 'var(--green-bg)' : 'var(--yellow-bg)'};color:${s.status === 'On Track' ? 'var(--green)' : 'var(--yellow)'}">${s.status}</span>
     </div>`
-  ).join('');
+  ).join('') || '<div class="ops-site-empty">No sites yet — add one.</div>';
 }
 
 function renderOpsDetail() {
@@ -1174,15 +1168,124 @@ function opsSelect(id) {
   renderOpsDetail();
 }
 
-function opsAction(id) {
-  const i = OPS_PRIORITIES.findIndex(p => p.id === id);
-  if (i < 0) return;
-  const p = OPS_PRIORITIES[i];
-  ui.toast(`${p.action}: ${p.location} ✓`);
-  OPS_PRIORITIES.splice(i, 1);
-  if (opsSelectedId === id) opsSelectedId = OPS_PRIORITIES.length ? OPS_PRIORITIES[0].id : null;
-  renderOpsPriorities();
-  renderOpsDetail();
+// Completing an action clears the item from today's list (persisted).
+async function opsAction(id) {
+  const p = OPS_PRIORITIES.find(x => x.id === id);
+  if (!p) return;
+  try {
+    const r = await fetch(`/ops/priorities/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (!r.ok) throw new Error('Could not update');
+    ui.toast(`${p.action || 'Done'}: ${p.location} ✓`);
+    OPS_PRIORITIES = OPS_PRIORITIES.filter(x => x.id !== id);
+    if (opsSelectedId === id) opsSelectedId = OPS_PRIORITIES.length ? OPS_PRIORITIES[0].id : null;
+    renderOpsPriorities();
+    renderOpsDetail();
+  } catch (e) { ui.toast(e.message); }
+}
+
+const OPS_P_FIELDS = ['location', 'project', 'issue', 'detail', 'due', 'action', 'lastWatered', 'lastInspection', 'team', 'risk', 'notes'];
+
+function openOpsPriorityModal(id) {
+  const p = id != null ? OPS_PRIORITIES.find(x => x.id === id) : null;
+  document.getElementById('ops-priority-modal-title').textContent = p ? 'Edit Priority' : 'Add Priority';
+  document.getElementById('ops-p-id').value = p ? p.id : '';
+  OPS_P_FIELDS.forEach(k => {
+    const el = document.getElementById('ops-p-' + k);
+    if (el) el.value = p && p[k] != null ? p[k] : '';
+  });
+  document.getElementById('ops-p-severity').value = p ? (p.severity || 'medium') : 'high';
+  ui.showModal('modal-ops-priority');
+}
+
+async function saveOpsPriority(e) {
+  e.preventDefault();
+  const id = document.getElementById('ops-p-id').value;
+  const v = k => { const el = document.getElementById('ops-p-' + k); return el && el.value.trim() ? el.value.trim() : null; };
+  const payload = {
+    location: document.getElementById('ops-p-location').value.trim(),
+    project: v('project'), issue: v('issue'), detail: v('detail'),
+    severity: document.getElementById('ops-p-severity').value,
+    due: v('due'), action: v('action'),
+    last_watered: v('lastWatered'), last_inspection: v('lastInspection'),
+    team: v('team'), risk: v('risk'), notes: v('notes')
+  };
+  try {
+    const r = await fetch(id ? `/ops/priorities/${id}` : '/ops/priorities', {
+      method: id ? 'PUT' : 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error('Save failed');
+    const saved = await r.json();
+    ui.hideModal('modal-ops-priority');
+    ui.toast(id ? 'Priority updated' : 'Priority added');
+    if (id) OPS_PRIORITIES = OPS_PRIORITIES.map(x => x.id === saved.id ? saved : x);
+    else { OPS_PRIORITIES.push(saved); opsSelectedId = saved.id; }
+    renderOpsPriorities();
+    renderOpsDetail();
+  } catch (err) { ui.toast(err.message); }
+}
+
+async function removeOpsPriority(id) {
+  const p = OPS_PRIORITIES.find(x => x.id === id);
+  if (!p) return;
+  if (!(await ui.confirm({ title: 'Remove priority', message: `Remove "${p.location}"? This cannot be undone.`, confirmLabel: 'Remove' }))) return;
+  try {
+    const r = await fetch(`/ops/priorities/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (!r.ok) throw new Error('Could not remove');
+    ui.toast('Priority removed');
+    OPS_PRIORITIES = OPS_PRIORITIES.filter(x => x.id !== id);
+    if (opsSelectedId === id) opsSelectedId = OPS_PRIORITIES.length ? OPS_PRIORITIES[0].id : null;
+    renderOpsPriorities();
+    renderOpsDetail();
+  } catch (e) { ui.toast(e.message); }
+}
+
+function openOpsSiteModal(id) {
+  const s = id != null ? OPS_SITES.find(x => x.id === id) : null;
+  document.getElementById('ops-site-modal-title').textContent = s ? 'Edit Site' : 'Add Site';
+  document.getElementById('ops-s-id').value = s ? s.id : '';
+  document.getElementById('ops-s-name').value = s ? s.name : '';
+  document.getElementById('ops-s-open').value = s ? s.open : 0;
+  document.getElementById('ops-s-status').value = s ? s.status : 'On Track';
+  ui.showModal('modal-ops-site');
+}
+
+async function saveOpsSite(e) {
+  e.preventDefault();
+  const id = document.getElementById('ops-s-id').value;
+  const payload = {
+    name: document.getElementById('ops-s-name').value.trim(),
+    open_count: parseInt(document.getElementById('ops-s-open').value, 10) || 0,
+    status: document.getElementById('ops-s-status').value
+  };
+  try {
+    const r = await fetch(id ? `/ops/sites/${id}` : '/ops/sites', {
+      method: id ? 'PUT' : 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error('Save failed');
+    const saved = await r.json();
+    ui.hideModal('modal-ops-site');
+    ui.toast(id ? 'Site updated' : 'Site added');
+    if (id) OPS_SITES = OPS_SITES.map(x => x.id === saved.id ? saved : x);
+    else OPS_SITES.push(saved);
+    renderOpsSites();
+  } catch (err) { ui.toast(err.message); }
+}
+
+async function removeOpsSite(id) {
+  const s = OPS_SITES.find(x => x.id === id);
+  if (!s) return;
+  if (!(await ui.confirm({ title: 'Remove site', message: `Remove "${s.name}"?`, confirmLabel: 'Remove' }))) return;
+  try {
+    const r = await fetch(`/ops/sites/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (!r.ok) throw new Error('Could not remove');
+    ui.toast('Site removed');
+    OPS_SITES = OPS_SITES.filter(x => x.id !== id);
+    renderOpsSites();
+  } catch (e) { ui.toast(e.message); }
 }
 
 /* ── SETTINGS / MY PROFILE ─────────────────────────────────────────── */
@@ -1513,7 +1616,7 @@ loaders['change-detail'] = async function(data) {
   // Diff image in place of the sample impact mini-map
   const canvas = document.querySelector('#page-change-detail .cd-impact-canvas');
   if (canvas) {
-    canvas.innerHTML = `<img src="${c.diff_image}" alt="Drawing diff" style="width:100%;height:100%;object-fit:contain"
+    canvas.innerHTML = `<img src="${c.diff_image}" alt="Drawing diff" title="Click to expand" style="width:100%;height:100%;object-fit:contain;cursor:zoom-in" onclick="openLightbox('${c.diff_image}')"
       onerror="this.outerHTML='<div class=&quot;empty-state&quot; style=&quot;min-height:300px&quot;><p>Diff image no longer available (storage was reset). Re-upload the drawings to regenerate it.</p></div>'">`;
   }
 };
@@ -1871,6 +1974,27 @@ function openChangeUpload() {
   collab.resetStaged('change-upload-collab');
   ui.showModal('modal-upload-change');
 }
+
+/* ── IMAGE LIGHTBOX ────────────────────────────────────────────────── */
+function openLightbox(src) {
+  if (!src) return;
+  const img = document.getElementById('lightbox-img');
+  img.classList.remove('zoomed');
+  img.src = src;
+  document.getElementById('lightbox').classList.remove('hidden');
+}
+function closeLightbox(e) {
+  if (e && e.target && e.target.id === 'lightbox-img') return;  // clicks on the image don't close
+  document.getElementById('lightbox').classList.add('hidden');
+}
+function toggleLightboxZoom() {
+  document.getElementById('lightbox-img').classList.toggle('zoomed');
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const lb = document.getElementById('lightbox');
+  if (lb && !lb.classList.contains('hidden')) lb.classList.add('hidden');
+});
 
 function showDocDetail(idx) {
   const doc = DOC_CACHE[idx];
