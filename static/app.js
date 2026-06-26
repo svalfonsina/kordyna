@@ -1987,12 +1987,14 @@ loaders.documents = async function() {
           <span class="doc-folder-icon">📁</span>
           <span class="doc-folder-name">${f.name}</span>
           <span class="count">${fdocs.length}</span>
-          <button class="doc-folder-act doc-folder-upload" title="Upload into this folder" onclick="event.stopPropagation();uploadToFolder(${f.id}, ${discId})">+ Upload</button>
           <button class="doc-folder-act" title="Rename folder" onclick="event.stopPropagation();renameFolder(${f.id}, '${safeName}')">Rename</button>
           <button class="doc-folder-act doc-folder-del" title="Delete folder" onclick="event.stopPropagation();deleteFolder(${f.id})">Delete</button>
           <span class="chevron">▶</span>
         </div>
-        <div class="doc-folder-body">${fdocs.map(docItemHtml).join('') || '<div class="doc-group-empty">Empty folder</div>'}</div>
+        <div class="doc-folder-body">
+          ${fdocs.map(docItemHtml).join('') || '<div class="doc-group-empty">Empty folder</div>'}
+          <button class="doc-folder-upload-row" onclick="uploadToFolder(${f.id}, ${discId})">＋ Upload Document</button>
+        </div>
       </div>`;
     }).join('');
 

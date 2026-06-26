@@ -644,9 +644,9 @@ img { max-width: 100%; display: block; }
 .doc-folder-act { background: none; border: 1px solid transparent; color: var(--text-muted); font-size: 0.7rem; font-weight: 600; padding: 2px 7px; border-radius: 5px; cursor: pointer; width: auto; opacity: 0; transition: all var(--transition); }
 .doc-folder-header:hover .doc-folder-act { opacity: 1; }
 .doc-folder-act:hover { color: var(--text); border-color: var(--border); }
-.doc-folder-upload { opacity: 1; color: var(--primary); }
-.doc-folder-upload:hover { color: var(--primary); border-color: var(--primary); }
 .doc-folder-del:hover { color: var(--red); border-color: var(--red); }
+.doc-folder-upload-row { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin: 6px 0 2px; padding: 8px; background: var(--primary-bg); border: 1px dashed var(--primary); color: var(--primary); border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all var(--transition); }
+.doc-folder-upload-row:hover { background: var(--primary); color: #fff; }
 .doc-folder-select { width: 100%; }
 .doc-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: var(--text-muted); gap: 12px; }
 .doc-detail-empty svg { width: 40px; height: 40px; fill: none; stroke: var(--text-muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
