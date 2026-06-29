@@ -673,6 +673,13 @@ img { max-width: 100%; display: block; }
 .doc-rev-link { color: var(--primary); cursor: pointer; }
 .doc-rev-link:hover { color: var(--primary-hover); }
 .doc-preview-missing { margin-top: 20px; border: 1px dashed var(--border-light); border-radius: var(--radius); padding: 28px; text-align: center; color: var(--text-dim); font-size: 0.88rem; line-height: 1.6; }
+.doc-cad-card { margin-top: 20px; border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 20px; text-align: center; background: var(--bg-card); }
+.doc-cad-icon { font-size: 2rem; }
+.doc-cad-title { font-weight: 700; margin: 8px 0 2px; word-break: break-all; }
+.doc-cad-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 16px; }
+.doc-cad-card .btn { width: auto; }
+.doc-cad-hint { font-size: 0.74rem; color: var(--text-muted); margin-top: 10px; }
+.doc-cad-link { color: var(--primary); font-weight: 600; cursor: pointer; }
 
 /* ── DISCIPLINES ───────────────────────────────────────────────────── */
 .disc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }

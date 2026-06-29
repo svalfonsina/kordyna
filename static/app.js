@@ -2161,7 +2161,8 @@ function showDocDetail(idx) {
   const fileSection = doc.fileUrl
     ? `<div class="doc-detail-section"><h4>File</h4>
         <p><a onclick="replaceDocFile(${idx})" title="Click to upload a new revision of this file">📄 ${doc.filename}</a>
-        <span class="doc-file-hint">click to replace — uploads a new revision</span></p></div>`
+        <span class="doc-file-hint">click to replace — uploads a new revision</span></p>
+        ${cadKind(doc.filename) ? `<p><a class="doc-cad-link" onclick="openInCad(${idx})">📐 Open in ${cadKind(doc.filename)}</a></p>` : ''}</div>`
     : '';
 
   document.getElementById('doc-detail-panel').innerHTML = `
@@ -2224,7 +2225,38 @@ function renderFilePreview(doc, idx) {
   if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
     return `<div class="doc-preview doc-preview-img">${toolbar}<img src="${doc.fileUrl}" alt="${doc.filename}" title="Click to expand" onclick="openLightbox('${doc.fileUrl}')"></div>`;
   }
+  const kind = cadKind(doc.filename);
+  if (kind) {
+    return `<div class="doc-cad-card">
+      <div class="doc-cad-icon">📐</div>
+      <div class="doc-cad-title">${doc.filename}</div>
+      <div class="doc-cad-sub">${kind} file — can't preview in the browser.</div>
+      <button class="btn btn-primary" onclick="openInCad(${idx})">Open in ${kind}</button>
+      <div class="doc-cad-hint">Hands the file to your computer; ${kind} opens it if installed.</div>
+    </div>`;
+  }
   return '';
+}
+
+const CAD_EXTS = ['dwg', 'dxf', 'nwd', 'nwc'];
+const REVIT_EXTS = ['rvt', 'rfa', 'rte', 'rft'];
+function cadKind(filename) {
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  if (REVIT_EXTS.includes(ext)) return 'Revit';
+  if (CAD_EXTS.includes(ext)) return 'AutoCAD';
+  return null;
+}
+// Hand the CAD/Revit file to the OS so AutoCAD/Revit opens it via file association.
+function openInCad(idx) {
+  const doc = DOC_CACHE[idx];
+  if (!doc || !doc.fileUrl) return;
+  const a = document.createElement('a');
+  a.href = doc.fileUrl;
+  a.download = doc.filename || 'drawing';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  ui.toast(`Opening ${doc.filename} in ${cadKind(doc.filename)}…`);
 }
 
 // "Blow up" a document: images open in the fullscreen lightbox, other

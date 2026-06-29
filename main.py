@@ -1701,11 +1701,15 @@ def get_document_file(doc_id: int, token: str | None = None, authorization: str 
         ".jpeg": "image/jpeg",
         ".tiff": "image/tiff",
     }
+    # CAD/Revit files can't render in a browser — serve them as a download so
+    # the OS opens them in the associated desktop app (AutoCAD / Revit).
+    cad_revit = {".dwg", ".dxf", ".rvt", ".rfa", ".rte", ".rft", ".nwd", ".nwc"}
+    disposition = "attachment" if ext in cad_revit else "inline"
     return FileResponse(
         doc.file_path,
         media_type=media_types.get(ext, "application/octet-stream"),
         filename=doc.filename,
-        content_disposition_type="inline",
+        content_disposition_type=disposition,
     )
 
 
