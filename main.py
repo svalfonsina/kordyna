@@ -380,13 +380,15 @@ def _gen_code() -> str:
     return f"{random.randint(0, 999999):06d}"
 
 
-def send_verification_email(to_email: str, code: str) -> bool:
-    """Email a verification code via SMTP (settings from env). Returns False
-    when SMTP isn't configured or sending fails, so the caller can fall back
-    to showing the code on-screen (demo mode)."""
+def send_verification_email(to_email: str, code: str) -> str:
+    """Email a verification code via SMTP (settings from env). Returns '' on
+    success, or a short non-sensitive reason on failure so the caller can fall
+    back to demo mode (show the code) and report what went wrong."""
     host = os.getenv("SMTP_HOST")
-    if not host or not to_email:
-        return False
+    if not host:
+        return "not_configured"
+    if not to_email:
+        return "no_recipient"
     try:
         port = int(os.getenv("SMTP_PORT", "587"))
         smtp_user = os.getenv("SMTP_USER")
@@ -407,9 +409,9 @@ def send_verification_email(to_email: str, code: str) -> bool:
             if smtp_user and smtp_pass:
                 server.login(smtp_user, smtp_pass)
             server.send_message(msg)
-        return True
-    except Exception:
-        return False
+        return ""
+    except Exception as e:
+        return f"{type(e).__name__}: {str(e)[:140]}"
 
 
 @app.post("/auth/register")
@@ -439,11 +441,12 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
         ).update({Invitation.status: "accepted"}, synchronize_session=False)
     db.commit()
     db.refresh(user)
-    sent = send_verification_email(body.email, code)
+    reason = send_verification_email(body.email, code)
     resp = {"status": "verification_sent", "username": user.username, "email": body.email}
-    if not sent:
+    if reason:
         # SMTP not configured (or failed) — surface the code so signup still works.
         resp["demo_code"] = code
+        resp["email_status"] = reason
     return resp
 
 
@@ -476,10 +479,11 @@ def resend_code(body: ResendRequest, db: Session = Depends(get_db)):
     user.verification_code = code
     user.verification_expires = datetime.utcnow() + timedelta(minutes=15)
     db.commit()
-    sent = send_verification_email(user.email, code)
+    reason = send_verification_email(user.email, code)
     resp = {"status": "verification_sent"}
-    if not sent:
+    if reason:
         resp["demo_code"] = code
+        resp["email_status"] = reason
     return resp
 
 
