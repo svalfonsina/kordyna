@@ -68,6 +68,9 @@ class User(Base):
     avatar_path = Column(String(500), nullable=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     role = Column(String(40), nullable=True)  # company_admin, project_manager, discipline_lead, contributor, viewer
+    is_verified = Column(Boolean, default=False)
+    verification_code = Column(String(12), nullable=True)
+    verification_expires = Column(DateTime, nullable=True)
 
     discipline = relationship("Discipline", back_populates="users")
     company_ref = relationship("Company")

@@ -1,4 +1,7 @@
 import os
+import random
+import smtplib
+from email.message import EmailMessage
 from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
@@ -75,6 +78,9 @@ def run_migrations() -> None:
         "avatar_path": "VARCHAR(500)",
         "company_id": "INTEGER",
         "role": "VARCHAR(40)",
+        "is_verified": "BOOLEAN",
+        "verification_code": "VARCHAR(12)",
+        "verification_expires": "TIMESTAMP",
     })
     _add_missing_columns("projects", {"company_id": "INTEGER", "archived": "BOOLEAN DEFAULT FALSE"})
     _add_missing_columns("documents", {"folder_id": "INTEGER"})
@@ -326,7 +332,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 class RegisterRequest(BaseModel):
     username: str
     password: str
+    email: str
     discipline_id: int | None = None
+
+class VerifyRequest(BaseModel):
+    username: str
+    code: str
+
+class ResendRequest(BaseModel):
+    username: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -361,23 +375,105 @@ class DisciplineOut(BaseModel):
 
 # ── Auth ─────────────────────────────────────────────────────────────
 
-@app.post("/auth/register", response_model=TokenResponse)
+def _gen_code() -> str:
+    return f"{random.randint(0, 999999):06d}"
+
+
+def send_verification_email(to_email: str, code: str) -> bool:
+    """Email a verification code via SMTP (settings from env). Returns False
+    when SMTP isn't configured or sending fails, so the caller can fall back
+    to showing the code on-screen (demo mode)."""
+    host = os.getenv("SMTP_HOST")
+    if not host or not to_email:
+        return False
+    try:
+        port = int(os.getenv("SMTP_PORT", "587"))
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_pass = os.getenv("SMTP_PASS")
+        sender = os.getenv("SMTP_FROM") or smtp_user or "no-reply@kordyna.com"
+        msg = EmailMessage()
+        msg["Subject"] = "Your Kordyna verification code"
+        msg["From"] = sender
+        msg["To"] = to_email
+        msg.set_content(f"Welcome to Kordyna.\n\nYour verification code is: {code}\n\nIt expires in 15 minutes.")
+        with smtplib.SMTP(host, port, timeout=15) as server:
+            server.ehlo()
+            try:
+                server.starttls()
+                server.ehlo()
+            except smtplib.SMTPException:
+                pass  # server may not support STARTTLS
+            if smtp_user and smtp_pass:
+                server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+@app.post("/auth/register")
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == body.username).first():
         raise HTTPException(status_code=400, detail="Username taken")
     # One shared company: new accounts join it and collaborate immediately.
     company = db.query(Company).order_by(Company.id).first()
+    code = _gen_code()
     user = User(
         username=body.username,
         hashed_password=pwd_context.hash(body.password),
+        email=body.email,
         discipline_id=body.discipline_id,
         company_id=company.id if company else None,
         role="contributor",
+        is_verified=False,
+        verification_code=code,
+        verification_expires=datetime.utcnow() + timedelta(minutes=15),
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+    sent = send_verification_email(body.email, code)
+    resp = {"status": "verification_sent", "username": user.username, "email": body.email}
+    if not sent:
+        # SMTP not configured (or failed) — surface the code so signup still works.
+        resp["demo_code"] = code
+    return resp
+
+
+@app.post("/auth/verify", response_model=TokenResponse)
+def verify_email(body: VerifyRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == body.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if user.is_verified:
+        return TokenResponse(access_token=create_token(user.id))
+    if not user.verification_code or user.verification_code != body.code.strip():
+        raise HTTPException(status_code=400, detail="Invalid code")
+    if user.verification_expires and datetime.utcnow() > user.verification_expires:
+        raise HTTPException(status_code=400, detail="Code expired — request a new one")
+    user.is_verified = True
+    user.verification_code = None
+    user.verification_expires = None
+    db.commit()
     return TokenResponse(access_token=create_token(user.id))
+
+
+@app.post("/auth/resend")
+def resend_code(body: ResendRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == body.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if user.is_verified:
+        return {"status": "already_verified"}
+    code = _gen_code()
+    user.verification_code = code
+    user.verification_expires = datetime.utcnow() + timedelta(minutes=15)
+    db.commit()
+    sent = send_verification_email(user.email, code)
+    resp = {"status": "verification_sent"}
+    if not sent:
+        resp["demo_code"] = code
+    return resp
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -385,6 +481,9 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     user = db.query(User).filter(User.username == form.username).first()
     if not user or not pwd_context.verify(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Bad credentials")
+    # Block only accounts explicitly awaiting verification (legacy NULL passes).
+    if user.is_verified is False:
+        raise HTTPException(status_code=403, detail="Please verify your email to finish signing up")
     return TokenResponse(access_token=create_token(user.id))
 
 

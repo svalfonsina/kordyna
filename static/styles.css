@@ -68,6 +68,8 @@ img { max-width: 100%; display: block; }
 .auth-tab { flex: 1; padding: 8px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; color: var(--text-dim); transition: all var(--transition); }
 .auth-tab.active { background: var(--primary); color: #fff; }
 .auth-error { color: var(--red); font-size: 0.85rem; margin-top: 12px; text-align: center; }
+.auth-resend { font-size: 0.8rem; color: var(--text-dim); text-align: center; margin-top: 14px; }
+.auth-resend a { color: var(--primary); cursor: pointer; }
 .field { margin-bottom: 16px; }
 .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

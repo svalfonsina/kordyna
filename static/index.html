@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260625h">
+  <link rel="stylesheet" href="/static/styles.css?v=20260625i">
 </head>
 <body>
 
@@ -32,9 +32,16 @@
           </form>
           <form id="form-register" class="hidden" onsubmit="return auth.register(event)">
             <div class="field"><label>Username</label><input type="text" id="reg-user" required autocomplete="username" placeholder="Choose a username"></div>
+            <div class="field"><label>Email</label><input type="email" id="reg-email" required autocomplete="email" placeholder="you@company.com"></div>
             <div class="field"><label>Password</label><input type="password" id="reg-pass" required autocomplete="new-password" placeholder="Create a password"></div>
             <div class="field"><label>Discipline</label><select id="reg-discipline"><option value="">Select a discipline (optional)</option></select></div>
             <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+          </form>
+          <form id="form-verify" class="hidden" onsubmit="return auth.verifyCode(event)">
+            <p class="auth-sub" id="verify-msg">We sent a 6-digit code to your email.</p>
+            <div class="field"><label>Verification Code</label><input type="text" id="verify-code" inputmode="numeric" maxlength="6" required placeholder="123456"></div>
+            <button type="submit" class="btn btn-primary btn-full">Verify &amp; Continue</button>
+            <p class="auth-resend">Didn't get it? <a onclick="auth.resendCode()">Resend code</a> · <a onclick="auth.showTab('register')">Back</a></p>
           </form>
           <p id="auth-error" class="auth-error hidden"></p>
         </div>
@@ -865,6 +872,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260625h"></script>
+  <script src="/static/app.js?v=20260625i"></script>
 </body>
 </html>

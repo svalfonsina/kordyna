@@ -291,7 +291,62 @@ const auth = {
   showTab(tab) {
     document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
     document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
+    document.getElementById('form-verify').classList.add('hidden');
+    document.querySelector('.auth-tabs').classList.remove('hidden');
+    document.getElementById('auth-error').classList.add('hidden');
     document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1)));
+  },
+
+  // Switch to the code-entry step (used after register, and after a login
+  // attempt on an unverified account).
+  showVerify(email, demoCode) {
+    document.getElementById('form-login').classList.add('hidden');
+    document.getElementById('form-register').classList.add('hidden');
+    document.getElementById('form-verify').classList.remove('hidden');
+    document.querySelector('.auth-tabs').classList.add('hidden');
+    document.getElementById('auth-error').classList.add('hidden');
+    const msg = document.getElementById('verify-msg');
+    msg.textContent = demoCode
+      ? `Demo mode (email not configured yet): your code is ${demoCode}`
+      : `We emailed a 6-digit code${email ? ' to ' + email : ''}. Enter it below.`;
+    const input = document.getElementById('verify-code');
+    input.value = '';
+    setTimeout(() => input.focus(), 30);
+  },
+
+  async verifyCode(e) {
+    e.preventDefault();
+    const code = document.getElementById('verify-code').value.trim();
+    try {
+      const res = await fetch('/auth/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: this._pendingUser, code })
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Verification failed'); }
+      const data = await res.json();
+      this.token = data.access_token;
+      localStorage.setItem('kordyna_token', this.token);
+      this.enter();
+    } catch (err) {
+      const el = document.getElementById('auth-error');
+      el.textContent = err.message; el.classList.remove('hidden');
+    }
+    return false;
+  },
+
+  async resendCode() {
+    if (!this._pendingUser) return false;
+    try {
+      const res = await fetch('/auth/resend', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: this._pendingUser })
+      });
+      const data = await res.json();
+      const msg = document.getElementById('verify-msg');
+      msg.textContent = data.demo_code ? `Demo mode: your code is ${data.demo_code}` : 'A new code has been sent.';
+      ui.toast('Code resent');
+    } catch (e) { /* ignore */ }
+    return false;
   },
 
   async login(e) {
@@ -301,7 +356,17 @@ const auth = {
     try {
       const body = new URLSearchParams({ username: user, password: pass });
       const res = await fetch('/auth/login', { method: 'POST', body });
-      if (!res.ok) throw new Error('Invalid credentials');
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        if (res.status === 403) {  // account exists but isn't verified yet
+          this._pendingUser = user;
+          this.showVerify('', null);
+          document.getElementById('verify-msg').textContent = d.detail || 'Please verify your email.';
+          this.resendCode();
+          return false;
+        }
+        throw new Error(d.detail || 'Invalid credentials');
+      }
       const data = await res.json();
       this.token = data.access_token;
       localStorage.setItem('kordyna_token', this.token);
@@ -318,18 +383,18 @@ const auth = {
     e.preventDefault();
     const user = document.getElementById('reg-user').value;
     const pass = document.getElementById('reg-pass').value;
+    const email = document.getElementById('reg-email').value;
     const disc = document.getElementById('reg-discipline').value;
     try {
       const res = await fetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, password: pass, discipline_id: disc || null })
+        body: JSON.stringify({ username: user, password: pass, email, discipline_id: disc || null })
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Registration failed'); }
       const data = await res.json();
-      this.token = data.access_token;
-      localStorage.setItem('kordyna_token', this.token);
-      this.enter();
+      this._pendingUser = user;
+      this.showVerify(email, data.demo_code);
     } catch (err) {
       const el = document.getElementById('auth-error');
       el.textContent = err.message;
