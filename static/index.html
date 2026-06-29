@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260625i">
+  <link rel="stylesheet" href="/static/styles.css?v=20260625j">
 </head>
 <body>
 
@@ -66,6 +66,10 @@
         <a class="sidebar-link" data-page="my-work" onclick="router.go('my-work')">
           <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
           My Work
+        </a>
+        <a class="sidebar-link" data-page="team" onclick="router.go('team')">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Team
         </a>
       </div>
 
@@ -264,6 +268,21 @@
           <div class="ws-section-header"><h2 class="ws-section-title">Archived</h2></div>
           <div id="archived-list"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- PAGE: TEAM ──────────────────────────────────────────────── -->
+    <div id="page-team" class="page hidden">
+      <div class="page-container">
+        <div class="page-top">
+          <div>
+            <h1 class="page-title">Team</h1>
+            <p class="page-desc">Everyone in your workspace, grouped by discipline. Invite people by email.</p>
+          </div>
+          <button class="btn btn-primary" onclick="openInviteModal()">+ Invite Member</button>
+        </div>
+        <div id="team-invites"></div>
+        <div id="team-grid"></div>
       </div>
     </div>
 
@@ -692,6 +711,23 @@
     </div>
   </div>
 
+  <div id="modal-invite" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-invite')"></div>
+    <div class="modal-content">
+      <h3>Invite Member</h3>
+      <p class="modal-desc">We'll email them an invite to join your team. They verify their email when they sign up.</p>
+      <form onsubmit="return saveInvite(event)">
+        <div class="field"><label>Email</label><input type="email" id="invite-email" required placeholder="person@company.com"></div>
+        <div class="field"><label>Name (optional)</label><input type="text" id="invite-name" placeholder="Full name"></div>
+        <div class="field"><label>Discipline (optional)</label><select id="invite-discipline"><option value="">—</option></select></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-invite')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-send-invite">Send Invite</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="modal-ops-priority" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-ops-priority')"></div>
     <div class="modal-content">
@@ -872,6 +908,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260625i"></script>
+  <script src="/static/app.js?v=20260625j"></script>
 </body>
 </html>

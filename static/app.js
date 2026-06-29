@@ -1375,6 +1375,86 @@ async function removeOpsSite(id) {
   } catch (e) { ui.toast(e.message); }
 }
 
+/* ── TEAM ──────────────────────────────────────────────────────────── */
+
+loaders.team = async function() {
+  let data = { members: [], invites: [] };
+  try {
+    const r = await fetch('/team', { headers: authHeaders() });
+    if (handleSessionExpired(r)) return;
+    if (r.ok) data = await r.json();
+  } catch (e) { /* keep empty */ }
+
+  const invEl = document.getElementById('team-invites');
+  invEl.innerHTML = data.invites.length ? `
+    <div class="panel"><div class="panel-header"><h2 class="panel-title">Pending Invites</h2><span class="count">${data.invites.length}</span></div>
+      <div class="panel-body">${data.invites.map(iv => `
+        <div class="team-invite-row">
+          <span class="collab-avatar" style="background:${collab.color(iv.email)}">@</span>
+          <div class="team-member-info"><div class="team-member-name">${iv.email}</div>${iv.discipline ? `<div class="team-member-email">${iv.discipline}</div>` : ''}</div>
+          <span class="team-invite-status">Pending</span>
+          <button class="btn btn-ghost btn-sm" onclick="cancelInvite(${iv.id})">Cancel</button>
+        </div>`).join('')}</div></div>` : '';
+
+  const groups = {};
+  data.members.forEach(m => { const k = m.discipline || 'No discipline'; (groups[k] = groups[k] || []).push(m); });
+  const order = Object.keys(groups).sort((a, b) => (a === 'No discipline') - (b === 'No discipline') || a.localeCompare(b));
+  document.getElementById('team-grid').innerHTML = order.map(disc => `
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title"><span class="disc-dot" style="background:${discColor(disc)}"></span> ${disc}</h2><span class="count">${groups[disc].length}</span></div>
+      <div class="panel-body team-members">
+        ${groups[disc].map(m => `
+          <div class="team-member">
+            <span class="collab-avatar" style="background:${collab.color(m.name)}">${collab.initials(m.name)}</span>
+            <div class="team-member-info">
+              <div class="team-member-name">${m.name}${m.is_you ? ' <span class="team-you">You</span>' : ''}</div>
+              ${m.email ? `<div class="team-member-email">${m.email}</div>` : ''}
+            </div>
+            ${m.role ? `<span class="team-member-role">${m.role.replace(/_/g, ' ')}</span>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`).join('') || '<div class="empty-state"><h3>No team members yet</h3><p>Invite people by email to build your team.</p></div>';
+};
+
+async function openInviteModal() {
+  const sel = document.getElementById('invite-discipline');
+  let discs = [];
+  try { discs = await loadServerDisciplines(); } catch (e) {}
+  sel.innerHTML = '<option value="">—</option>' + discs.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  document.getElementById('invite-email').value = '';
+  document.getElementById('invite-name').value = '';
+  ui.showModal('modal-invite');
+}
+
+async function saveInvite(e) {
+  e.preventDefault();
+  const email = document.getElementById('invite-email').value.trim();
+  const name = document.getElementById('invite-name').value.trim() || null;
+  const disc = document.getElementById('invite-discipline').value;
+  const btn = document.getElementById('btn-send-invite');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch('/team/invite', {
+      method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, discipline_id: disc ? parseInt(disc, 10) : null })
+    });
+    if (!r.ok) { const d = await r.json(); throw new Error(d.detail || 'Could not send invite'); }
+    const data = await r.json();
+    ui.hideModal('modal-invite');
+    ui.toast(data.demo_link ? 'Invite created — email not set up yet, share the signup link with them' : `Invite sent to ${email}`);
+    loaders.team();
+  } catch (err) { ui.toast(err.message); }
+  finally { btn.disabled = false; btn.textContent = 'Send Invite'; }
+}
+
+async function cancelInvite(id) {
+  try {
+    await fetch(`/team/invite/${id}`, { method: 'DELETE', headers: authHeaders() });
+    ui.toast('Invite cancelled');
+    loaders.team();
+  } catch (e) { ui.toast(e.message); }
+}
+
 /* ── SETTINGS / MY PROFILE ─────────────────────────────────────────── */
 
 loaders.settings = async function() {

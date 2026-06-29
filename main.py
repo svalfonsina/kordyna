@@ -25,6 +25,7 @@ from models import (
     Discipline,
     Document,
     DocumentFolder,
+    Invitation,
     Message,
     OpsPriority,
     OpsSite,
@@ -430,6 +431,12 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
         verification_expires=datetime.utcnow() + timedelta(minutes=15),
     )
     db.add(user)
+    # Accept any pending invite for this email.
+    if body.email:
+        db.query(Invitation).filter(
+            func.lower(Invitation.email) == body.email.strip().lower(),
+            Invitation.status == "pending",
+        ).update({Invitation.status: "accepted"}, synchronize_session=False)
     db.commit()
     db.refresh(user)
     sent = send_verification_email(body.email, code)
@@ -1016,6 +1023,118 @@ def company_members(user: User = Depends(get_current_user), db: Session = Depend
         }
         for m in members
     ]
+
+
+# ── Team ─────────────────────────────────────────────────────────────
+
+class InviteRequest(BaseModel):
+    email: str
+    name: str | None = None
+    discipline_id: int | None = None
+
+
+def send_invite_email(to_email: str, inviter: str, company_name: str) -> bool:
+    host = os.getenv("SMTP_HOST")
+    if not host or not to_email:
+        return False
+    try:
+        port = int(os.getenv("SMTP_PORT", "587"))
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_pass = os.getenv("SMTP_PASS")
+        sender = os.getenv("SMTP_FROM") or smtp_user or "no-reply@kordyna.com"
+        msg = EmailMessage()
+        msg["Subject"] = f"{inviter} invited you to {company_name} on Kordyna"
+        msg["From"] = sender
+        msg["To"] = to_email
+        msg.set_content(
+            f"{inviter} has invited you to join {company_name} on Kordyna.\n\n"
+            f"Create your account here: https://www.kordyna.com/app\n\n"
+            f"You'll verify your email with a code during signup."
+        )
+        with smtplib.SMTP(host, port, timeout=15) as server:
+            server.ehlo()
+            try:
+                server.starttls(); server.ehlo()
+            except smtplib.SMTPException:
+                pass
+            if smtp_user and smtp_pass:
+                server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+@app.get("/team")
+def get_team(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    members = db.query(User).filter(User.company_id == user.company_id).order_by(User.id).all()
+    invites = (
+        db.query(Invitation)
+        .filter(Invitation.company_id == user.company_id, Invitation.status == "pending")
+        .order_by(Invitation.created_at.desc())
+        .all()
+    )
+    return {
+        "members": [
+            {
+                "id": m.id,
+                "name": m.full_name or m.username,
+                "email": m.email,
+                "discipline": m.discipline.name if m.discipline else None,
+                "discipline_id": m.discipline_id,
+                "role": m.role,
+                "is_you": m.id == user.id,
+            }
+            for m in members
+        ],
+        "invites": [
+            {
+                "id": iv.id,
+                "email": iv.email,
+                "name": iv.name,
+                "discipline": iv.discipline.name if iv.discipline else None,
+                "created_at": iv.created_at,
+            }
+            for iv in invites
+        ],
+    }
+
+
+@app.post("/team/invite", status_code=201)
+def invite_member(body: InviteRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    email = (body.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email is required")
+    existing_user = db.query(User).filter(func.lower(User.email) == email, User.company_id == user.company_id).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="That person is already on your team")
+    if db.query(Invitation).filter(func.lower(Invitation.email) == email, Invitation.company_id == user.company_id, Invitation.status == "pending").first():
+        raise HTTPException(status_code=400, detail="An invite is already pending for that email")
+    inv = Invitation(
+        company_id=user.company_id,
+        email=email,
+        name=body.name,
+        discipline_id=body.discipline_id,
+        invited_by=user.id,
+        status="pending",
+    )
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+    company = db.query(Company).filter(Company.id == user.company_id).first()
+    sent = send_invite_email(email, user.full_name or user.username, company.name if company else "Kordyna")
+    resp = {"id": inv.id, "email": inv.email, "status": "invited"}
+    if not sent:
+        # SMTP not configured — surface the signup link so you can share it manually.
+        resp["demo_link"] = "https://www.kordyna.com/app"
+    return resp
+
+
+@app.delete("/team/invite/{invite_id}")
+def cancel_invite(invite_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db.query(Invitation).filter(Invitation.id == invite_id, Invitation.company_id == user.company_id).delete()
+    db.commit()
+    return {"ok": True}
 
 
 # ── Collaborators ────────────────────────────────────────────────────

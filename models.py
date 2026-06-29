@@ -180,6 +180,22 @@ class Document(Base):
     uploader = relationship("User")
 
 
+class Invitation(Base):
+    """A pending invite to join the company/team, sent by email."""
+    __tablename__ = "invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    email = Column(String(200), nullable=False, index=True)
+    name = Column(String(200), nullable=True)
+    discipline_id = Column(Integer, ForeignKey("disciplines.id"), nullable=True)
+    invited_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    status = Column(String(20), default="pending")  # pending, accepted
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    discipline = relationship("Discipline")
+
+
 class Collaborator(Base):
     """A user explicitly added to view + get notified about an object
     (a project, document, or change event). Additive on top of the shared
