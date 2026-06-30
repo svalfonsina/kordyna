@@ -414,13 +414,13 @@ def send_verification_email(to_email: str, code: str) -> str:
         return f"{type(e).__name__}: {str(e)[:140]}"
 
 
-@app.post("/auth/register")
+@app.post("/auth/register", response_model=TokenResponse)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == body.username).first():
         raise HTTPException(status_code=400, detail="Username taken")
     # One shared company: new accounts join it and collaborate immediately.
     company = db.query(Company).order_by(Company.id).first()
-    code = _gen_code()
+    # Email verification is disabled for now — sign new accounts straight in.
     user = User(
         username=body.username,
         hashed_password=pwd_context.hash(body.password),
@@ -428,9 +428,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
         discipline_id=body.discipline_id,
         company_id=company.id if company else None,
         role="contributor",
-        is_verified=False,
-        verification_code=code,
-        verification_expires=datetime.utcnow() + timedelta(minutes=15),
+        is_verified=True,
     )
     db.add(user)
     # Accept any pending invite for this email.
@@ -441,13 +439,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
         ).update({Invitation.status: "accepted"}, synchronize_session=False)
     db.commit()
     db.refresh(user)
-    reason = send_verification_email(body.email, code)
-    resp = {"status": "verification_sent", "username": user.username, "email": body.email}
-    if reason:
-        # SMTP not configured (or failed) — surface the code so signup still works.
-        resp["demo_code"] = code
-        resp["email_status"] = reason
-    return resp
+    return TokenResponse(access_token=create_token(user.id))
 
 
 @app.post("/auth/verify", response_model=TokenResponse)
@@ -492,9 +484,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     user = db.query(User).filter(User.username == form.username).first()
     if not user or not pwd_context.verify(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Bad credentials")
-    # Block only accounts explicitly awaiting verification (legacy NULL passes).
-    if user.is_verified is False:
-        raise HTTPException(status_code=403, detail="Please verify your email to finish signing up")
+    # Email verification is disabled for now — no is_verified gate on login.
     return TokenResponse(access_token=create_token(user.id))
 
 

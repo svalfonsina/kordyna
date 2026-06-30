@@ -393,8 +393,10 @@ const auth = {
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Registration failed'); }
       const data = await res.json();
-      this._pendingUser = user;
-      this.showVerify(email, data.demo_code);
+      // Email verification is disabled for now — registration signs you in.
+      this.token = data.access_token;
+      localStorage.setItem('kordyna_token', this.token);
+      this.enter();
     } catch (err) {
       const el = document.getElementById('auth-error');
       el.textContent = err.message;
