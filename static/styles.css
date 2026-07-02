@@ -264,12 +264,28 @@ img { max-width: 100%; display: block; }
 .ws-proj-status { font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
 .ws-proj-status i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 
+/* Workspace panel headers: quiet uppercase labels with a blue marker,
+   matching the dashboard mockup. */
+#page-workspace .panel-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #7C8CA5; display: flex; align-items: center; gap: 8px; }
+#page-workspace .panel-title::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
+
+/* Workspace activity rows: single line, time right-aligned */
+#page-workspace .ws-activity-item { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+#page-workspace .ws-activity-item:last-child { border-bottom: none; }
+#page-workspace .ws-activity-item .ws-activity-dot { display: none; }
+#page-workspace .ws-activity-body { display: flex; flex: 1; align-items: baseline; justify-content: space-between; gap: 14px; min-width: 0; }
+#page-workspace .ws-activity-text { font-size: 13px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#page-workspace .ws-activity-time { font-size: 12px; color: var(--text-muted); flex-shrink: 0; margin: 0; }
+
 /* Discipline operations strip */
 .ws-ops-strip { padding: 16px 20px; }
-.ws-ops-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #7C8CA5; margin-bottom: 12px; }
+.ws-ops-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #7C8CA5; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.ws-ops-label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
 .ws-ops-items { display: flex; align-items: center; gap: 0; }
-.ws-ops-item { flex: 1; padding: 0 18px; border-left: 1px solid var(--border); cursor: pointer; }
+.ws-ops-item { flex: 1; padding: 0 18px; border-left: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ws-ops-item:first-child { border-left: none; padding-left: 0; }
+.ws-ops-item::after { content: '›'; color: var(--text-muted); font-size: 15px; }
+.ws-ops-item:hover::after { color: var(--primary); }
 .ws-ops-name { display: block; font-size: 13px; font-weight: 600; }
 .ws-ops-item:hover .ws-ops-name { color: var(--primary); }
 .ws-ops-sub { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }

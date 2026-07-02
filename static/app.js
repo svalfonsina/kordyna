@@ -1162,10 +1162,10 @@ loaders.workspace = async function() {
     strip.innerHTML = `
       <div class="ws-ops-label">Discipline Operations</div>
       <div class="ws-ops-items">
-        <div class="ws-ops-item" onclick="router.go('ops')"><span class="ws-ops-name">Landscape Operations</span><span class="ws-ops-sub">${opsCount} open priorit${opsCount === 1 ? 'y' : 'ies'}</span></div>
-        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Nursery Inventory — coming soon')"><span class="ws-ops-name">Nursery Inventory</span><span class="ws-ops-sub">Coming soon</span></div>
-        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Irrigation Issues — coming soon')"><span class="ws-ops-name">Irrigation Issues</span><span class="ws-ops-sub">Coming soon</span></div>
-        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Maintenance Schedule — coming soon')"><span class="ws-ops-name">Maintenance Schedule</span><span class="ws-ops-sub">Coming soon</span></div>
+        <div class="ws-ops-item" onclick="router.go('ops')"><div><span class="ws-ops-name">Landscape Operations</span><span class="ws-ops-sub">${opsCount} open priorit${opsCount === 1 ? 'y' : 'ies'}</span></div></div>
+        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Nursery Inventory — coming soon')"><div><span class="ws-ops-name">Nursery Inventory</span><span class="ws-ops-sub">Coming soon</span></div></div>
+        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Irrigation Issues — coming soon')"><div><span class="ws-ops-name">Irrigation Issues</span><span class="ws-ops-sub">Coming soon</span></div></div>
+        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Maintenance Schedule — coming soon')"><div><span class="ws-ops-name">Maintenance Schedule</span><span class="ws-ops-sub">Coming soon</span></div></div>
         <a class="ws-ops-open" onclick="router.go('ops')">Open workspace →</a>
       </div>`;
   } else {
