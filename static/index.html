@@ -26,12 +26,13 @@
             <button class="auth-tab" onclick="auth.showTab('register')">Register</button>
           </div>
           <form id="form-login" onsubmit="return auth.login(event)">
-            <div class="field"><label>Username</label><input type="text" id="login-user" required autocomplete="username" placeholder="Enter your username"></div>
+            <div class="field"><label>Email</label><input type="text" id="login-user" required autocomplete="username" placeholder="Enter your email"></div>
             <div class="field"><label>Password</label><input type="password" id="login-pass" required autocomplete="current-password" placeholder="Enter your password"></div>
             <button type="submit" class="btn btn-primary btn-full">Sign In</button>
           </form>
           <form id="form-register" class="hidden" onsubmit="return auth.register(event)">
-            <div class="field"><label>Username</label><input type="text" id="reg-user" required autocomplete="username" placeholder="Choose a username"></div>
+            <div class="field"><label>First name</label><input type="text" id="reg-first" required autocomplete="given-name" placeholder="First name"></div>
+            <div class="field"><label>Last name</label><input type="text" id="reg-last" required autocomplete="family-name" placeholder="Last name"></div>
             <div class="field"><label>Email</label><input type="email" id="reg-email" required autocomplete="email" placeholder="you@company.com"></div>
             <div class="field"><label>Password</label><input type="password" id="reg-pass" required autocomplete="new-password" placeholder="Create a password"></div>
             <div class="field"><label>Discipline</label><select id="reg-discipline"><option value="">Select a discipline (optional)</option></select></div>
@@ -183,7 +184,7 @@
               <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Subscription</button>
             <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Preferences</button>
-            <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Support: hello@kordyna.com')">
+            <button class="profile-menu-item" onclick="closeProfileMenu();support.open()">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Help &amp; Support</button>
           </div>
           <div class="profile-panel-footer">
@@ -669,6 +670,23 @@
     </div>
   </div>
 
+  <div id="modal-support" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-support')"></div>
+    <div class="modal-content">
+      <h3>Help &amp; Support</h3>
+      <p class="auth-sub" style="margin-top:-4px">Upload a screenshot of the problem, tell us what happened, and let us know how you'd like it fixed.</p>
+      <form onsubmit="return support.submit(event)">
+        <div class="field"><label>Screenshot</label><input type="file" id="support-file" accept="image/*"></div>
+        <div class="field"><label>What happened?</label><textarea id="support-what" rows="3" required placeholder="Describe the problem you ran into"></textarea></div>
+        <div class="field"><label>How would you like it fixed?</label><textarea id="support-fix" rows="3" placeholder="Tell us what the right behavior would look like"></textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-support')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Send to Support</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="modal-new-task" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-new-task')"></div>
     <div class="modal-content">
@@ -908,6 +926,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260630a"></script>
+  <script src="/static/app.js?v=20260630b"></script>
 </body>
 </html>

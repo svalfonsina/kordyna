@@ -199,6 +199,8 @@ const MY_ACTIVITY_LOG = [
 /* ── STATE ─────────────────────────────────────────────────────────── */
 
 let currentProject = null;
+// The workspace-level page to return to when leaving a project (smart back).
+let projectReturnPage = 'workspace';
 
 /* ── ROUTER ────────────────────────────────────────────────────────── */
 
@@ -381,7 +383,8 @@ const auth = {
 
   async register(e) {
     e.preventDefault();
-    const user = document.getElementById('reg-user').value;
+    const first = document.getElementById('reg-first').value;
+    const last = document.getElementById('reg-last').value;
     const pass = document.getElementById('reg-pass').value;
     const email = document.getElementById('reg-email').value;
     const disc = document.getElementById('reg-discipline').value;
@@ -389,7 +392,7 @@ const auth = {
       const res = await fetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, password: pass, email, discipline_id: disc || null })
+        body: JSON.stringify({ first_name: first, last_name: last, password: pass, email, discipline_id: disc || null })
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Registration failed'); }
       const data = await res.json();
@@ -463,6 +466,8 @@ const auth = {
 function enterProject(projectId) {
   const p = PROJECTS.find(x => x.id === projectId);
   if (!p) { ui.toast('Project not found'); return; }
+  // Remember the workspace-level page we came from so "back" returns there.
+  if (['workspace', 'my-work', 'ops'].includes(router.current)) projectReturnPage = router.current;
   currentProject = p;
   updateSidebarProjectState();
   updateProjectNavBadges();
@@ -567,7 +572,7 @@ async function updateReviewStatus(changeId, disciplineId, status) {
 function exitProject() {
   currentProject = null;
   updateSidebarProjectState();
-  router.go('workspace');
+  router.go(projectReturnPage || 'workspace');
 }
 
 function renameCurrentProject() {
@@ -662,8 +667,10 @@ function updateTopbar(page) {
     centerEl.innerHTML = '';
     infoEl.innerHTML = `<span class="topbar-project-name">${titles[page] || 'My Workspace'}</span>`;
   } else if (currentProject) {
+    const backLabels = { workspace: 'Workspace', 'my-work': 'My Work', ops: 'Landscape Operations' };
+    const backLabel = backLabels[projectReturnPage] || 'Workspace';
     infoEl.innerHTML = `
-      <span class="topbar-back-btn" onclick="exitProject()">← Workspace</span>
+      <span class="topbar-back-btn" onclick="exitProject()">← ${backLabel}</span>
       <span class="topbar-project-name">${currentProject.name}</span>
       <span class="topbar-project-client">${currentProject.client}</span>`;
     centerEl.innerHTML = `
@@ -735,6 +742,34 @@ const ui = {
   },
   promptOk() { const v = document.getElementById('prompt-input').value; this.hideModal('modal-prompt'); const r = this._promptResolve; this._promptResolve = null; if (r) r(v); },
   promptCancel() { this.hideModal('modal-prompt'); const r = this._promptResolve; this._promptResolve = null; if (r) r(null); }
+};
+
+// Help & Support: collect a screenshot + description and file it in-app.
+const support = {
+  open() {
+    document.getElementById('support-file').value = '';
+    document.getElementById('support-what').value = '';
+    document.getElementById('support-fix').value = '';
+    ui.showModal('modal-support');
+  },
+  async submit(e) {
+    e.preventDefault();
+    const what = document.getElementById('support-what').value.trim();
+    if (!what) { ui.toast('Please describe what happened'); return false; }
+    const fd = new FormData();
+    fd.append('what_happened', what);
+    fd.append('desired_fix', document.getElementById('support-fix').value.trim());
+    const fileEl = document.getElementById('support-file');
+    if (fileEl.files.length) fd.append('file', fileEl.files[0]);
+    try {
+      const res = await fetch('/support', { method: 'POST', headers: authHeaders(), body: fd });
+      if (handleSessionExpired(res)) return false;
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || 'Could not send your request'); }
+      ui.hideModal('modal-support');
+      ui.toast('Thanks — your request was sent to support');
+    } catch (err) { ui.toast(err.message); }
+    return false;
+  }
 };
 
 function disc(name) { return DISCIPLINES.find(d => d.name === name); }
@@ -1165,7 +1200,12 @@ function opsSevColor(sev) { return sev === 'high' ? 'var(--red)' : 'var(--yellow
 function opsSevBg(sev) { return sev === 'high' ? 'var(--red-bg)' : 'var(--yellow-bg)'; }
 
 function renderOpsPriorities() {
-  document.getElementById('ops-priorities').innerHTML = OPS_PRIORITIES.map(p => `
+  document.getElementById('ops-priorities').innerHTML = OPS_PRIORITIES.map(p => {
+    const proj = PROJECTS.find(x => x.name === p.project);
+    const projHtml = proj
+      ? `<div class="ops-priority-proj" style="cursor:pointer;color:var(--primary)" title="Open ${p.project}" onclick="event.stopPropagation();enterProject(${proj.id})">${p.project}</div>`
+      : `<div class="ops-priority-proj">${p.project}</div>`;
+    return `
     <div class="ops-priority ${p.id === opsSelectedId ? 'selected' : ''}" onclick="opsSelect(${p.id})">
       <div class="ops-priority-main">
         <div class="ops-priority-top">
@@ -1173,7 +1213,7 @@ function renderOpsPriorities() {
           <span class="ops-priority-loc">${p.location}</span>
           <span class="ops-badge" style="background:${opsSevBg(p.severity)};color:${opsSevColor(p.severity)}">${p.issue}</span>
         </div>
-        <div class="ops-priority-proj">${p.project}</div>
+        ${projHtml}
         <div class="ops-priority-detail">${p.detail}</div>
       </div>
       <div class="ops-priority-side">
@@ -1187,8 +1227,8 @@ function renderOpsPriorities() {
           <button class="ops-icon-btn ops-icon-del" title="Remove" onclick="event.stopPropagation();removeOpsPriority(${p.id})">Remove</button>
         </div>
       </div>
-    </div>`
-  ).join('') || '<div class="empty-state" style="min-height:120px"><p>All clear — no priorities today 🎉</p></div>';
+    </div>`;
+  }).join('') || '<div class="empty-state" style="min-height:120px"><p>All clear — no priorities today 🎉</p></div>';
 }
 
 function renderOpsSites() {

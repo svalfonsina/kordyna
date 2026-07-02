@@ -5,14 +5,14 @@ from email.message import EmailMessage
 from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy import func, inspect, text
+from sqlalchemy import func, inspect, or_, text
 from sqlalchemy.orm import Session
 
 import diff_engine
@@ -33,6 +33,7 @@ from models import (
     ProjectMember,
     Review,
     SessionLocal,
+    SupportRequest,
     Task,
     Team,
     TeamMembership,
@@ -331,7 +332,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # ── Schemas ──────────────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
-    username: str
+    first_name: str
+    last_name: str
     password: str
     email: str
     discipline_id: int | None = None
@@ -416,15 +418,23 @@ def send_verification_email(to_email: str, code: str) -> str:
 
 @app.post("/auth/register", response_model=TokenResponse)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.username == body.username).first():
-        raise HTTPException(status_code=400, detail="Username taken")
+    email = (body.email or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    # Email is the login identifier (stored as username too for uniqueness).
+    if db.query(User).filter(
+        or_(func.lower(User.username) == email.lower(), func.lower(User.email) == email.lower())
+    ).first():
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+    full_name = f"{body.first_name.strip()} {body.last_name.strip()}".strip()
     # One shared company: new accounts join it and collaborate immediately.
     company = db.query(Company).order_by(Company.id).first()
     # Email verification is disabled for now — sign new accounts straight in.
     user = User(
-        username=body.username,
+        username=email,
+        full_name=full_name or None,
         hashed_password=pwd_context.hash(body.password),
-        email=body.email,
+        email=email,
         discipline_id=body.discipline_id,
         company_id=company.id if company else None,
         role="contributor",
@@ -481,7 +491,11 @@ def resend_code(body: ResendRequest, db: Session = Depends(get_db)):
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == form.username).first()
+    # New accounts log in with email; legacy accounts may use their old username.
+    ident = (form.username or "").strip()
+    user = db.query(User).filter(
+        or_(func.lower(User.username) == ident.lower(), func.lower(User.email) == ident.lower())
+    ).first()
     if not user or not pwd_context.verify(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Bad credentials")
     # Email verification is disabled for now — no is_verified gate on login.
@@ -1450,6 +1464,39 @@ def get_avatar(user_id: int, db: Session = Depends(get_db)):
     ext = os.path.splitext(u.avatar_path)[1].lower()
     media = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
     return FileResponse(u.avatar_path, media_type=media.get(ext, "application/octet-stream"), content_disposition_type="inline")
+
+
+@app.post("/support")
+async def submit_support(
+    what_happened: str = Form(...),
+    desired_fix: str = Form(""),
+    file: UploadFile | None = File(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not (what_happened or "").strip():
+        raise HTTPException(status_code=400, detail="Please describe what happened")
+    screenshot_path = None
+    if file and file.filename:
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+            raise HTTPException(status_code=400, detail="Screenshot must be a PNG, JPG, WEBP, or GIF image")
+        import uuid
+        stored_name = f"support_{uuid.uuid4().hex[:12]}{ext}"
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        screenshot_path = os.path.join(UPLOAD_DIR, stored_name)
+        content = await file.read()
+        with open(screenshot_path, "wb") as f:
+            f.write(content)
+    req = SupportRequest(
+        user_id=user.id,
+        what_happened=what_happened.strip(),
+        desired_fix=(desired_fix or "").strip() or None,
+        screenshot_path=screenshot_path,
+    )
+    db.add(req)
+    db.commit()
+    return {"status": "received"}
 
 
 @app.get("/notifications")

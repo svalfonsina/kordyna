@@ -292,3 +292,17 @@ class Task(Base):
     project = relationship("Project")
     discipline = relationship("Discipline")
     assignee = relationship("User", foreign_keys=[assignee_id])
+
+
+class SupportRequest(Base):
+    __tablename__ = "support_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    what_happened = Column(Text, nullable=False)
+    desired_fix = Column(Text, nullable=True)
+    screenshot_path = Column(String(500), nullable=True)
+    status = Column(String(20), default="open", nullable=False)  # open, resolved
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
