@@ -1020,6 +1020,112 @@ def my_tasks(user: User = Depends(get_current_user), db: Session = Depends(get_d
     return [serialize_task(t) for t in tasks]
 
 
+@app.get("/workspace/summary")
+def workspace_summary(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Everything the Home dashboard needs in one round trip: pending reviews
+    by discipline, my task buckets, schedule items due, project health, and
+    the company-wide activity feed."""
+    today = date.today()
+    week_end = today + timedelta(days=7)
+    projects = (
+        db.query(Project)
+        .filter(Project.company_id == user.company_id, Project.archived.isnot(True))
+        .order_by(Project.created_at)
+        .all()
+    )
+    pids = [p.id for p in projects]
+
+    pending_rows, review_items, flagged_by_project = [], [], {}
+    if pids:
+        pending_rows = (
+            db.query(Discipline.name, func.count(Review.id))
+            .join(Review, Review.discipline_id == Discipline.id)
+            .join(ChangeEvent, Review.change_event_id == ChangeEvent.id)
+            .filter(ChangeEvent.project_id.in_(pids), Review.status == "pending")
+            .group_by(Discipline.name)
+            .order_by(func.count(Review.id).desc())
+            .all()
+        )
+        review_items = (
+            db.query(Review)
+            .join(ChangeEvent, Review.change_event_id == ChangeEvent.id)
+            .filter(ChangeEvent.project_id.in_(pids), Review.status == "pending")
+            .order_by(Review.updated_at.desc())
+            .limit(20)
+            .all()
+        )
+        flagged_by_project = dict(
+            db.query(ChangeEvent.project_id, func.count(Review.id))
+            .join(Review, Review.change_event_id == ChangeEvent.id)
+            .filter(ChangeEvent.project_id.in_(pids), Review.status == "flagged")
+            .group_by(ChangeEvent.project_id)
+            .all()
+        )
+
+    my_open = db.query(Task).filter(Task.assignee_id == user.id, Task.status != "complete").all()
+    company_tasks = (
+        db.query(Task).filter(Task.project_id.in_(pids), Task.status != "complete").all() if pids else []
+    )
+    due_soon = [t for t in company_tasks if t.due_date and t.due_date <= week_end]
+
+    def buckets(tasks):
+        return {
+            "total": len(tasks),
+            "due_today": sum(1 for t in tasks if t.due_date == today),
+            "due_this_week": sum(1 for t in tasks if t.due_date and today < t.due_date <= week_end),
+            "overdue": sum(1 for t in tasks if t.due_date and t.due_date < today),
+        }
+
+    tasks_by_project = {}
+    for t in company_tasks:
+        tasks_by_project.setdefault(t.project_id, []).append(t)
+
+    def project_status(p):
+        ts = tasks_by_project.get(p.id, [])
+        if any(t.status == "delayed" or (t.due_date and t.due_date < today) for t in ts):
+            return "delayed"
+        if flagged_by_project.get(p.id) or any(t.status == "at_risk" for t in ts):
+            return "at_risk"
+        return "on_track"
+
+    activity = (
+        db.query(ActivityEvent)
+        .filter(ActivityEvent.company_id == user.company_id)
+        .order_by(ActivityEvent.created_at.desc())
+        .limit(8)
+        .all()
+    )
+
+    def task_item(t):
+        return {"id": t.id, "title": t.title, "project_id": t.project_id, "due_date": t.due_date, "status": t.status}
+
+    return {
+        "reviews": {
+            "total": sum(n for _, n in pending_rows),
+            "by_discipline": [{"discipline": d, "count": n} for d, n in pending_rows],
+            "items": [
+                {
+                    "change_id": r.change_event_id,
+                    "change_title": r.change_event.title,
+                    "project_id": r.change_event.project_id,
+                    "discipline": r.discipline.name if r.discipline else None,
+                }
+                for r in review_items
+            ],
+        },
+        "my_tasks": {
+            **buckets(my_open),
+            "items": [task_item(t) for t in sorted(my_open, key=lambda t: (t.due_date is None, t.due_date or today))[:20]],
+        },
+        "schedule": {
+            **buckets(due_soon),
+            "items": [task_item(t) for t in sorted(due_soon, key=lambda t: t.due_date)[:20]],
+        },
+        "projects": [{"id": p.id, "name": p.name, "status": project_status(p)} for p in projects],
+        "activity": [serialize_event(e) for e in activity],
+    }
+
+
 @app.get("/company/members")
 def company_members(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     members = db.query(User).filter(User.company_id == user.company_id).order_by(User.id).all()

@@ -1035,78 +1035,142 @@ const loaders = {};
 
 /* ── WORKSPACE ─────────────────────────────────────────────────────── */
 
+function timeAgo(iso) {
+  if (!iso) return '';
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+  return shortDate(iso);
+}
+
+function wsJumpProject(sel) {
+  const id = parseInt(sel.value, 10);
+  sel.value = '';
+  if (id) enterProject(id);
+}
+
+function wsToggleList(key) {
+  const el = document.getElementById('ws-list-' + key);
+  if (el) el.classList.toggle('hidden');
+}
+
+function wsOpenChange(projectId, changeId) {
+  enterProject(projectId);
+  router.go('change-detail', { id: changeId });
+}
+
+function wsOpenSchedule(projectId) {
+  enterProject(projectId);
+  router.go('schedule');
+}
+
+const WS_STATUS = {
+  on_track: { label: 'On Track', color: 'var(--green)' },
+  at_risk: { label: 'At Risk', color: 'var(--yellow)' },
+  delayed: { label: 'Delayed', color: 'var(--red)' }
+};
+
 loaders.workspace = async function() {
   const firstName = ((currentUser && (currentUser.full_name || currentUser.username)) || 'there').trim().split(/\s+/)[0];
+  document.getElementById('ws-hello').textContent = `Hey ${firstName}`;
 
-  document.getElementById('ws-greeting').innerHTML = `
-    <div class="page-header-main">
-      <div class="page-header-label">Workspace</div>
-      <h1 class="page-header-title">Hey ${firstName}</h1>
-      <p class="page-header-desc">This is what needs your attention today.</p>
-    </div>`;
+  // Project quick-open in the header
+  document.getElementById('ws-project-jump').innerHTML =
+    '<option value="">Open a project…</option>' +
+    PROJECTS.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 
-  const pendingReviews = PROJECTS.reduce((n, p) => n + p.pendingReviews, 0);
-  const conflictReviews = PROJECTS.reduce((n, p) => n + p.conflicts, 0);
-  const totalChanges = PROJECTS.reduce((n, p) => n + p.changes, 0);
-
-  document.getElementById('ws-action-card').innerHTML = `
-    <div class="ws-action-stat"><span class="ws-action-num blue">${pendingReviews}</span><span class="ws-action-label">Reviews Pending</span></div>
-    <div class="ws-action-sep"></div>
-    <div class="ws-action-stat"><span class="ws-action-num red">${conflictReviews}</span><span class="ws-action-label">Conflicts</span></div>
-    <div class="ws-action-sep"></div>
-    <div class="ws-action-stat"><span class="ws-action-num yellow">${totalChanges}</span><span class="ws-action-label">Change Events</span></div>
-    <div class="ws-action-sep"></div>
-    <div class="ws-action-stat"><span class="ws-action-num">${PROJECTS.length}</span><span class="ws-action-label">Active Projects</span></div>`;
-
-  // Inbox: real pending reviews for the user's discipline
-  let myReviews = [];
+  // One round trip for all dashboard data
+  let sum = null;
   try {
-    const res = await fetch('/my-reviews', { headers: authHeaders() });
-    if (res.ok) myReviews = await res.json();
-  } catch (e) { /* show empty state */ }
-  const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || `Project ${id}`;
-  document.getElementById('ws-reviews').innerHTML = myReviews.map(r =>
-    `<div class="ws-review-item" onclick="enterProject(${r.project_id})">
-      <div class="ws-review-icon pending">⏳</div>
-      <div class="ws-review-body">
-        <div class="ws-review-title">CE-${r.change_event_id} · ${r.change_title}</div>
-        <div class="ws-review-meta"><span>Awaiting your review</span></div>
-      </div>
-      <span class="ws-review-project">${projName(r.project_id)}</span>
-      <span class="ws-review-badge pending">Pending</span>
-    </div>`
-  ).join('') || '<div class="empty-state" style="min-height:120px"><p>No reviews waiting on you — inbox zero 🎉</p></div>';
+    const res = await fetch('/workspace/summary', { headers: authHeaders() });
+    if (handleSessionExpired(res)) return;
+    if (res.ok) sum = await res.json();
+  } catch (e) { /* cards render empty below */ }
+  if (!sum) sum = { reviews: { total: 0, by_discipline: [], items: [] }, my_tasks: { total: 0, due_today: 0, due_this_week: 0, overdue: 0, items: [] }, schedule: { total: 0, due_today: 0, due_this_week: 0, items: [] }, projects: [], activity: [] };
 
-  document.getElementById('ws-projects').innerHTML = PROJECTS.map(p => {
-    const confClass = p.confidence >= 90 ? 'high' : p.confidence >= 80 ? 'mid' : 'low';
-    return `<div class="ws-project-card" onclick="enterProject(${p.id})">
-      <div class="ws-project-card-header">
-        <div><div class="ws-project-name">${p.name}</div><div class="ws-project-client">${p.client}</div></div>
-        <div class="ws-project-conf ${confClass}">${p.confidence}%</div>
-      </div>
-      <div class="ws-project-stats">
-        <span><span class="ws-project-stat-val">${p.changes}</span> changes</span>
-        <span><span class="ws-project-stat-val">${p.pendingReviews}</span> pending</span>
-        <span><span class="ws-project-stat-val">${p.conflicts}</span> conflicts</span>
-      </div>
+  const projName = id => (PROJECTS.find(p => p.id === id) || {}).name || '';
+  const dueLabel = d => { if (!d) return ''; const today = new Date().toISOString().slice(0, 10); return d < today ? 'Overdue' : d === today ? 'Due today' : shortDate(d); };
+
+  // Notifications (already polled for the bell)
+  const lastSeen = localStorage.getItem('kordyna_notif_seen') || '';
+  const unread = notifItems.filter(n => n.at && n.at > lastSeen).length;
+
+  const statRows = rows => rows.map(r => `<div class="ws-stat-row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
+  document.getElementById('ws-stats').innerHTML = `
+    <div class="ws-stat">
+      <div class="ws-stat-label">Reviews Pending</div>
+      <div class="ws-stat-num">${sum.reviews.total}</div>
+      <div class="ws-stat-rows">${statRows(sum.reviews.by_discipline.slice(0, 4).map(d => [d.discipline, d.count])) || '<div class="ws-stat-row"><span>All caught up</span></div>'}</div>
+      <a class="ws-stat-link" onclick="wsToggleList('reviews')">View all reviews →</a>
+      <div class="ws-stat-list hidden" id="ws-list-reviews">${sum.reviews.items.map(r =>
+        `<div class="ws-stat-list-item" onclick="wsOpenChange(${r.project_id},${r.change_id})"><span>CE-${r.change_id} · ${r.change_title}</span><span>${projName(r.project_id)}</span></div>`).join('') || '<div class="ws-stat-list-item"><span>No pending reviews</span></div>'}</div>
+    </div>
+    <div class="ws-stat">
+      <div class="ws-stat-label">Tasks Assigned</div>
+      <div class="ws-stat-num">${sum.my_tasks.total}</div>
+      <div class="ws-stat-rows">${statRows([['Due today', sum.my_tasks.due_today], ['Due this week', sum.my_tasks.due_this_week], ['Overdue', sum.my_tasks.overdue]])}</div>
+      <a class="ws-stat-link" onclick="wsToggleList('tasks')">View my tasks →</a>
+      <div class="ws-stat-list hidden" id="ws-list-tasks">${sum.my_tasks.items.map(t =>
+        `<div class="ws-stat-list-item" onclick="wsOpenSchedule(${t.project_id})"><span>${t.title}</span><span>${dueLabel(t.due_date)}</span></div>`).join('') || '<div class="ws-stat-list-item"><span>No open tasks assigned to you</span></div>'}</div>
+    </div>
+    <div class="ws-stat">
+      <div class="ws-stat-label">Schedule Items Due</div>
+      <div class="ws-stat-num">${sum.schedule.total}</div>
+      <div class="ws-stat-rows">${statRows([['Due today', sum.schedule.due_today], ['Due this week', sum.schedule.due_this_week], ['Overdue', sum.schedule.overdue]])}</div>
+      <a class="ws-stat-link" onclick="wsToggleList('schedule')">View schedule →</a>
+      <div class="ws-stat-list hidden" id="ws-list-schedule">${sum.schedule.items.map(t =>
+        `<div class="ws-stat-list-item" onclick="wsOpenSchedule(${t.project_id})"><span>${t.title}</span><span>${dueLabel(t.due_date)}</span></div>`).join('') || '<div class="ws-stat-list-item"><span>Nothing due this week</span></div>'}</div>
+    </div>
+    <div class="ws-stat">
+      <div class="ws-stat-label">Notifications</div>
+      <div class="ws-stat-num">${unread}</div>
+      <div class="ws-stat-rows">${statRows([['Unread', unread], ['Total', notifItems.length]])}</div>
+      <a class="ws-stat-link" onclick="toggleNotifications(event)">View notifications →</a>
     </div>`;
-  }).join('');
 
-  document.getElementById('ws-activity').innerHTML = ACTIVITY.slice(0, 5).map(a =>
+  // Company-wide recent activity
+  document.getElementById('ws-activity').innerHTML = sum.activity.map(a =>
     `<div class="ws-activity-item">
-      <div class="ws-activity-dot ${a.type}"></div>
+      <div class="ws-activity-dot" style="background:${activityDotColor(a.verb, a.type)}"></div>
       <div class="ws-activity-body">
         <div class="ws-activity-text">${a.text}</div>
-        <div class="ws-activity-time">${a.time}</div>
+        <div class="ws-activity-time">${timeAgo(a.at)}${projName(a.project_id) ? ' · ' + projName(a.project_id) : ''}</div>
       </div>
     </div>`
-  ).join('');
+  ).join('') || '<div class="empty-state" style="min-height:100px"><p>No activity yet</p></div>';
 
-  document.getElementById('ws-accountability').innerHTML = `
-    <div class="ws-acc-card"><div class="ws-acc-val blue">${myReviews.length}</div><div class="ws-acc-label">In Queue</div></div>
-    <div class="ws-acc-card"><div class="ws-acc-val red">${conflictReviews}</div><div class="ws-acc-label">Conflicts</div></div>
-    <div class="ws-acc-card"><div class="ws-acc-val yellow">${totalChanges}</div><div class="ws-acc-label">Changes</div></div>
-    <div class="ws-acc-card"><div class="ws-acc-val green">${PROJECTS.length}</div><div class="ws-acc-label">Projects</div></div>`;
+  // Projects with health status
+  document.getElementById('ws-projects').innerHTML = sum.projects.slice(0, 8).map(p => {
+    const st = WS_STATUS[p.status] || WS_STATUS.on_track;
+    return `<div class="ws-proj-row" onclick="enterProject(${p.id})">
+      <span class="ws-proj-name">${p.name}</span>
+      <span class="ws-proj-status" style="color:${st.color}">${st.label} <i style="background:${st.color}"></i></span>
+    </div>`;
+  }).join('') || '<div class="empty-state" style="min-height:100px"><p>No projects yet</p></div>';
+
+  // Discipline operations strip — real tools only, others marked coming soon
+  const strip = document.getElementById('ws-ops-strip');
+  if (currentUser && currentUser.discipline === 'Landscape Architecture') {
+    let opsCount = 0;
+    try {
+      const r = await fetch('/ops/priorities', { headers: authHeaders() });
+      if (r.ok) opsCount = (await r.json()).length;
+    } catch (e) { /* count stays 0 */ }
+    strip.classList.remove('hidden');
+    strip.innerHTML = `
+      <div class="ws-ops-label">Discipline Operations</div>
+      <div class="ws-ops-items">
+        <div class="ws-ops-item" onclick="router.go('ops')"><span class="ws-ops-name">Landscape Operations</span><span class="ws-ops-sub">${opsCount} open priorit${opsCount === 1 ? 'y' : 'ies'}</span></div>
+        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Nursery Inventory — coming soon')"><span class="ws-ops-name">Nursery Inventory</span><span class="ws-ops-sub">Coming soon</span></div>
+        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Irrigation Issues — coming soon')"><span class="ws-ops-name">Irrigation Issues</span><span class="ws-ops-sub">Coming soon</span></div>
+        <div class="ws-ops-item ws-ops-soon" onclick="ui.toast('Maintenance Schedule — coming soon')"><span class="ws-ops-name">Maintenance Schedule</span><span class="ws-ops-sub">Coming soon</span></div>
+        <a class="ws-ops-open" onclick="router.go('ops')">Open workspace →</a>
+      </div>`;
+  } else {
+    strip.classList.add('hidden');
+  }
 };
 
 /* ── MY WORK (projects + my real activity) ─────────────────────────── */

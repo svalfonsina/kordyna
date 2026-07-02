@@ -6,7 +6,7 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260702d">
+  <link rel="stylesheet" href="/static/styles.css?v=20260702e">
 </head>
 <body>
 
@@ -201,49 +201,34 @@
     <!-- PAGE: MY WORKSPACE ──────────────────────────────────────── -->
     <div id="page-workspace" class="page hidden">
       <div class="page-container ws-container">
-        <!-- Greeting -->
-        <div class="page-header" id="ws-greeting"></div>
-
-        <!-- Primary Action Card -->
-        <div class="ws-action-card" id="ws-action-card"></div>
-
-        <div class="ws-grid">
-          <div class="ws-main">
-            <!-- My Reviews Inbox -->
-            <div class="ws-section">
-              <div class="ws-section-header">
-                <h2 class="ws-section-title">My Reviews</h2>
-              </div>
-              <div id="ws-reviews" class="ws-inbox"></div>
-            </div>
-
-            <!-- My Projects -->
-            <div class="ws-section">
-              <div class="ws-section-header">
-                <h2 class="ws-section-title">My Projects</h2>
-              </div>
-              <div id="ws-projects" class="ws-project-grid"></div>
-            </div>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Workspace</div>
+            <h1 class="page-header-title" id="ws-hello">Hey there</h1>
+            <p class="page-header-desc">This is what needs your attention today.</p>
           </div>
-
-          <div class="ws-side">
-            <!-- Recent Activity -->
-            <div class="ws-section">
-              <div class="ws-section-header">
-                <h2 class="ws-section-title">Recent Activity</h2>
-              </div>
-              <div id="ws-activity"></div>
-            </div>
-
-            <!-- Accountability -->
-            <div class="ws-section">
-              <div class="ws-section-header">
-                <h2 class="ws-section-title">My Accountability</h2>
-              </div>
-              <div id="ws-accountability" class="ws-acc-grid"></div>
-            </div>
+          <div class="page-header-actions">
+            <select id="ws-project-jump" class="ws-jump" onchange="wsJumpProject(this)"><option value="">Open a project…</option></select>
           </div>
         </div>
+
+        <!-- Stat cards -->
+        <div class="ws-stat-grid" id="ws-stats"></div>
+
+        <!-- Activity + Projects -->
+        <div class="ws-grid2">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Recent Activity</h2><a class="panel-link" onclick="router.go('my-work')">View all</a></div>
+            <div class="panel-body" id="ws-activity"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">My Projects</h2><a class="panel-link" onclick="router.go('my-work')">View all</a></div>
+            <div class="panel-body" id="ws-projects"></div>
+          </div>
+        </div>
+
+        <!-- Discipline operations strip (shown for disciplines with tools) -->
+        <div class="panel ws-ops-strip hidden" id="ws-ops-strip"></div>
       </div>
     </div>
 
@@ -957,6 +942,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260702b"></script>
+  <script src="/static/app.js?v=20260702e"></script>
 </body>
 </html>
