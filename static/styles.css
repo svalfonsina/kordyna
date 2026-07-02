@@ -10,6 +10,8 @@
 @font-face { font-family: 'Satoshi'; src: url('/static/fonts/satoshi-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Satoshi'; src: url('/static/fonts/satoshi-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Satoshi'; src: url('/static/fonts/satoshi-900.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: swap; }
+/* Display face for page titles — visibly distinct from the body font. */
+@font-face { font-family: 'Space Grotesk'; src: url('/static/fonts/space-grotesk.woff2') format('woff2'); font-weight: 300 900; font-style: normal; font-display: swap; }
 
 /* ── TOKENS ────────────────────────────────────────────────────────── */
 :root {
@@ -210,7 +212,7 @@ img { max-width: 100%; display: block; }
   color: var(--primary); margin-bottom: 8px;
 }
 .page-header-title {
-  font-family: 'Satoshi', var(--font);
+  font-family: 'Space Grotesk', 'Satoshi', var(--font);
   font-size: 30px; font-weight: 700; line-height: 1.1;
   letter-spacing: -0.02em; color: #FFFFFF;
 }
@@ -563,7 +565,7 @@ img { max-width: 100%; display: block; }
 /* ── CHANGE DETAIL ─────────────────────────────────────────────────── */
 .cd-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-top: 8px; gap: 24px; }
 .cd-id { font-family: 'Satoshi', var(--font); font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: 0.18em; text-transform: uppercase; color: var(--primary); }
-.cd-title { font-family: 'Satoshi', var(--font); font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: #FFFFFF; margin-top: 8px; }
+.cd-title { font-family: 'Space Grotesk', 'Satoshi', var(--font); font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: #FFFFFF; margin-top: 8px; }
 .cd-meta { font-size: 12px; font-weight: 500; color: #7C8CA5; margin-top: 10px; }
 .cd-status { font-size: 0.82rem; font-weight: 600; padding: 6px 14px; border-radius: 6px; }
 .cd-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
@@ -595,7 +597,7 @@ img { max-width: 100%; display: block; }
 .impact-topbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .impact-topbar-left { display: flex; align-items: center; gap: 16px; }
 .impact-topbar-heading .page-header-label { margin-bottom: 3px; }
-.impact-topbar-left h2 { font-family: 'Satoshi', var(--font); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: #FFFFFF; }
+.impact-topbar-left h2 { font-family: 'Space Grotesk', 'Satoshi', var(--font); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: #FFFFFF; }
 .impact-select { width: auto; padding: 6px 32px 6px 12px; font-size: 0.82rem; }
 .impact-legend { display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-dim); }
 .impact-legend span { display: flex; align-items: center; gap: 6px; }
@@ -805,7 +807,7 @@ img { max-width: 100%; display: block; }
 
 /* ── DISCIPLINE DETAIL ─────────────────────────────────────────────── */
 .dd-header { margin-bottom: 40px; padding-top: 8px; }
-.dd-header-info h1 { font-family: 'Satoshi', var(--font); font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: #FFFFFF; margin-top: 8px; }
+.dd-header-info h1 { font-family: 'Space Grotesk', 'Satoshi', var(--font); font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: #FFFFFF; margin-top: 8px; }
 .dd-header-info p { font-family: 'Satoshi', var(--font); font-size: 15px; font-weight: 500; color: #94A3B8; margin-top: 10px; }
 .dd-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
 
