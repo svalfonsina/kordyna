@@ -1028,8 +1028,11 @@ loaders.workspace = async function() {
   const firstName = ((currentUser && (currentUser.full_name || currentUser.username)) || 'there').trim().split(/\s+/)[0];
 
   document.getElementById('ws-greeting').innerHTML = `
-    <div class="ws-greeting-line">Hey ${firstName}</div>
-    <div class="ws-greeting-sub">This is what needs attention today.</div>`;
+    <div class="page-header-main">
+      <div class="page-header-label">Workspace</div>
+      <h1 class="page-header-title">Hey ${firstName}</h1>
+      <p class="page-header-desc">This is what needs your attention today.</p>
+    </div>`;
 
   const pendingReviews = PROJECTS.reduce((n, p) => n + p.pendingReviews, 0);
   const conflictReviews = PROJECTS.reduce((n, p) => n + p.conflicts, 0);
@@ -1165,11 +1168,6 @@ const OPS_ACTIVITY = [
 let opsSelectedId = null;
 
 loaders.ops = async function() {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const firstName = ((currentUser && (currentUser.full_name || currentUser.username)) || 'there').trim().split(/\s+/)[0];
-  document.getElementById('ops-greeting').textContent = `${greeting}, ${firstName}`;
-
   try {
     const [pr, st] = await Promise.all([
       fetch('/ops/priorities', { headers: authHeaders() }),
@@ -2592,8 +2590,11 @@ loaders['discipline-detail'] = async function(data) {
   const docs = serverDocs.filter(doc => doc.discipline === name);
 
   document.getElementById('dd-header').innerHTML = `
-    <div class="disc-icon-wrap disc-abbr-wrap" style="background:${discColor(name)}22;color:${discColor(name)};font-size:1.2rem">${discAbbr(name)}</div>
-    <div class="dd-header-info"><h1>${name}</h1><p>${reviews.length} reviews · ${docs.length} documents</p></div>`;
+    <div class="dd-header-info">
+      <div class="page-header-label">Discipline</div>
+      <h1>${name}</h1>
+      <p>${reviews.length} reviews · ${docs.length} documents</p>
+    </div>`;
 
   document.getElementById('dd-main').innerHTML = `
     <div class="panel"><div class="panel-header"><h2 class="panel-title">Reviews</h2></div><div class="panel-body">

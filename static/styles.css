@@ -187,9 +187,28 @@ img { max-width: 100%; display: block; }
 .main { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; }
 .page { padding: 28px; }
 .page-container { max-width: 1200px; margin: 0 auto; }
-.page-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-.page-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
-.page-desc { color: var(--text-dim); font-size: 0.9rem; }
+/* ── UNIFIED PAGE HEADER ───────────────────────────────────────────────
+   One header system across every page: small blue section label, a quiet
+   bold title, and a single concise description. Satoshi, minimal, no icons. */
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; padding-top: 20px; margin-bottom: 40px; }
+.page-header-main { min-width: 0; }
+.page-header-label {
+  font-family: 'Satoshi', var(--font);
+  font-size: 12px; font-weight: 600; line-height: 1;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--primary); margin-bottom: 8px;
+}
+.page-header-title {
+  font-family: 'Satoshi', var(--font);
+  font-size: 30px; font-weight: 700; line-height: 1.1;
+  letter-spacing: -0.02em; color: #FFFFFF;
+}
+.page-header-desc {
+  font-family: 'Satoshi', var(--font);
+  font-size: 15px; font-weight: 500; line-height: 1.5;
+  color: #94A3B8; max-width: 600px; margin-top: 10px;
+}
+.page-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* ── PANELS ────────────────────────────────────────────────────────── */
 .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
@@ -473,10 +492,10 @@ img { max-width: 100%; display: block; }
 .ct-actions svg { width: 16px; height: 16px; fill: none; stroke: var(--text-muted); stroke-width: 2; }
 
 /* ── CHANGE DETAIL ─────────────────────────────────────────────────── */
-.cd-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-.cd-id { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); }
-.cd-title { font-size: 1.4rem; font-weight: 800; margin-top: 4px; }
-.cd-meta { font-size: 0.82rem; color: var(--text-dim); margin-top: 4px; }
+.cd-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-top: 8px; gap: 24px; }
+.cd-id { font-family: 'Satoshi', var(--font); font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: 0.18em; text-transform: uppercase; color: var(--primary); }
+.cd-title { font-family: 'Satoshi', var(--font); font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: #FFFFFF; margin-top: 8px; }
+.cd-meta { font-size: 12px; font-weight: 500; color: #7C8CA5; margin-top: 10px; }
 .cd-status { font-size: 0.82rem; font-weight: 600; padding: 6px 14px; border-radius: 6px; }
 .cd-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
 .cd-impact-canvas { height: 400px; position: relative; background: var(--bg); border-radius: var(--radius); overflow: hidden; }
@@ -506,7 +525,8 @@ img { max-width: 100%; display: block; }
 .impact-fullpage { height: calc(100vh - var(--topbar-h)); display: flex; flex-direction: column; }
 .impact-topbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .impact-topbar-left { display: flex; align-items: center; gap: 16px; }
-.impact-topbar-left h2 { font-size: 1rem; font-weight: 700; }
+.impact-topbar-heading .page-header-label { margin-bottom: 3px; }
+.impact-topbar-left h2 { font-family: 'Satoshi', var(--font); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: #FFFFFF; }
 .impact-select { width: auto; padding: 6px 32px 6px 12px; font-size: 0.82rem; }
 .impact-legend { display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-dim); }
 .impact-legend span { display: flex; align-items: center; gap: 6px; }
@@ -709,10 +729,9 @@ img { max-width: 100%; display: block; }
 .disc-metric-label { color: var(--text-dim); }
 
 /* ── DISCIPLINE DETAIL ─────────────────────────────────────────────── */
-.dd-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-.dd-header .disc-icon-wrap { width: 56px; height: 56px; font-size: 1.5rem; }
-.dd-header-info h1 { font-size: 1.3rem; font-weight: 800; }
-.dd-header-info p { font-size: 0.88rem; color: var(--text-dim); }
+.dd-header { margin-bottom: 40px; padding-top: 8px; }
+.dd-header-info h1 { font-family: 'Satoshi', var(--font); font-size: 30px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: #FFFFFF; margin-top: 8px; }
+.dd-header-info p { font-family: 'Satoshi', var(--font); font-size: 15px; font-weight: 500; color: #94A3B8; margin-top: 10px; }
 .dd-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
 
 /* ── CONFIDENCE ────────────────────────────────────────────────────── */

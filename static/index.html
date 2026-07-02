@@ -6,8 +6,8 @@
   <title>Kordyna</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260625j">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,600,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=20260702a">
 </head>
 <body>
 
@@ -203,7 +203,7 @@
     <div id="page-workspace" class="page hidden">
       <div class="page-container ws-container">
         <!-- Greeting -->
-        <div class="ws-greeting" id="ws-greeting"></div>
+        <div class="page-header" id="ws-greeting"></div>
 
         <!-- Primary Action Card -->
         <div class="ws-action-card" id="ws-action-card"></div>
@@ -251,10 +251,11 @@
     <!-- PAGE: MY REVIEWS ────────────────────────────────────────── -->
     <div id="page-my-work" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">My Work</h1>
-            <p class="page-desc">Your projects and recent activity</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Workspace</div>
+            <h1 class="page-header-title">My Work</h1>
+            <p class="page-header-desc">Your projects and recent activity.</p>
           </div>
         </div>
         <div class="ws-section">
@@ -275,12 +276,15 @@
     <!-- PAGE: TEAM ──────────────────────────────────────────────── -->
     <div id="page-team" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">Team</h1>
-            <p class="page-desc">Everyone in your workspace, grouped by discipline. Invite people by email.</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Teams</div>
+            <h1 class="page-header-title">Teams</h1>
+            <p class="page-header-desc">Manage your company's teams and collaboration.</p>
           </div>
-          <button class="btn btn-primary" onclick="openInviteModal()">+ Invite Member</button>
+          <div class="page-header-actions">
+            <button class="btn btn-primary" onclick="openInviteModal()">+ Invite Member</button>
+          </div>
         </div>
         <div id="team-invites"></div>
         <div id="team-grid"></div>
@@ -290,12 +294,13 @@
     <!-- PAGE: PROJECT OVERVIEW ──────────────────────────────────── -->
     <div id="page-overview" class="page hidden">
       <div class="page-container">
-        <div class="overview-header">
-          <div>
-            <div class="overview-project-label">Project Overview</div>
-            <h1 class="overview-title" id="overview-title">Lakeside Mixed Use</h1>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Project</div>
+            <h1 class="page-header-title" id="overview-title">Lakeside Mixed Use</h1>
+            <p class="page-header-desc">Project coordination, reviews, and activity at a glance.</p>
           </div>
-          <div class="overview-actions">
+          <div class="page-header-actions">
             <button class="btn btn-ghost btn-sm" onclick="renameCurrentProject()">Rename</button>
             <button class="btn btn-ghost btn-sm" onclick="archiveCurrentProject()">Archive</button>
             <button class="btn btn-ghost btn-sm overview-delete-btn" onclick="deleteCurrentProjectPermanent()">Delete</button>
@@ -364,12 +369,15 @@
     <!-- PAGE: CHANGE EVENTS ─────────────────────────────────────── -->
     <div id="page-changes" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">Changes</h1>
-            <p class="page-desc">Track revisions, impacts, and review progress across the project</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Project</div>
+            <h1 class="page-header-title">Changes</h1>
+            <p class="page-header-desc">Track revisions, impacts, and review progress across the project.</p>
           </div>
-          <button class="btn btn-primary" onclick="openChangeUpload()">+ New Change</button>
+          <div class="page-header-actions">
+            <button class="btn btn-primary" onclick="openChangeUpload()">+ New Change</button>
+          </div>
         </div>
         <div class="change-table">
           <div class="change-table-header">
@@ -454,7 +462,10 @@
       <div class="impact-fullpage">
         <div class="impact-topbar">
           <div class="impact-topbar-left">
-            <h2>Coordination</h2>
+            <div class="impact-topbar-heading">
+              <div class="page-header-label">Coordination</div>
+              <h2>Coordinate changes across disciplines</h2>
+            </div>
             <select id="impact-change-select" class="impact-select" onchange="renderImpactMap()"></select>
           </div>
           <div class="impact-legend">
@@ -480,12 +491,15 @@
     <!-- PAGE: SCHEDULE ──────────────────────────────────────────── -->
     <div id="page-schedule" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">Schedule</h1>
-            <p class="page-desc">Project-driven scheduling across disciplines</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Schedule</div>
+            <h1 class="page-header-title">Project Schedule</h1>
+            <p class="page-header-desc">Coordinate tasks and deadlines across disciplines.</p>
           </div>
-          <button class="btn btn-primary" onclick="openNewTask()">+ New Task</button>
+          <div class="page-header-actions">
+            <button class="btn btn-primary" onclick="openNewTask()">+ New Task</button>
+          </div>
         </div>
         <div class="panel sched-summary" id="sched-summary"></div>
         <div class="sched-toolbar">
@@ -502,10 +516,11 @@
     <!-- PAGE: REVIEWS ───────────────────────────────────────────── -->
     <div id="page-reviews" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">Reviews</h1>
-            <p class="page-desc">What needs review and what is blocking project confidence</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Reviews</div>
+            <h1 class="page-header-title">Reviews</h1>
+            <p class="page-header-desc">What needs review and what's blocking project confidence.</p>
           </div>
         </div>
         <div class="review-tabs" id="review-tabs">
@@ -521,12 +536,15 @@
     <!-- PAGE: DOCUMENTS ─────────────────────────────────────────── -->
     <div id="page-documents" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">Project Documents</h1>
-            <p class="page-desc">Construction documents organized by discipline and connected to change events</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Documents</div>
+            <h1 class="page-header-title">Project Documents</h1>
+            <p class="page-header-desc">Construction documents organized by discipline and linked to change events.</p>
           </div>
-          <button class="btn btn-primary" onclick="openDocUpload()">+ Upload Document</button>
+          <div class="page-header-actions">
+            <button class="btn btn-primary" onclick="openDocUpload()">+ Upload Document</button>
+          </div>
         </div>
         <div class="doc-layout">
           <div class="doc-list-col"><div id="doc-accordion"></div></div>
@@ -543,9 +561,13 @@
     <!-- PAGE: LANDSCAPE OPERATIONS ──────────────────────────────── -->
     <div id="page-ops" class="page hidden">
       <div class="page-container ops-container">
-        <div class="ops-eyebrow">Landscape Architecture</div>
-        <h1 class="ops-title" id="ops-greeting">Good morning</h1>
-        <p class="ops-sub">Here are the landscape assets that need attention today.</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Landscape Architecture</div>
+            <h1 class="page-header-title">Landscape Operations</h1>
+            <p class="page-header-desc">Here are the landscape assets that need attention today.</p>
+          </div>
+        </div>
 
         <div class="panel ops-stats" id="ops-stats"></div>
 
@@ -585,7 +607,13 @@
     <!-- PAGE: DISCIPLINES ───────────────────────────────────────── -->
     <div id="page-disciplines" class="page hidden">
       <div class="page-container">
-        <div class="page-top"><div><h1 class="page-title">Disciplines</h1><p class="page-desc">Every discipline's workspace and coordination status</p></div></div>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Project</div>
+            <h1 class="page-header-title">Disciplines</h1>
+            <p class="page-header-desc">Every discipline's workspace and coordination status.</p>
+          </div>
+        </div>
         <div id="disciplines-grid" class="disc-grid"></div>
       </div>
     </div>
@@ -606,10 +634,11 @@
     <!-- PAGE: PROJECT ACTIVITY ──────────────────────────────────── -->
     <div id="page-activity" class="page hidden">
       <div class="page-container">
-        <div class="page-top">
-          <div>
-            <h1 class="page-title">Activity</h1>
-            <p class="page-desc">Everything happening in this project, newest first</p>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Activity</div>
+            <h1 class="page-header-title">Activity</h1>
+            <p class="page-header-desc">Everything happening in this project, newest first.</p>
           </div>
         </div>
         <div id="activity-list"></div>
@@ -619,7 +648,13 @@
     <!-- PAGE: SETTINGS ──────────────────────────────────────────── -->
     <div id="page-settings" class="page hidden">
       <div class="page-container" style="max-width:680px">
-        <div class="page-top"><div><h1 class="page-title">My Profile</h1><p class="page-desc">Manage your account details</p></div></div>
+        <div class="page-header">
+          <div class="page-header-main">
+            <div class="page-header-label">Account</div>
+            <h1 class="page-header-title">My Profile</h1>
+            <p class="page-header-desc">Manage your account details.</p>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-body">
             <div class="avatar-edit">
@@ -926,6 +961,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260630b"></script>
+  <script src="/static/app.js?v=20260702a"></script>
 </body>
 </html>
