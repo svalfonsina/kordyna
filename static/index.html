@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,600,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260702a">
+  <link rel="stylesheet" href="/static/styles.css?v=20260702b">
 </head>
 <body>
 
@@ -178,11 +178,11 @@
             </div>
           </div>
           <div class="profile-panel-menu">
-            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">
+            <button class="profile-menu-item" onclick="closeProfileMenu();openProfile()">
               <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>My Profile</button>
             <button class="profile-menu-item" onclick="closeProfileMenu();ui.toast('Subscription management coming soon')">
               <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Subscription</button>
-            <button class="profile-menu-item" onclick="closeProfileMenu();router.go('settings')">
+            <button class="profile-menu-item" onclick="closeProfileMenu();openProfile()">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Preferences</button>
             <button class="profile-menu-item" onclick="closeProfileMenu();support.open()">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Help &amp; Support</button>
@@ -645,51 +645,43 @@
       </div>
     </div>
 
-    <!-- PAGE: SETTINGS ──────────────────────────────────────────── -->
-    <div id="page-settings" class="page hidden">
-      <div class="page-container" style="max-width:680px">
-        <div class="page-header">
-          <div class="page-header-main">
-            <div class="page-header-label">Account</div>
-            <h1 class="page-header-title">My Profile</h1>
-            <p class="page-header-desc">Manage your account details.</p>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-body">
-            <div class="avatar-edit">
-              <div class="avatar-edit-circle" id="avatar-edit-circle">SV</div>
-              <div class="avatar-edit-info">
-                <div class="avatar-edit-name" id="avatar-edit-name">—</div>
-                <div class="avatar-edit-role" id="avatar-edit-role"></div>
-                <div class="avatar-edit-actions">
-                  <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('avatar-file').click()">Upload Photo</button>
-                  <button type="button" class="btn btn-ghost btn-sm hidden" id="avatar-remove-btn" onclick="removeAvatar()">Remove</button>
-                  <input type="file" id="avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="uploadAvatar(this)">
-                </div>
-              </div>
-            </div>
-            <form onsubmit="return actions.saveProfile(event)">
-              <div class="field"><label>Full Name</label><input type="text" id="profile-full-name" placeholder="e.g. Sara Valfonsina"></div>
-              <div class="field"><label>Discipline</label><select id="profile-discipline"><option value="">Select a discipline</option></select></div>
-              <div class="field-row">
-                <div class="field"><label>Email</label><input type="email" id="profile-email" placeholder="you@company.com"></div>
-                <div class="field"><label>Phone Number</label><input type="tel" id="profile-phone" placeholder="(555) 123-4567"></div>
-              </div>
-              <div class="field"><label>Company</label><input type="text" id="profile-company" placeholder="e.g. Vega Landscape"></div>
-              <div class="field"><label>Username</label><input type="text" id="profile-username" disabled></div>
-              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
-                <button type="submit" class="btn btn-primary" id="btn-save-profile">Save Changes</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </main>
 
   <!-- ══ MODALS ════════════════════════════════════════════════════ -->
+  <div id="modal-profile" class="modal hidden">
+    <div class="modal-backdrop" onclick="ui.hideModal('modal-profile')"></div>
+    <div class="modal-content">
+      <h3>My Profile</h3>
+      <p class="auth-sub" style="margin-top:-4px">Manage your account details.</p>
+      <div class="avatar-edit">
+        <div class="avatar-edit-circle" id="avatar-edit-circle">SV</div>
+        <div class="avatar-edit-info">
+          <div class="avatar-edit-name" id="avatar-edit-name">—</div>
+          <div class="avatar-edit-role" id="avatar-edit-role"></div>
+          <div class="avatar-edit-actions">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('avatar-file').click()">Upload Photo</button>
+            <button type="button" class="btn btn-ghost btn-sm hidden" id="avatar-remove-btn" onclick="removeAvatar()">Remove</button>
+            <input type="file" id="avatar-file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="uploadAvatar(this)">
+          </div>
+        </div>
+      </div>
+      <form onsubmit="return actions.saveProfile(event)">
+        <div class="field"><label>Full Name</label><input type="text" id="profile-full-name" placeholder="e.g. Sara Valfonsina"></div>
+        <div class="field"><label>Discipline</label><select id="profile-discipline"><option value="">Select a discipline</option></select></div>
+        <div class="field-row">
+          <div class="field"><label>Email</label><input type="email" id="profile-email" placeholder="you@company.com"></div>
+          <div class="field"><label>Phone Number</label><input type="tel" id="profile-phone" placeholder="(555) 123-4567"></div>
+        </div>
+        <div class="field"><label>Company</label><input type="text" id="profile-company" placeholder="e.g. Vega Landscape"></div>
+        <div class="field"><label>Username</label><input type="text" id="profile-username" disabled></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="ui.hideModal('modal-profile')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-profile">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="modal-new-project" class="modal hidden">
     <div class="modal-backdrop" onclick="ui.hideModal('modal-new-project')"></div>
     <div class="modal-content">
@@ -960,7 +952,12 @@
     <img id="lightbox-img" src="" alt="Drawing" onclick="event.stopPropagation();toggleLightboxZoom()">
   </div>
 
+  <div id="doc-blowup" class="lightbox hidden" onclick="closeDocBlowup(event)">
+    <button class="lightbox-close" onclick="closeDocBlowup()" title="Close">×</button>
+    <iframe id="doc-blowup-frame" src="about:blank" title="Document"></iframe>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
-  <script src="/static/app.js?v=20260702a"></script>
+  <script src="/static/app.js?v=20260702b"></script>
 </body>
 </html>

@@ -209,7 +209,8 @@ const router = {
   go(page, data) {
     document.querySelectorAll('.main .page').forEach(p => p.classList.add('hidden'));
     const el = document.getElementById('page-' + page);
-    if (el) { el.classList.remove('hidden'); }
+    if (!el) { if (page !== 'workspace') return this.go('workspace'); return; }
+    el.classList.remove('hidden');
     this.current = page;
     this.lastData = data;
 
@@ -916,7 +917,7 @@ async function uploadAvatar(input) {
     currentUser = await res.json();
     avatarVersion = String(Date.now());
     applyIdentity();
-    if (router.current === 'settings') loaders.settings();
+    if (profileModalOpen()) loaders.settings();
     ui.toast('Photo updated');
   } catch (err) {
     ui.toast(err.message);
@@ -932,7 +933,7 @@ async function removeAvatar() {
     currentUser = await res.json();
     avatarVersion = String(Date.now());
     applyIdentity();
-    if (router.current === 'settings') loaders.settings();
+    if (profileModalOpen()) loaders.settings();
     ui.toast('Photo removed');
   } catch (err) {
     ui.toast(err.message);
@@ -949,6 +950,16 @@ function toggleProfileMenu(e) {
 
 function closeProfileMenu() {
   document.getElementById('profile-panel').classList.add('hidden');
+}
+
+// Profile lives in a modal (close by clicking outside or Cancel).
+function openProfile() {
+  ui.showModal('modal-profile');
+  loaders.settings();
+}
+function profileModalOpen() {
+  const m = document.getElementById('modal-profile');
+  return m && !m.classList.contains('hidden');
 }
 
 // One global handler: clicking anywhere outside an open overlay closes it.
@@ -2325,9 +2336,19 @@ function toggleLightboxZoom() {
   document.getElementById('lightbox-img').classList.toggle('zoomed');
 }
 document.addEventListener('keydown', (e) => {
+  // Alt+Arrow (incl. numpad arrows when NumLock is off, as happens when
+  // typing special characters via Alt codes) triggers the browser's
+  // back/forward and drops the user out of the app. Block it — the app
+  // manages its own navigation.
+  if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    e.preventDefault();
+    return;
+  }
   if (e.key !== 'Escape') return;
   const lb = document.getElementById('lightbox');
   if (lb && !lb.classList.contains('hidden')) lb.classList.add('hidden');
+  const bx = document.getElementById('doc-blowup');
+  if (bx && !bx.classList.contains('hidden')) closeDocBlowup();
 });
 
 function showDocDetail(idx) {
@@ -2405,7 +2426,7 @@ function renderFilePreview(doc, idx) {
       </button>
     </div>`;
   if (ext === 'pdf') {
-    return `<div class="doc-preview">${toolbar}<iframe id="doc-preview-frame" src="${doc.fileUrl}#toolbar=0&view=FitH" title="${doc.filename}"></iframe></div>`;
+    return `<div class="doc-preview doc-preview-pdf">${toolbar}<iframe id="doc-preview-frame" src="${doc.fileUrl}#toolbar=0&view=Fit" title="${doc.filename}"></iframe><div class="doc-preview-clickcatch" title="Click to expand" onclick="expandDoc(${idx})"></div></div>`;
   }
   if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
     return `<div class="doc-preview doc-preview-img">${toolbar}<img src="${doc.fileUrl}" alt="${doc.filename}" title="Click to expand" onclick="openLightbox('${doc.fileUrl}')"></div>`;
@@ -2444,14 +2465,25 @@ function openInCad(idx) {
   ui.toast(`Opening ${doc.filename} in ${cadKind(doc.filename)}…`);
 }
 
-// "Blow up" a document: images open in the fullscreen lightbox, other
-// file types (PDF, etc.) open full-size in a new tab.
+// "Blow up" a document full-screen in-app: images in the image lightbox,
+// PDFs in a large iframe overlay.
 function expandDoc(idx) {
   const doc = DOC_CACHE[idx];
   if (!doc || !doc.fileUrl) return;
   const ext = (doc.filename || '').split('.').pop().toLowerCase();
   if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) openLightbox(doc.fileUrl);
-  else window.open(doc.fileUrl, '_blank');
+  else openDocBlowup(doc.fileUrl);
+}
+
+function openDocBlowup(url) {
+  const bx = document.getElementById('doc-blowup');
+  document.getElementById('doc-blowup-frame').src = url + '#view=Fit';
+  bx.classList.remove('hidden');
+}
+function closeDocBlowup(e) {
+  if (e && e.target && e.target.id === 'doc-blowup-frame') return; // clicks in the doc don't close
+  document.getElementById('doc-blowup').classList.add('hidden');
+  document.getElementById('doc-blowup-frame').src = 'about:blank';
 }
 
 function replaceDocFile(idx) {
